@@ -1,0 +1,17 @@
+name: beaver_builder_api
+description: "An easier way to build"
+publish_to: 'Millenniar'
+
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.3.4 <4.0.0'
+
+dependencies:
+  sqflite_common_ffi: ^2.3.3
+  uuid: ^4.4.0
+  sqflite: ^2.3.3+1
+  dart_minecraft: ^0.6.0
+  collection: ^1.18.0
+  shelf: ^1.4.1
+  shelf_router: ^1.1.4
