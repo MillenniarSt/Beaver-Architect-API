@@ -35,10 +35,10 @@ class Engineer implements JsonWritable<Map<String, dynamic>> {
   }
 
   Future<void> loadPackage(Directory package) async {
-    await http.send("load_package", package.path);
+    await http.get("load", args: {"obj": "package", "dir": package.path});
   }
 
   Future<void> loadConfig(Directory config) async {
-    await http.send("load_config", config.path);
+    await http.get("load", args: {"obj": "config", "dir": config.path});
   }
 }

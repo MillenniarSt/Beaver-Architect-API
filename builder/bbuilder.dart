@@ -1,12 +1,9 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
-
-import '../engineer/components.dart';
 import '../data/database.dart';
 import 'area/area.dart';
 
-final FileImage defaultBackground = FileImage(File("assets/background/default.png"));
+final File defaultBackground = File("assets/background/default.png");
 
 abstract class Builder implements Savable {
 
@@ -17,40 +14,31 @@ abstract class Builder implements Savable {
   File? image;
   int opacity = 50;
 
-  Builder(this.name, {this.image, this.opacity = 30}) {
+  late Area area;
+
+  Builder(this.name, this.area, {this.image, this.opacity = 30}) {
     id = uuid.v4();
   }
 
-  Builder.map(Map<String, dynamic> map) {
-    this.map(map);
+  Builder.json(Map<String, dynamic> json) {
+    this.json(json);
   }
 
   @override
-  void map(Map<String, dynamic> map) {
-    id = map["id"];
-    image = map["image"] == "#null" ? null : File(map["image"]);
-    opacity = map["opacity"];
+  void json(Map<String, dynamic> json) {
+    id = json["id"];
+    image = json["image"] == "#null" ? null : File(json["image"]);
+    opacity = json["opacity"];
+    area = jsonArea(json)!;
   }
 
   @override
-  Map<String, dynamic> toMap() => {
+  Map<String, dynamic> toJson() => {
     "id": id,
     "image": image == null ? "#null" : image!.path,
-    "opacity": opacity
+    "opacity": opacity,
+    "area": area.toJson()
   };
 
   List<Builder> get childrenBuilders => [];
-}
-
-abstract class MainBuilder extends Builder {
-
-  late Area area;
-
-  MainBuilder(super.name, this.area, {super.image, super.opacity}) : super();
-
-  MainBuilder.map(super.map) : super.map();
-
-  List<Component> get components;
-
-  String get type;
 }

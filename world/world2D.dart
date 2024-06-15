@@ -45,11 +45,6 @@ class Pos2D implements JsonMappable<List> {
 
   @override
   int get hashCode => x.hashCode ^ z.hashCode;
-
-  @override
-  String toString() {
-    return 'Pos2D{x: $x, z: $z}';
-  }
 }
 
 class Size2D implements JsonMappable<List<double>> {
@@ -91,11 +86,6 @@ class Size2D implements JsonMappable<List<double>> {
 
   @override
   int get hashCode => width.hashCode ^ length.hashCode;
-
-  @override
-  String toString() {
-    return 'Size2D{width: $width, length: $length}';
-  }
 }
 
 class Rotation2D implements JsonMappable<double> {
@@ -125,11 +115,6 @@ class Rotation2D implements JsonMappable<double> {
 
   @override
   int get hashCode => angle.hashCode;
-
-  @override
-  String toString() {
-    return 'Rotation2D{angle: $angle}';
-  }
 }
 
 enum RegularRotation2D {

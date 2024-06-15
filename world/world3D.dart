@@ -73,11 +73,6 @@ class Pos3D extends Pos2D {
 
   @override
   int get hashCode => super.hashCode ^ y.hashCode;
-
-  @override
-  String toString() {
-    return 'Pos3D{x: $x, z: $z, y: $y}';
-  }
 }
 
 class Size3D extends Size2D {
@@ -98,22 +93,18 @@ class Size3D extends Size2D {
   List<double> toJson() => super.toJson()..add(height);
 
   static Size3D findSize(Pos3D pos, Iterable<Pos3D> poss) {
-    Pos3D found = Pos3D(-0x8000000000000000, -0x8000000000000000, -0x8000000000000000);
-    for(Pos3D pos in poss) {
-      if(pos.x > found.x) found = Pos3D(pos.x, found.z, found.y);
-      if(pos.z > found.z) found = Pos3D(found.x, pos.z, found.y);
-      if(pos.y > found.y) found = Pos3D(found.x, found.z, pos.y);
+    Pos3D found = Pos3D(
+        -0x8000000000000000, -0x8000000000000000, -0x8000000000000000);
+    for (Pos3D pos in poss) {
+      if (pos.x > found.x) found = Pos3D(pos.x, found.z, found.y);
+      if (pos.z > found.z) found = Pos3D(found.x, pos.z, found.y);
+      if (pos.y > found.y) found = Pos3D(found.x, found.z, pos.y);
     }
-    return Size3D((found.x - pos.x).abs() +1, (pos.z - found.z).abs() +1, (pos.y - found.y).abs() +1);
-  }
-
-  @override
-  String toString() {
-    return 'Pos3D{width: $width, length: $length, height: $height}';
+    return Size3D((found.x - pos.x).abs() + 1, (pos.z - found.z).abs() + 1, (pos.y - found.y).abs() + 1);
   }
 }
 
-class Dimension implements Mappable {
+class Dimension implements JsonMappable<Map<String, dynamic>> {
 
   late Pos3D pos;
   late Size3D size;
@@ -125,21 +116,21 @@ class Dimension implements Mappable {
     size = Size3D((end.x - start.x).abs() +1, (end.z - start.z).abs() +1, (end.y - start.y).abs() +1);
   }
 
-  Dimension.map(Map<String, dynamic> map) {
-    this.map(map);
+  Dimension.json(Map<String, dynamic> json) {
+    this.json(json);
   }
 
   @override
-  Map<String, dynamic> toMap() => {
-    "posX": pos.x, "posZ": pos.z, "posY": pos.y,
-    "width": size.width, "length": size.length, "height": size.height
+  void json(Map<String, dynamic> json) {
+    pos = Pos3D(json["pos"]["x"], json["pos"]["z"], json["pos"]["y"]);
+    size = Size3D(json["size"]["width"], json["size"]["length"], json["size"]["height"]);
+  }
+
+  @override
+  Map<String, dynamic> toJson() => {
+    "pos": {"x": pos.x, "z": pos.z, "y": pos.y},
+    "size": {"width": size.width, "length": size.length, "height": size.height}
   };
-
-  @override
-  void map(Map<String, dynamic> map) {
-    pos = Pos3D(map["posX"], map["posZ"], map["posY"]);
-    size = Size3D(map["width"], map["length"], map["height"]);
-  }
 
   static Dimension findDimension(Iterable<Pos3D> poss) {
     Pos3D pos = Pos3D.findPos(poss);
@@ -150,11 +141,6 @@ class Dimension implements Mappable {
       ((contain.x > pos.x && contain.x < pos.x + size.width -1) || size.width == 0) &&
       ((contain.z > pos.z && contain.z < pos.z + size.length -1) || size.length == 0) &&
       ((contain.y > pos.y && contain.y < pos.y + size.height -1) || size.height == 0);
-
-  @override
-  String toString() {
-    return 'Dimension{pos: $pos, size: $size}';
-  }
 }
 
 class Rotation3D implements JsonMappable<Map<String, double>> {
@@ -190,11 +176,6 @@ class Rotation3D implements JsonMappable<Map<String, double>> {
 
   @override
   int get hashCode => angleY.hashCode ^ angleX.hashCode ^ angleZ.hashCode;
-
-  @override
-  String toString() {
-    return 'Rotation2D{y: $angleY, x: $angleX, z: $angleZ}';
-  }
 }
 
 enum RegularRotation3D {

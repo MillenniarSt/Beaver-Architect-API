@@ -1,9 +1,7 @@
 import '../builder/project.dart';
 import '../data/database.dart';
-import '../engineer/engineer.dart';
-import '../engineer/style.dart';
 
-abstract class Architect<D extends EngineerData, S extends Style> implements Savable {
+abstract class Architect implements Savable {
 
   @override
   late final String id;

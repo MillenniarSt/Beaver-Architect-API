@@ -1,26 +1,65 @@
-import 'package:http/htttp.dart' as http;
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
 
 import '../data/database.dart';
+import '../main.dart';
+import 'common.dart';
 
-class EngineerHttp {
+class EngineerHttp extends CommonHttp {
 
   final String id;
-  final String baseUrl;
 
-  EngineerHttp(this.id, this.baseUrl);
+  EngineerHttp(String id) : this.id = id, super("${api.url}/engineer/$id");
 
-  Future<dynamic> post(String url, data) async {
-    if(data is JsonWritable) {
-      data = json.toJson();
+  @override
+  Future<dynamic> get(String url, {Map<String, dynamic> args = const {}, Function(http.Response)? fail, Function(http.Response)? notFound}) async {
+    List<String> arguments = [];
+    for(String key in args.keys) {
+      arguments.add("$key=${args[key]}");
     }
-    return await http.post(
+    http.Response response = await http.get(Uri.parse("$baseUrl/$url" + (arguments.isEmpty ? "" : "?${arguments.join("&")}")));
+    if(response.statusCode == 200) {
+      return json.decode(response.body);
+    } else if(response.statusCode == 404) {
+      if(notFound != null) {
+        return notFound.call(response);
+      } else {
+        //TODO
+      }
+    } else {
+      if(fail != null) {
+        return fail.call(response);
+      } else {
+        //TODO
+      }
+    }
+  }
+
+  @override
+  Future<dynamic> post(String url, data, {Function(http.Response)? fail, Function(http.Response)? notFound}) async {
+    if(data is JsonWritable) {
+      data = data.toJson();
+    }
+    http.Response response = await http.post(
         Uri.parse("$baseUrl/$url"), 
         headers: {"Content-Type": "application/json"},
         body: json.encode(data)
     );
-  }
-
-  void listen(String url, Function(Response) onReceived) {
-    //TODO
+    if(response.statusCode == 200) {
+      return json.decode(response.body);
+    } else if(response.statusCode == 404) {
+      if(notFound != null) {
+        return notFound.call(response);
+      } else {
+        //TODO
+      }
+    } else {
+      if(fail != null) {
+        return fail.call(response);
+      } else {
+        //TODO
+      }
+    }
   }
 }

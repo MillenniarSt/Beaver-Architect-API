@@ -2,42 +2,47 @@ import '../../data/database.dart';
 import '../../world/world3D.dart';
 import 'area2D.dart';
 
-abstract class AbstractArea {
-
-  Dimension dimension = Dimension(Pos3D(0, 0, 0), Size3D(1, 1, 1));
+Area? jsonArea(Map<String, dynamic> json) {
+  switch(json["type"]) {
+    case "parallelepiped": return Parallelepiped.json(json);
+    case "prism": return Prism.json(json);
+  }
+  return null;
 }
 
-abstract class Area extends AbstractArea implements Savable {
+abstract class Area implements Savable {
 
   @override
   late final String id;
 
   late AreaVisual visual;
 
+  late Dimension dimension = Dimension(Pos3D(0, 0, 0), Size3D(1, 1, 1));
+
   Area(this.visual) {
     id = uuid.v4();
   }
 
-  Area.map(Map<String, dynamic> map) {
-    this.map(map);
+  Area.json(Map<String, dynamic> map) {
+    this.json(map);
   }
 
   @override
-  void map(Map<String, dynamic> map) {
-    visual = AreaVisual.map(map);
-    dimension = Dimension.map(map);
+  void json(Map<String, dynamic> json) {
+    id = json["id"];
+    visual = AreaVisual.json(json["visual"]);
+    dimension = Dimension.json(json["dimension"]);
   }
 
   @override
-  Map<String, dynamic> toMap() => visual.toMap()..addAll(dimension.toMap());
+  Map<String, dynamic> toJson() => {
+    "id": id,
+    "type": type,
+    "visual": visual.toJson(),
+    "dimension": dimension.toJson()
+  };
 
-  String get key;
-
-  @override
-  String get mapId => "areas";
-
-  @override
-  List<Savable> get childrenToMap => [];
+  String get type;
 }
 
 class Parallelepiped extends Area {
@@ -46,10 +51,10 @@ class Parallelepiped extends Area {
     dimension = dimension;
   }
 
-  Parallelepiped.map(Map<String, dynamic> map) : super.map(map);
+  Parallelepiped.json(Map<String, dynamic> map) : super.json(map);
 
   @override
-  String get key => "parallelepiped";
+  String get type => "parallelepiped";
 }
 
 class Prism<A extends Area2D> extends Area {
@@ -61,8 +66,19 @@ class Prism<A extends Area2D> extends Area {
     dimension.size = Size3D(root.size.width, root.size.length, height);
   }
 
-  Prism.map(Map<String, dynamic> map) : super.map(map);
+  Prism.json(Map<String, dynamic> map) : super.json(map);
 
   @override
-  String get key => "prism";
+  void json(Map<String, dynamic> json) {
+    super.json(json);
+    //TODO
+  }
+
+  @override
+  Map<String, dynamic> toJson() => super.toJson()..addAll({
+    //TODO
+  });
+
+  @override
+  String get type => "prism";
 }

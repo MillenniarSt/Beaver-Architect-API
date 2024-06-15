@@ -1,16 +1,15 @@
 import 'dart:io';
-import 'dart:ui';
 
 import '../../data/database.dart';
 import '../../world/world2D.dart';
 
-class AreaVisual implements Mappable {
+class AreaVisual implements JsonMappable<Map<String, dynamic>> {
 
   static final AreaVisual none = AreaVisual("none");
 
   late String name;
 
-  late Color color;
+  late int color;
   File? image;
 
   AreaVisual(this.name);
@@ -19,25 +18,34 @@ class AreaVisual implements Mappable {
 
   AreaVisual.image(this.name, this.image);
 
-  AreaVisual.map(Map<String, dynamic> map) {
-    this.map(map);
+  AreaVisual.json(Map<String, dynamic> map) {
+    this.json(map);
   }
 
   @override
-  void map(Map<String, dynamic> map) {
-    name = map["name"];
-    color = Color(map["color"]);
-    image = map["image"] == "#null" ? null : File(map["image"]);
+  void json(Map<String, dynamic> json) {
+    name = json["name"];
+    color = json["color"];
+    image = json["image"] == "#null" ? null : File(json["image"]);
   }
 
   @override
-  Map<String, dynamic> toMap() {
-    return {"name": name, "color": color.value, "image": image == null ? "#null" : image!.path};
-  }
+  Map<String, dynamic> toJson() => {
+    "name": name, "color": color, "image": image == null ? "#null" : image!.path
+  };
 
   bool hasImage() {
     return image != null;
   }
+}
+
+Area2D? jsonArea2d(Map<String, dynamic> json) {
+  switch(json["type"]) {
+    case "rectangle": return Rectangle.json(json);
+    case "ellipse": return Ellipse.json(json);
+    case "polygon": return Polygon.json(json);
+  }
+  return null;
 }
 
 abstract class Area2D implements Savable {
@@ -56,59 +64,48 @@ abstract class Area2D implements Savable {
 
   Area2D.late(this.visual);
 
-  Area2D.map(Map<String, dynamic> map) {
-    this.map(map);
+  Area2D.json(Map<String, dynamic> json) {
+    this.json(json);
   }
 
   @override
-  void map(Map<String, dynamic> map) {
-    id = map["id"];
-    visual = AreaVisual.map(map);
-    pos = Pos2D(map["posX"], map["posZ"]);
-    size = Size2D(map["width"], map["length"]);
-    readData((map["data"] as String).split(" "));
+  void json(Map<String, dynamic> json) {
+    id = json["id"];
+    visual = AreaVisual.json(json["visual"]);
+    pos = Pos2D.json(json["pos"]);
+    size = Size2D.json(json["size"]);
   }
 
   @override
-  Map<String, dynamic> toMap() => visual.toMap()..addAll({
+  Map<String, dynamic> toJson() => {
     "id": id,
-    "type": key,
+    "visual": visual.toJson(),
+    "type": type,
     "posX": pos.x, "posZ": pos.z,
-    "width": size.width, "length": size.length,
-    "data": writeData().join(" ")
-  });
+    "width": size.width, "length": size.length
+  };
 
-  List<String> writeData() => [];
-
-  void readData(List<String> data) { }
-
-  @override
-  String get mapId => "areas2D";
-
-  String get key;
-
-  @override
-  List<Savable> get childrenToMap => [];
+  String get type;
 }
 
 class Rectangle extends Area2D {
 
   Rectangle(super.visual, super.pos, super.size);
 
-  Rectangle.map(super.map) : super.map();
+  Rectangle.json(super.json) : super.json();
 
   @override
-  String get key => "rectangle";
+  String get type => "rectangle";
 }
 
 class Ellipse extends Area2D {
 
   Ellipse(super.visual, super._start, super._end) : super();
 
-  Ellipse.map(super.map) : super.map();
+  Ellipse.json(super.json) : super.json();
 
   @override
-  String get key => "ellipse";
+  String get type => "ellipse";
 }
 
 class Polygon extends Area2D {
@@ -119,23 +116,18 @@ class Polygon extends Area2D {
     update();
   }
 
-  Polygon.map(super.map) : super.map();
+  Polygon.json(super.json) : super.json();
 
   @override
-  void readData(List<String> data) {
-    for(int i = 0; i < data.length; i += 2) {
-      _poss.add(Pos2D(double.parse(data[i]), double.parse(data[i + 1])));
+  void json(Map<String, dynamic> json) {
+    super.json(json);
+    for(int i = 0; i < json["poss"].length; i += 2) {
+      _poss.add(Pos2D.json(json["poss"][i]));
     }
   }
 
   @override
-  List<String> writeData() {
-    List<String> posData = [];
-    for(Pos2D pos in _poss) {
-      posData.addAll([pos.x.toString(), pos.z.toString()]);
-    }
-    return posData;
-  }
+  Map<String, dynamic> toJson() => super.toJson()..["poss"] = List.generate(_poss.length, (index) => _poss[index].toJson());
 
   @override
   set pos(Pos2D value) {
@@ -168,5 +160,5 @@ class Polygon extends Area2D {
   }
 
   @override
-  String get key => "polygon";
+  String get type => "polygon";
 }

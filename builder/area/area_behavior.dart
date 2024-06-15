@@ -16,25 +16,19 @@ class AreaBehavior implements Savable {
     id = uuid.v4();
   }
 
-  AreaBehavior.map(Map<String, dynamic> map) {
-    this.map(map);
+  AreaBehavior.json(Map<String, dynamic> json) {
+    this.json(json);
   }
 
   @override
-  void map(Map<String, dynamic> map) {
-    id = map["id"];
-    name = map["name"];
+  void json(Map<String, dynamic> json) {
+    id = json["id"];
+    name = json["name"];
   }
 
   @override
-  Map<String, dynamic> toMap() => {
+  Map<String, dynamic> toJson() => {
     "id": id,
     "name": name
   };
-
-  @override
-  List<Savable> get childrenToMap => [];
-
-  @override
-  String get mapId => "behaviors";
 }
