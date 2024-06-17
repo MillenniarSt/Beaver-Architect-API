@@ -2,7 +2,7 @@ import '../architect/architect.dart';
 import '../world/world3D.dart';
 import 'style.dart';
 
-abstract class Component<C extends Architect, S extends ComponentStyle> {
+abstract class Component<S extends ComponentStyle> {
 
   S style;
   Dimension dimension;
@@ -11,25 +11,65 @@ abstract class Component<C extends Architect, S extends ComponentStyle> {
 
   void random();
 
-  void build(C converter);
+  void build(Architect architect);
 }
 
-abstract class Wall<C extends Architect, S extends WallStyle> extends Component<C, S> {
+class Wall extends Component<WallStyle> {
 
   Wall(super.style, super.dimension);
+
+  @override
+  void build(Architect architect) {
+    // TODO: implement build
+  }
+
+  @override
+  void random() {
+    // TODO: implement random
+  }
 }
 
-abstract class Floor<C extends Architect, S extends FloorStyle> extends Component<C, S> {
+class Floor extends Component<FloorStyle> {
 
   Floor(super.style, super.dimension);
+
+  @override
+  void build(Architect architect) {
+    // TODO: implement build
+  }
+
+  @override
+  void random() {
+    // TODO: implement random
+  }
 }
 
-abstract class Roof<C extends Architect, S extends RoofStyle> extends Component<C, S> {
+class Roof extends Component<RoofStyle> {
 
   Roof(super.style, super.dimension);
+
+  @override
+  void build(Architect architect) {
+    // TODO: implement build
+  }
+
+  @override
+  void random() {
+    // TODO: implement random
+  }
 }
 
-abstract class Gadget<C extends Architect, S extends GadgetStyle> extends Component<C, S> {
+class Gadget extends Component<GadgetStyle> {
 
   Gadget(super.style, super.dimension);
+
+  @override
+  void build(Architect architect) {
+    // TODO: implement build
+  }
+
+  @override
+  void random() {
+    // TODO: implement random
+  }
 }

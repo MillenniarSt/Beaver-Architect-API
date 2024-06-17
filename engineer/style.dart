@@ -26,35 +26,35 @@ abstract class ComponentStyle implements JsonMappable<Map<String, dynamic>> {
   };
 }
 
-abstract class Style extends ComponentStyle {
+class Style extends ComponentStyle {
 
   Style(super.identifier, super.name);
 
   Style.json(super.json) : super.json();
 }
 
-abstract class WallStyle extends ComponentStyle {
+class WallStyle extends ComponentStyle {
 
   WallStyle(super.identifier, super.name);
 
   WallStyle.json(super.json) : super.json();
 }
 
-abstract class FloorStyle extends ComponentStyle {
+class FloorStyle extends ComponentStyle {
 
   FloorStyle(super.identifier, super.name);
 
   FloorStyle.json(super.json) : super.json();
 }
 
-abstract class RoofStyle extends ComponentStyle {
+class RoofStyle extends ComponentStyle {
 
   RoofStyle(super.identifier, super.name);
 
   RoofStyle.json(super.json) : super.json();
 }
 
-abstract class GadgetStyle extends ComponentStyle {
+class GadgetStyle extends ComponentStyle {
 
   late final SizeDependency size;
 

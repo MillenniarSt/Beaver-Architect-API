@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../builder/layer.dart';
 import '../builder/project.dart';
 import '../builder/structure.dart';
+import '../engineer/engineer.dart';
 
 String appDir = Platform.environment[Platform.isWindows ? "APPDATA" : "HOME"]! + "\\Beaver Architect";
 
@@ -15,6 +16,8 @@ class BeaverArchitectDatabase {
   final File file;
 
   BeaverArchitectDatabase(this.file);
+
+  Map<String, EngineerPlugin> engineers = {};
 
   late Project project;
 
