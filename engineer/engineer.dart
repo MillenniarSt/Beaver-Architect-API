@@ -57,7 +57,7 @@ class Engineer implements Savable {
 
   @override
   void json(Map<String, dynamic> json) {
-    plugin = database.engineers[json["plugin"]]!;
+    plugin = plugins[json["plugin"]]!;
     _options = json["options"];
   }
 

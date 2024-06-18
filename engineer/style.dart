@@ -15,7 +15,7 @@ abstract class ComponentStyle implements JsonMappable<Map<String, dynamic>> {
 
   @override
   void json(Map<String, dynamic> json) {
-    identifier = Identifier.string(json["identifier"] as String);
+    identifier = Identifier.string(json["identifier"]);
     name = json["name"];
   }
 

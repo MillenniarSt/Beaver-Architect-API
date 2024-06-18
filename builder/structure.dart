@@ -1,5 +1,5 @@
+import '../data/database.dart';
 import '../engineer/components.dart';
-import '../main.dart';
 import 'bbuilder.dart';
 import 'layer.dart';
 
@@ -11,7 +11,9 @@ class Structure extends Builder {
     layers.add(Layer("Main Layer", area));
   }
 
-  Structure.json(super.json) : super.json();
+  Structure.json(Map<String, dynamic> json, Database database) : super.late() {
+    this.json(json, database: database);
+  }
 
   @override
   Map<String, dynamic> toJson() => super.toJson()..addAll({
@@ -19,9 +21,9 @@ class Structure extends Builder {
   });
 
   @override
-  void json(Map<String, dynamic> json) {
+  void json(Map<String, dynamic> json, {Database? database}) {
     super.json(json);
-    layers = List.generate(json["layers"].length, (index) => database.layers[json["layers"][index]]!);
+    layers = List.generate(json["layers"].length, (index) => database!.layers[json["layers"][index]]!);
   }
 
   @override

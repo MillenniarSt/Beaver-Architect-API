@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shelf/src/response.dart';
 
+import '../engineer/components.dart';
+import '../engineer/style.dart';
 import '../main.dart';
 import 'common.dart';
 
@@ -22,6 +24,20 @@ class EngineerHttp extends CommonHttp {
 
   Future<void> loadConfig(Directory config) async {
     await get("load", args: {"obj": "config", "dir": config.path});
+  }
+
+  Future<void> randomComponent(Component component, Style style) async {
+    await post("component/random", {
+      "component": component.toJson(),
+      "style": style.toJson()
+    });
+  }
+
+  Future<void> buildComponent(Component component, Style style) async {
+    await post("component/build", {
+      "component": component.toJson(),
+      "style": style.toJson()
+    });
   }
 
   @override

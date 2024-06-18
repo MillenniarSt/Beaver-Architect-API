@@ -24,6 +24,8 @@ abstract class Builder implements Savable {
     this.json(json);
   }
 
+  Builder.late();
+
   @override
   void json(Map<String, dynamic> json) {
     id = json["id"];
