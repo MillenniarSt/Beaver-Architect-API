@@ -1,39 +1,71 @@
-import 'dart:convert';
+import 'dart:convert' as convert;
 import 'dart:io';
 
+import '../architect/architect.dart';
 import '../data/database.dart';
-import 'area/area.dart';
-import 'area/area2D.dart';
+import '../engineer/engineer.dart';
+import '../engineer/style.dart';
+import '../http/client.dart';
 import 'bbuilder.dart';
-import '../world/world3D.dart';
 import 'structure.dart';
 
 class Project extends Builder {
 
-  late final Database database = Database(File("$appDir/projects/$name/database.db"));
+  late final Database database = Database(name);
 
-  List<Structure> structures = [Structure("Structure", Parallelepiped(AreaVisual.none, Dimension(Pos3D(0, 0, 0), Size3D(100, 100, 100))))];
+  late final Architect architect;
 
-  Project(super.name, super.area, {super.image, super.opacity}) : super();
+  File? image;
+  File? background;
+  String smallDescription = "";
+  String description = "";
+  List<String> _structures = [];
 
-  Project._json(super.json) : super.json();
-
-  static Future<Project> load(String name) async {
-    Map<String, dynamic> map = json.decode(await File("$appDir/projects/$name/project.json").readAsString());
-    Project project = Project._json(map);
-    await project.database.open();
-    await project.database.load();
-
-    project.structures = List.generate(map["structures"], (index) => project.database.structures[map["structures"][index]]!);
-
-    return project;
+  Project(super.name, super.area, {super.opacity, this.image, this.background, this.description = "", this.smallDescription = ""}) : super() {
+    architect = Architect([], Style.defaultStyle);
   }
+
+  Project.json(String name) : super.json(convert.json.decode(File("$appDir/projects/$name/project.json").readAsStringSync()));
 
   @override
   Map<String, dynamic> toJson() => super.toJson()..addAll({
-    "structures": List.generate(structures.length, (index) => structures[index].id)
+    "image": image == null ? "#null" : image!.path,
+    "background": background == null ? "#null" : background!.path,
+    "architect": architect.toJson(),
+    "smallDescription": smallDescription,
+    "description": description,
+    "structures": _structures
   });
 
   @override
-  List<Builder> get childrenBuilders => structures;
+  Map<String, dynamic> toJsonTile() => super.toJsonTile()..addAll({
+    "engineer": architect.isEmpty ? "Generic" : architect.engineer!.plugin.name,
+    "smallDescription": smallDescription,
+    "description": description
+  });
+
+  @override
+  void json(Map<String, dynamic> json) {
+    super.json(json);
+    smallDescription = json["smallDescription"];
+    description = json["description"];
+    architect = Architect.json(json["architect"]);
+    image = json["image"] == "#null" ? null : File(json["image"]);
+    background = json["background"] == "#null" ? null : File(json["background"]);
+    _structures = json["structures"];
+  }
+
+  Future<void> addStructure(Structure structure) async {
+    _structures.add(structure.id);
+    await database.structures.add(structure);
+  }
+
+  Future<bool> removeStructure(String id) async {
+    _structures.remove(id);
+    return await database.structures.delete(id);
+  }
+
+  Future<void> build(ClientHttp client) async {
+    await architect.build(client, database);
+  }
 }

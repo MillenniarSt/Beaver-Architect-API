@@ -1,22 +1,21 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:shelf/shelf.dart';
 import 'package:shelf/src/response.dart';
 
 import '../data/database.dart';
 import '../main.dart';
+import '../world/world3D.dart';
 import 'common.dart';
 
-ClientHttp localClient = ClientHttp("${api.url}/local_client");
+ClientHttp localClient = ClientHttp.localHost(8226);
 
-class ClientHttp extends CommonHttp {
+class ClientHttp extends ConnectionHttp {
 
-  ClientHttp(super.baseUrl);
+  ClientHttp(super.address);
 
-  @override
-  Map<String, Response Function(Map<String, String> data)> get listeners => {
-
-  };
+  ClientHttp.localHost(super.port) : super.localHost();
 
   @override
   void fail(http.Response response) {

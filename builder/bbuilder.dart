@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import '../data/database.dart';
-import 'area/area.dart';
+import '../world/area.dart';
 
 final File defaultBackground = File("assets/background/default.png");
 
@@ -11,12 +11,11 @@ abstract class Builder implements Savable {
   late final String id;
 
   late String name;
-  File? image;
   int opacity = 50;
 
   late Area area;
 
-  Builder(this.name, this.area, {this.image, this.opacity = 30}) {
+  Builder(this.name, this.area, {this.opacity = 30}) {
     id = uuid.v4();
   }
 
@@ -24,12 +23,10 @@ abstract class Builder implements Savable {
     this.json(json);
   }
 
-  Builder.late();
-
   @override
   void json(Map<String, dynamic> json) {
     id = json["id"];
-    image = json["image"] == "#null" ? null : File(json["image"]);
+    name = json["name"];
     opacity = json["opacity"];
     area = jsonArea(json)!;
   }
@@ -37,10 +34,15 @@ abstract class Builder implements Savable {
   @override
   Map<String, dynamic> toJson() => {
     "id": id,
-    "image": image == null ? "#null" : image!.path,
+    "name": name,
     "opacity": opacity,
     "area": area.toJson()
   };
 
-  List<Builder> get childrenBuilders => [];
+  Map<String, dynamic> toJsonTile() => {
+    "id": id,
+    "name": name,
+    "opacity": opacity,
+    "area": area.toJson()
+  };
 }

@@ -1,22 +1,22 @@
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:shelf/shelf.dart';
 import 'package:shelf/src/response.dart';
 
+import '../builder/project.dart';
 import '../engineer/components.dart';
+import '../engineer/engineer.dart';
 import '../engineer/style.dart';
 import '../main.dart';
+import 'client.dart';
 import 'common.dart';
 
-class EngineerHttp extends CommonHttp {
+class EngineerHttp extends ConnectionHttp {
 
   final String id;
 
-  EngineerHttp(String id) : this.id = id, super("${api.url}/engineer/$id");
-
-  Future<bool> updateOptions(String mode, Map<String, dynamic> options) async {
-    return (await get("options", args: {"mode": mode, "value": options}))["status"];
-  }
+  EngineerHttp(String id) : this.id = id, super("${server.baseUrl}/engineer/$id");
 
   Future<void> loadPackage(Directory package) async {
     await get("load", args: {"obj": "package", "dir": package.path});
@@ -33,15 +33,21 @@ class EngineerHttp extends CommonHttp {
     });
   }
 
-  Future<void> buildComponent(Component component, Style style) async {
-    await post("component/build", {
-      "component": component.toJson(),
-      "style": style.toJson()
-    });
+  Future<String> openWorksite(ClientHttp client, Style style, Map<String, dynamic> options) async {
+    return (await post("worksite/open", {
+      "client": client.baseUrl,
+      "style": style.toJson(),
+      "options": options
+    }))["status"];
   }
 
-  @override
-  Map<String, Response Function(Map<String, String> data)> get listeners => { };
+  Future<void> closeWorksite(ClientHttp client) async {
+    await post("worksite/close", {"client": client.baseUrl});
+  }
+
+  Future<void> buildComponent(Component component) async {
+    await post("build", component.toJson());
+  }
 
   @override
   void fail(http.Response response) {

@@ -28,6 +28,8 @@ abstract class ComponentStyle implements JsonMappable<Map<String, dynamic>> {
 
 class Style extends ComponentStyle {
 
+  static final Style defaultStyle = Style(Identifier("default", null), "Default");
+
   Style(super.identifier, super.name);
 
   Style.json(super.json) : super.json();

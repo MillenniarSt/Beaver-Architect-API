@@ -1,40 +1,37 @@
+import 'package:mongo_dart/mongo_dart.dart' as db;
+
 import '../data/database.dart';
-import '../engineer/components.dart';
 import 'bbuilder.dart';
 import 'layer.dart';
 
 class Structure extends Builder {
 
-  List<Layer> layers = [];
+  List<String> _layers = [];
 
-  Structure(super.name, super.area, {super.image, super.opacity}) : super() {
-    layers.add(Layer("Main Layer", area));
-  }
+  Structure(super.name, super.area, {super.opacity}) : super();
 
-  Structure.json(Map<String, dynamic> json, Database database) : super.late() {
-    this.json(json, database: database);
-  }
+  Structure.json(super.json) : super.json();
 
   @override
   Map<String, dynamic> toJson() => super.toJson()..addAll({
-    "layers": List.generate(layers.length, (index) => layers[index].id)
+    "layers": _layers
   });
 
   @override
-  void json(Map<String, dynamic> json, {Database? database}) {
+  void json(Map<String, dynamic> json) {
     super.json(json);
-    layers = List.generate(json["layers"].length, (index) => database!.layers[json["layers"][index]]!);
+    _layers = json["layers"];
   }
 
-  @override
-  List<Component> get components {
-    List<Component> components = [];
-    for(Layer layer in layers) {
-      //TODO
-    }
-    return components;
+  Future<void> addLayer(Database database, Layer layer) async {
+    _layers.add(layer.id);
+    await database.structures.modify(id, db.modify.push("layers", layer.id));
+    await database.layers.add(layer);
   }
 
-  @override
-  List<Builder> get childrenBuilders => layers;
+  Future<bool> removeLayer(Database database, String id) async {
+    _layers.remove(id);
+    await database.structures.modify(id, db.modify.pull("layers", id));
+    return await database.layers.delete(id);
+  }
 }

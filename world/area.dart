@@ -1,5 +1,5 @@
-import '../../data/database.dart';
-import '../../world/world3D.dart';
+import '../data/database.dart';
+import 'world3D.dart';
 import 'area2D.dart';
 
 Area? jsonArea(Map<String, dynamic> json) {
@@ -10,18 +10,11 @@ Area? jsonArea(Map<String, dynamic> json) {
   return null;
 }
 
-abstract class Area implements Savable {
+abstract class Area implements JsonMappable<Map<String, dynamic>> {
 
-  @override
-  late final String id;
+  late Dimension dimension;
 
-  late AreaVisual visual;
-
-  late Dimension dimension = Dimension(Pos3D(0, 0, 0), Size3D(1, 1, 1));
-
-  Area(this.visual) {
-    id = uuid.v4();
-  }
+  Area();
 
   Area.json(Map<String, dynamic> map) {
     this.json(map);
@@ -29,16 +22,12 @@ abstract class Area implements Savable {
 
   @override
   void json(Map<String, dynamic> json) {
-    id = json["id"];
-    visual = AreaVisual.json(json["visual"]);
     dimension = Dimension.json(json["dimension"]);
   }
 
   @override
   Map<String, dynamic> toJson() => {
-    "id": id,
     "type": type,
-    "visual": visual.toJson(),
     "dimension": dimension.toJson()
   };
 
@@ -47,8 +36,8 @@ abstract class Area implements Savable {
 
 class Parallelepiped extends Area {
 
-  Parallelepiped(super.visual, Dimension dimension) : super() {
-    dimension = dimension;
+  Parallelepiped(dimension) : super() {
+    this.dimension = dimension;
   }
 
   Parallelepiped.json(Map<String, dynamic> map) : super.json(map);
@@ -59,9 +48,9 @@ class Parallelepiped extends Area {
 
 class Prism<A extends Area2D> extends Area {
 
-  late final Area2D root;
+  late final A root;
 
-  Prism(super.visual, this.root, double y, double height) : super() {
+  Prism(this.root, double y, double height) : super() {
     dimension.pos = Pos3D(root.pos.x, root.pos.z, y);
     dimension.size = Size3D(root.size.width, root.size.length, height);
   }
