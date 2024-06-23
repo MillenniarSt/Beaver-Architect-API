@@ -1,4 +1,3 @@
-import 'dart:io';
 
 import '../data/database.dart';
 import 'world2D.dart';
@@ -34,8 +33,8 @@ abstract class Area2D implements JsonMappable<Map<String, dynamic>> {
   @override
   Map<String, dynamic> toJson() => {
     "type": type,
-    "posX": pos.x, "posZ": pos.z,
-    "width": size.width, "length": size.length
+    "pos": pos.toJson(),
+    "size": size.toJson()
   };
 
   String get type;
@@ -43,9 +42,28 @@ abstract class Area2D implements JsonMappable<Map<String, dynamic>> {
 
 class Rectangle extends Area2D {
 
-  Rectangle(super.pos, super.size);
+  late double leftTopCorner, leftBottomCorner, rightBottomCorner, rightTopCorner;
+
+  Rectangle(super.pos, super.size, {this.leftTopCorner = 0, this.leftBottomCorner = 0, this.rightBottomCorner = 0, this.rightTopCorner = 0});
 
   Rectangle.json(super.json) : super.json();
+
+  @override
+  void json(Map<String, dynamic> json) {
+    super.json(json);
+    leftTopCorner = json["left_top_corner"];
+    leftBottomCorner = json["left_bottom_corner"];
+    rightBottomCorner = json["right_bottom_corner"];
+    rightTopCorner = json["right_top_corner"];
+  }
+
+  @override
+  Map<String, dynamic> toJson() => super.toJson()..addAll({
+    "left_top_corner": leftTopCorner,
+    "left_bottom_corner": leftBottomCorner,
+    "right_bottom_corner": rightBottomCorner,
+    "right_top_corner": rightTopCorner
+  });
 
   @override
   String get type => "rectangle";

@@ -19,6 +19,7 @@ final Project project = Project("Project", Parallelepiped(Dimension(Pos3D.zero, 
 final Map<String, Project> projects = {project.name: project};
 
 void main() async {
+  /*
   File filePlugins = File("$appDir/engineers/plugins.json");
   if(!(await filePlugins.exists())) {
     await filePlugins.create(recursive: true);
@@ -29,6 +30,6 @@ void main() async {
     for(String key in jsonPlugins.keys)
       key: EngineerPlugin.json(jsonPlugins[key])
   };
-
+*/
   server.open();
 }
