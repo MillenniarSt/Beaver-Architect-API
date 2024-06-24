@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:shelf/shelf.dart';
@@ -107,9 +108,11 @@ class ServerHttp extends CommonHttp {
 
   Future<Response> _router(Request request) async {
     try {
+      print(request.headers);
       if(request.requestedUri.path.substring(1, 9) == "project/") {
         for (ProjectHttp project in https.values) {
-          final listener = project.listeners[request.requestedUri.path.substring(9 + project.project.name.length)];
+          final listener = project.listeners[request.requestedUri.path
+              .substring(9 + project.project.name.length)];
           if (listener != null) {
             if (request.method == 'POST') {
               final data = json.decode(await request.readAsString());
@@ -119,7 +122,7 @@ class ServerHttp extends CommonHttp {
             }
           }
         }
-      } else {
+      } else if(request.method == 'GET' || request.headers["content-type"]!.contains("application/json")) {
         final listener = listeners[request.requestedUri.path];
         if(listener != null) {
           if(request.method == 'POST') {
@@ -129,6 +132,11 @@ class ServerHttp extends CommonHttp {
             return await listener.call(request.url.queryParameters);
           }
         }
+      } else {
+        final listener = requests[request.requestedUri.path];
+        if(listener != null) {
+          return await listener.call(request);
+        }
       }
     } catch(e, s) {
       return Response.badRequest(body: {
@@ -136,16 +144,33 @@ class ServerHttp extends CommonHttp {
         "request": request.requestedUri.path,
         "error": e.toString(),
         "stacktrace": s.toString()
-      });
+      }, headers: {"Content-Type": "application/json"});
     }
     return Response.notFound("Destination URL Not Found: ${request.requestedUri.path}");
   }
 
   Map<String, Future<Response> Function(Map<String, dynamic> data)> get listeners => {
     "/projects/list": (data) async => Response.ok(json.encode([for(Project project in projects.values) project.toJsonTile()]), headers: {"Content-Type": "application/json"}),
-    "/projects/image": (data) async => projects[data["project"]]!.image != null ? Response.ok(await projects[data["project"]]!.image!.readAsBytes(), headers: {"Content-Type": "image/png"}) : Response.ok(null),
-    "/projects/background": (data) async => projects[data["project"]]!.background != null ? Response.ok(await projects[data["project"]]!.background!.readAsBytes(), headers: {"Content-Type": "image/png"}) : Response.ok(null),
-    "/projects/new": (_) async => Response.ok(json.encode(Project("New Project", Parallelepiped(Dimension(Pos3D.zero, Size3D(1000, 1000, 1000)))).toJsonTile()), headers: {"Content-Type": "application/json"}),
+    "/projects/image": (data) async {
+      File? image = projects[data["project"]]!.image;
+      return image != null ? Response.ok(await image.readAsBytes(), headers: {"Content-Type": "image/${image.path.substring(image.path.lastIndexOf(".") +1)}"}) : Response.ok(null);
+    },
+    "/projects/background": (data) async {
+      File? image = projects[data["project"]]!.background;
+      return image != null ? Response.ok(await image.readAsBytes(), headers: {"Content-Type": "image/${image.path.substring(image.path.lastIndexOf(".") +1)}"}) : Response.ok(null);
+    },
+    "/projects/new": (_) async {
+      Project? project;
+      int i = 1;
+      while(project == null) {
+        if(!projects.containsKey("New Project${i == 1 ? "" : " $i"}")) {
+          project = Project("New Project${i == 1 ? "" : " $i"}", Parallelepiped(Dimension(Pos3D.zero, Size3D(1000, 1000, 1000))));
+        }
+        i++;
+      }
+      projects[project.name] = project;
+      return Response.ok(json.encode(project.toJsonTile()), headers: {"Content-Type": "application/json"});
+    },
     "/projects/get": (data) async => projects[data["name"]] != null ? Response.ok(json.encode(projects[data["name"]]!.toJsonTile()), headers: {"Content-Type": "application/json"}) : Response.badRequest(body: "Project not Found"),
     "/projects/validate_name": (data) async => Response.ok(json.encode(projects[data["name"]] == null || projects[data["name"]]!.id == data["id"]), headers: {"Content-Type": "application/json"}),
     "/projects/open": (data) async {
@@ -159,6 +184,15 @@ class ServerHttp extends CommonHttp {
       await http.project.database.close();
       return Response.ok("Disconnected project ${http.project.name}");
     }
+  };
+
+  Map<String, Future<Response> Function(Request request)> get requests => {
+    "/projects/change_image": (request) async {
+      File image = File("$appDir/projects/${request.url.queryParameters["project"]}/image.${request.url.queryParameters["type"]}");
+      await image.create(recursive: true);
+      await image.writeAsBytes(await request.read().expand((element) => element).toList());
+      return Response.ok("Image loaded");
+    },
   };
 
   @override
