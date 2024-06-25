@@ -1,16 +1,21 @@
+import 'package:beaver_builder_api/http/common.dart';
 import 'package:http/http.dart' as http;
 import 'package:shelf/shelf.dart';
 
 import '../builder/project.dart';
 import 'client.dart';
 
-class ProjectHttp {
+class ProjectHttp extends ServerConnectionHttp {
 
   final Project project;
 
   final List<ClientHttp> clients = [];
 
-  ProjectHttp(this.project);
+  ProjectHttp(this.project, super.address, super.port);
+
+  ProjectHttp.localHost(this.project, super.port, ClientHttp local) : super.localHost() {
+    clients.add(local);
+  }
 
   void postToAllClient(String url, data, {Function(http.Response)? fail, Function(http.Response)? notFound}) {
     for(ClientHttp client in clients) {
@@ -26,14 +31,22 @@ class ProjectHttp {
 
   Map<String, Future<Response> Function(Map<String, dynamic> data)> get listeners => {
     "/connect": (data) async {
-      clients.add(ClientHttp(data["address"]));
-      return Response.ok("Connected client successfully");
+      if(isLocal) {
+        //TODO
+        return error("Unimplemented feature");
+      } else {
+        clients.add(ClientHttp(data["address"]));
+        return Response.ok("Connected client successfully");
+      }
     },
     "/disconnect": (data) async {
       clients.remove(ClientHttp(data["address"]));
       return Response.ok("Disconnected client successfully");
-    },
-    "/image": (_) async => project.image != null ? Response.ok(await project.image!.readAsBytes(), headers: {"Content-Type": "image/png"}) : Response.ok(null),
-    "/background": (_) async => project.background != null ? Response.ok(await project.background!.readAsBytes(), headers: {"Content-Type": "image/png"}) : Response.ok(null)
+    }
+  };
+
+  @override
+  Map<String, Future<Response> Function(Request request)> get requests => {
+
   };
 }

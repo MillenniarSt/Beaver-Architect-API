@@ -21,8 +21,15 @@ class Project extends Builder {
   String description = "";
   List<String> _structures = [];
 
-  Project(super.name, super.area, {super.opacity, this.image, this.background, this.description = "", this.smallDescription = ""}) : super() {
+  Project(super.name, super.area, {super.opacity, File? image, File? background, this.description = "", this.smallDescription = ""}) : super() {
     architect = Architect([], Style.defaultStyle);
+    Directory(dir).createSync(recursive: true);
+    if(image != null) {
+      this.image = image.copySync("$dir/image.${image.path.substring(image.path.lastIndexOf(".") +1)}");
+    }
+    if(background != null) {
+      this.background = background.copySync("$dir/background.${background.path.substring(background.path.lastIndexOf(".") +1)}");
+    }
   }
 
   Project.json(String name) : super.json(convert.json.decode(File("$appDir/projects/$name/project.json").readAsStringSync()));
@@ -68,4 +75,6 @@ class Project extends Builder {
   Future<void> build(ClientHttp client) async {
     await architect.build(client, database);
   }
+
+  String get dir => "$appDir/projects/$name";
 }
