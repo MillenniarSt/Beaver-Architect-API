@@ -1,4 +1,5 @@
 import 'package:beaver_builder_api/http/common.dart';
+import 'package:beaver_builder_api/main.dart';
 import 'package:http/http.dart' as http;
 import 'package:shelf/shelf.dart';
 
@@ -7,13 +8,13 @@ import 'client.dart';
 
 class ProjectHttp extends ServerConnectionHttp {
 
-  final Project project;
+  final String name;
 
   final List<ClientHttp> clients = [];
 
-  ProjectHttp(this.project, super.address, super.port);
+  ProjectHttp(this.name) : super(server.address, server.port);
 
-  ProjectHttp.localHost(this.project, super.port, ClientHttp local) : super.localHost() {
+  ProjectHttp.localHost(this.name, super.port, ClientHttp local) : super.localHost() {
     clients.add(local);
   }
 
@@ -49,4 +50,6 @@ class ProjectHttp extends ServerConnectionHttp {
   Map<String, Future<Response> Function(Request request)> get requests => {
 
   };
+
+  Project get project => mongo.beaver.projects[name]!;
 }

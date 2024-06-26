@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:mongo_dart/mongo_dart.dart';
+
 import '../data/database.dart';
 import '../world/area.dart';
 
@@ -8,7 +10,7 @@ final File defaultBackground = File("assets/background/default.png");
 abstract class Builder implements Savable {
 
   @override
-  late final String id;
+  late final ObjectId id;
 
   late String name;
   int opacity = 50;
@@ -16,7 +18,7 @@ abstract class Builder implements Savable {
   late Area area;
 
   Builder(this.name, this.area, {this.opacity = 30}) {
-    id = uuid.v4();
+    id = ObjectId();
   }
 
   Builder.json(Map<String, dynamic> json) {
@@ -25,22 +27,22 @@ abstract class Builder implements Savable {
 
   @override
   void json(Map<String, dynamic> json) {
-    id = json["id"];
+    id = json["_id"];
     name = json["name"];
     opacity = json["opacity"];
-    area = jsonArea(json)!;
+    area = jsonArea(json["area"])!;
   }
 
   @override
   Map<String, dynamic> toJson() => {
-    "id": id,
+    "_id": id,
     "name": name,
     "opacity": opacity,
     "area": area.toJson()
   };
 
   Map<String, dynamic> toJsonTile() => {
-    "id": id,
+    "_id": id,
     "name": name,
     "opacity": opacity,
     "area": area.toJson()

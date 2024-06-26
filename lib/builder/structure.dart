@@ -6,7 +6,7 @@ import 'layer.dart';
 
 class Structure extends Builder {
 
-  List<String> _layers = [];
+  List<db.ObjectId> _layers = [];
 
   Structure(super.name, super.area, {super.opacity}) : super();
 
@@ -23,13 +23,13 @@ class Structure extends Builder {
     _layers = json["layers"];
   }
 
-  Future<void> addLayer(Database database, Layer layer) async {
+  Future<void> addLayer(ProjectDatabase database, Layer layer) async {
     _layers.add(layer.id);
     await database.structures.modify(id, db.modify.push("layers", layer.id));
     await database.layers.add(layer);
   }
 
-  Future<bool> removeLayer(Database database, String id) async {
+  Future<bool> removeLayer(ProjectDatabase database, db.ObjectId id) async {
     _layers.remove(id);
     await database.structures.modify(id, db.modify.pull("layers", id));
     return await database.layers.delete(id);

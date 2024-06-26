@@ -91,7 +91,7 @@ abstract class ServerConnectionHttp extends CommonHttp {
 
   ServerConnectionHttp.localHost(super.port) : super.localHost();
 
-  void open() async {
+  Future<void> open() async {
     final handler = const Pipeline()
         .addMiddleware(logRequests())
         .addHandler(router);
@@ -151,14 +151,16 @@ abstract class ServerConnectionHttp extends CommonHttp {
     } catch(e, s) {
       return error("An error occurred on the server", error: e, stacktrace: s);
     }
-    return Response.notFound("Destination URL Not Found: ${request.requestedUri.path}");
+    return Response.notFound(json.encode({"error_message": "Destination URL Not Found: ${request.requestedUri.path}"}), headers: {"Content-Type": "application/json"});
   }
 
-  Response error(String message, {Object? error, StackTrace? stacktrace}) => Response.badRequest(body: {
-    "message": message,
+  Response ok(body) => Response.ok(json.encode(body is JsonWritable ? body.toJson() : body), headers: {"Content-Type": "application/json"});
+
+  Response error(String message, {Object? error, StackTrace? stacktrace}) => Response.badRequest(body: json.encode({
+    "error_message": message,
     "error": error != null ? error.toString() : "Unspecified exception on the server",
     "stacktrace": stacktrace != null ? stacktrace.toString() : ""
-  }, headers: {"Content-Type": "application/json"});
+  }), headers: {"Content-Type": "application/json"});
 
   Map<String, Future<Response> Function(Map<String, dynamic> data)> get listeners;
 

@@ -1,21 +1,26 @@
 import 'dart:io';
 
+import 'package:mongo_dart/mongo_dart.dart';
+
 import '../data/database.dart';
 import '../http/engineer.dart';
 import '../main.dart';
 
 final String engineersPath = "${appDir}\\engineers";
 
-class EngineerPlugin implements JsonMappable<Map<String, dynamic>> {
+class EngineerPlugin implements Savable {
 
-  late final EngineerHttp http = EngineerHttp(id);
+  late final EngineerHttp http = EngineerHttp(identifier);
 
-  late final String id;
+  late final ObjectId id;
 
+  late final String identifier;
   late final String name;
   late final String description;
 
-  EngineerPlugin(this.id, this.name, this.description);
+  EngineerPlugin(this.identifier, this.name, this.description) {
+    id = ObjectId();
+  }
 
   EngineerPlugin.json(Map<String, dynamic> json) {
     this.json(json);
@@ -24,6 +29,7 @@ class EngineerPlugin implements JsonMappable<Map<String, dynamic>> {
   @override
   void json(Map<String, dynamic> json) {
     id = json["id"];
+    identifier = json["identifier"];
     name = json["name"];
     description = json["description"];
   }
@@ -31,13 +37,14 @@ class EngineerPlugin implements JsonMappable<Map<String, dynamic>> {
   @override
   Map<String, dynamic> toJson() => {
     "id": id,
+    "identifier": identifier,
     "name": name,
     "description": description
   };
 
   Engineer get engineer => Engineer(this);
 
-  String get dir => engineersPath + "\\" + id;
+  String get dir => engineersPath + "\\" + id.oid;
 }
 
 class Engineer implements JsonMappable<Map<String, dynamic>> {
@@ -52,11 +59,11 @@ class Engineer implements JsonMappable<Map<String, dynamic>> {
     this.json(json);
   }
 
-  String get id => plugin.id;
+  ObjectId get id => plugin.id;
 
   @override
   void json(Map<String, dynamic> json) {
-    plugin = plugins[json["plugin"]]!;
+    plugin = mongo.beaver.plugins[json["plugin"]]!;
     options = json["options"];
   }
 
