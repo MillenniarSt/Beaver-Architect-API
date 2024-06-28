@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -46,15 +47,39 @@ net:
       print('stderr: $data');
     });
 
-    await beaver.open();
-    beaver._projects = {
-      for(Map<String, dynamic> project in await beaver.db.collection("projects").getAll())
-        project["name"]: pj.Project.json(project)
-    };
-    beaver._plugins = {
-      for(Map<String, dynamic> plugin in await beaver.db.collection("plugins").getAll())
-        plugin["name"]: EngineerPlugin.json(plugin)
-    };
+    start();
+    
+    print("MongoDB started on port 8224");
+  }
+
+  Future<void> start({int timeoutSeconds = 30}) async {
+    final completer = Completer<void>();
+    final timeout = Duration(seconds: timeoutSeconds);
+    final startTime = DateTime.now();
+
+    Timer.periodic(Duration(seconds: 1), (timer) async {
+      try {
+        await beaver.open();
+        beaver._projects = {
+          for(Map<String, dynamic> project in await beaver.db.collection("projects").getAll())
+            project["name"]: pj.Project.json(project)
+        };
+        beaver._plugins = {
+          for(Map<String, dynamic> plugin in await beaver.db.collection("plugins").getAll())
+            plugin["name"]: EngineerPlugin.json(plugin)
+        };
+
+        timer.cancel();
+        completer.complete();
+      } catch (e) {
+        if (DateTime.now().difference(startTime) > timeout) {
+          timer.cancel();
+          completer.completeError("Timeout while waiting for MongoDB to start");
+        }
+      }
+    });
+
+    return completer.future;
   }
 
   Future<void> close() async {

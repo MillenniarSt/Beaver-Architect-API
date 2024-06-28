@@ -42,7 +42,7 @@ class ServerHttp extends ServerConnectionHttp {
       await mongo.beaver.addProject(project);
       return ok(project.toJsonTile());
     },
-    "/projects/get": (data) async => mongo.beaver.projects[data["name"]] != null ? ok(mongo.beaver.projects[data["name"]]!.toJsonTile()) : Response.badRequest(body: "Project not Found"),
+    "/projects/get": (data) async => mongo.beaver.projects[data["name"]] != null ? ok(mongo.beaver.projects[data["name"]]!.toJson()) : Response.badRequest(body: "Project not Found"),
     "/projects/delete": (data) async => (await mongo.beaver.removeProject(data["name"])) != null ? ok("Project deleted") : error("Project not Found"),
     "/projects/validate_name": (data) async => ok(mongo.beaver.projects[data["name"]] == null || mongo.beaver.projects[data["name"]]!.id == data["id"]),
     "/projects/open": (data) async {

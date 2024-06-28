@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:shelf/shelf.dart';
@@ -85,6 +86,8 @@ abstract class ConnectionHttp extends CommonHttp {
 
 abstract class ServerConnectionHttp extends CommonHttp {
 
+  HttpServer? server;
+
   Map<String, ServerConnectionHttp> connected = {};
 
   ServerConnectionHttp(super.address, super.port);
@@ -96,8 +99,14 @@ abstract class ServerConnectionHttp extends CommonHttp {
         .addMiddleware(logRequests())
         .addHandler(router);
 
-    final server = await serve(handler, address, port);
-    print('Server listening on port ${server.port}');
+    server = await serve(handler, address, port);
+    print('Server listening on port ${server!.port}');
+  }
+
+  Future<void> close() async {
+    if(server != null) {
+      await server!.close(force: true);
+    }
   }
 
   void connect(ServerConnectionHttp server, String prefix) {
