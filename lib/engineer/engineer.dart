@@ -1,10 +1,10 @@
 import 'dart:io';
 
+import 'package:beaver_builder_api/main.dart';
 import 'package:mongo_dart/mongo_dart.dart';
 
 import '../data/database.dart';
 import '../http/engineer.dart';
-import '../main.dart';
 
 final String engineersPath = "${appDir}\\engineers";
 
@@ -28,7 +28,7 @@ class EngineerPlugin implements Savable {
 
   @override
   void json(Map<String, dynamic> json) {
-    id = json["id"];
+    id = json["_id"];
     identifier = json["identifier"];
     name = json["name"];
     description = json["description"];
@@ -36,46 +36,48 @@ class EngineerPlugin implements Savable {
 
   @override
   Map<String, dynamic> toJson() => {
-    "id": id,
+    "_id": id,
     "identifier": identifier,
     "name": name,
     "description": description
   };
 
-  Engineer get engineer => Engineer(this);
+  Engineer get engineer => Engineer(id);
 
   String get dir => engineersPath + "\\" + id.oid;
 }
 
 class Engineer implements JsonMappable<Map<String, dynamic>> {
 
-  late final EngineerPlugin plugin;
+  late final ObjectId pluginId;
 
   Map<String, dynamic> options = {};
 
-  Engineer(this.plugin);
+  Engineer(this.pluginId);
 
   Engineer.json(Map<String, dynamic> json) {
     this.json(json);
   }
 
-  ObjectId get id => plugin.id;
-
   @override
   void json(Map<String, dynamic> json) {
-    plugin = mongo.beaver.plugins[json["plugin"]]!;
+    pluginId = json["plugin"];
     options = json["options"];
   }
 
   @override
   Map<String, dynamic> toJson() => {
-    "plugin": plugin.id,
+    "plugin": pluginId,
     "options": options
   };
 
+  Future<EngineerPlugin> get plugin async => EngineerPlugin.json((await mongo.beaver.plugins.getById(pluginId))!);
+
   Future<void> load() async {
-    await plugin.http.loadConfig(Directory("$engineersPath$id/config"));
-    for(FileSystemEntity package in Directory("$engineersPath$id/packages").listSync()) {
+    EngineerPlugin plugin = await this.plugin;
+
+    await plugin.http.loadConfig(Directory("$engineersPath/${plugin.identifier}/config"));
+    for(FileSystemEntity package in Directory("$engineersPath/${plugin.identifier}/packages").listSync()) {
       if(package is Directory) {
         await plugin.http.loadPackage(package);
       }

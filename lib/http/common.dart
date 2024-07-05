@@ -30,7 +30,7 @@ abstract class ConnectionHttp extends CommonHttp {
 
   ConnectionHttp.localHost(super.port) : super.localHost();
 
-  Future<dynamic> get(String url, {Map<String, dynamic> args = const {}, Function(http.Response)? fail, Function(http.Response)? notFound}) async {
+  Future<dynamic> get(String url, {Map<String, dynamic> args = const {}, valueOnFail}) async {
     List<String> arguments = [];
     for(String key in args.keys) {
       arguments.add("$key=${args[key]}");
@@ -38,22 +38,12 @@ abstract class ConnectionHttp extends CommonHttp {
     http.Response response = await http.get(Uri.parse("$baseUrl/$url" + (arguments.isEmpty ? "" : "?${arguments.join("&")}")));
     if(response.statusCode == 200) {
       return json.decode(response.body);
-    } else if(response.statusCode == 404) {
-      if(notFound != null) {
-        return notFound.call(response);
-      } else {
-        this.notFound(response);
-      }
     } else {
-      if(fail != null) {
-        return fail.call(response);
-      } else {
-        this.fail(response);
-      }
+      return valueOnFail;
     }
   }
 
-  Future<dynamic> post(String url, data, {Function(http.Response)? fail, Function(http.Response)? notFound}) async {
+  Future<dynamic> post(String url, data, {valueOnFail}) async {
     if(data is JsonWritable) {
       data = data.toJson();
     }
@@ -64,18 +54,8 @@ abstract class ConnectionHttp extends CommonHttp {
     );
     if(response.statusCode == 200) {
       return json.decode(response.body);
-    } else if(response.statusCode == 404) {
-      if(notFound != null) {
-        return notFound.call(response);
-      } else {
-        this.notFound(response);
-      }
     } else {
-      if(fail != null) {
-        return fail.call(response);
-      } else {
-        this.fail(response);
-      }
+      return valueOnFail;
     }
   }
 
@@ -158,6 +138,11 @@ abstract class ServerConnectionHttp extends CommonHttp {
         }
       }
     } catch(e, s) {
+      print(e.toString());
+      print("===============================================================================================");
+      print(s.toString());
+      print("===============================================================================================");
+
       return error("An error occurred on the server", error: e, stacktrace: s);
     }
     return Response.notFound(json.encode({"error_message": "Destination URL Not Found: ${request.requestedUri.path}"}), headers: {"Content-Type": "application/json"});

@@ -17,7 +17,7 @@ abstract class Component<S extends ComponentStyle> implements JsonMappable<Map<S
   }
 
   void random(Style style, Engineer engineer) async {
-    await engineer.plugin.http.randomComponent(this, style);
+    await (await engineer.plugin).http.randomComponent(this, style);
   }
 
   @override

@@ -14,20 +14,22 @@ import 'structure.dart';
 
 class Project extends Builder {
 
-  late final ProjectHttp http = ProjectHttp(name);
+  late final ProjectHttp http = ProjectHttp(this);
 
   late final ProjectDatabase database = ProjectDatabase(name);
 
+  //Properties from the database, they will not be updated
   late final Architect architect;
 
-  late DateTime lastOpen;
-  File? image;
-  File? background;
-  String smallDescription = "";
-  String description = "";
-  List<db.ObjectId> _structures = [];
+  late final DateTime lastOpen;
+  late final  int opacity;
+  late final File? image;
+  late final File? background;
+  late final String smallDescription;
+  late final String description;
+  late final List<db.ObjectId> structures;
 
-  Project(super.name, super.area, {super.opacity, File? image, File? background, this.description = "", this.smallDescription = ""}) {
+  Project(super.name, super.area, {this.opacity = 30, File? image, File? background, this.description = "", this.smallDescription = ""}) {
     lastOpen = DateTime.now();
     architect = Architect([], Style.defaultStyle);
     Directory(dir).createSync(recursive: true);
@@ -44,20 +46,22 @@ class Project extends Builder {
   @override
   Map<String, dynamic> toJson() => super.toJson()..addAll({
     "last_open": "${lastOpen.day}/${lastOpen.month}/${lastOpen.year}",
+    "opacity": opacity,
     "image": image == null ? "#null" : image!.path,
     "background": background == null ? "#null" : background!.path,
     "architect": architect.toJson(),
     "smallDescription": smallDescription,
     "description": description,
-    "structures": _structures
+    "structures": structures
   });
 
-  @override
-  Map<String, dynamic> toJsonTile() => super.toJsonTile()..addAll({
+  Map<String, dynamic> toJsonTile() => {
+    "id": id,
+    "name": name,
     "engineer": architect.isEmpty ? "Generic" : architect.engineer!.plugin,
     "smallDescription": smallDescription,
     "description": description
-  });
+  };
 
   @override
   void json(Map<String, dynamic> json) {
@@ -67,18 +71,21 @@ class Project extends Builder {
     smallDescription = json["smallDescription"];
     description = json["description"];
     architect = Architect.json(json["architect"]);
+    opacity = json["opacity"];
     image = json["image"] == "#null" ? null : File(json["image"]);
     background = json["background"] == "#null" ? null : File(json["background"]);
-    _structures = List.generate(json["structures"].length, (index) => json["structures"][index]);
+    structures = List.generate(json["structures"].length, (index) => json["structures"][index]);
   }
 
   Future<void> addStructure(Structure structure) async {
-    _structures.add(structure.id);
+    http.postToAllClient("structure/add", structure);
+    await mongo.beaver.projects.modify(id, db.modify.push("structures", structure.id));
     await database.structures.add(structure);
   }
 
   Future<bool> removeStructure(db.ObjectId id) async {
-    _structures.remove(id);
+    http.getToAllClient("structure/remove", args: {"id": id});
+    await mongo.beaver.projects.modify(id, db.modify.pull("structures", id));
     return await database.structures.delete(id);
   }
 
@@ -86,21 +93,33 @@ class Project extends Builder {
     await architect.build(client, database);
   }
 
-  String get dir => "$appDir/projects/$name";
+  String get dir => "$appDir/projects/${id.oid}";
 
-  Future<void> open() async {
-    lastOpen = DateTime.now();
-
+  Future<bool> open({String? host}) async {
     await database.open();
 
-    server.connect(http, "/project/$name");
+    DateTime now = DateTime.now();
+    await mongo.beaver.projects.modify(id, db.modify.set("last_open", "${now.day}/${now.month}/${now.year}"));
+
+    if(host == null || host == "null" || host.isEmpty) {
+      server.connect(http, "/project/${id.oid}");
+      return true;
+    } else {
+      //TODO
+      return false;
+    }
   }
 
-  Future<void> close() async {
-    lastOpen = DateTime.now();
+  Future<void> close({String? host}) async {
+    DateTime now = DateTime.now();
+    await mongo.beaver.projects.modify(id, db.modify.set("last_open", "${now.day}/${now.month}/${now.year}"));
 
     await database.close();
 
-    server.disconnect("/project/$name");
+    if(host == null || host == "null" || host.isEmpty) {
+      server.disconnect("/project/${id.oid}");
+    } else {
+      //TODO
+    }
   }
 }

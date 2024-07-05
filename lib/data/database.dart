@@ -2,12 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:beaver_builder_api/main.dart';
 import 'package:mongo_dart/mongo_dart.dart';
 import 'package:uuid/uuid.dart';
-
-import '../builder/project.dart' as pj;
-import '../engineer/engineer.dart';
 
 String appDir = Platform.environment[Platform.isWindows ? "APPDATA" : "HOME"]! + "\\Beaver Architect";
 
@@ -47,8 +43,8 @@ net:
       print('stderr: $data');
     });
 
-    start();
-    
+    await start();
+
     print("MongoDB started on port 8224");
   }
 
@@ -60,14 +56,6 @@ net:
     Timer.periodic(Duration(seconds: 1), (timer) async {
       try {
         await beaver.open();
-        beaver._projects = {
-          for(Map<String, dynamic> project in await beaver.db.collection("projects").getAll())
-            project["name"]: pj.Project.json(project)
-        };
-        beaver._plugins = {
-          for(Map<String, dynamic> plugin in await beaver.db.collection("plugins").getAll())
-            plugin["name"]: EngineerPlugin.json(plugin)
-        };
 
         timer.cancel();
         completer.complete();
@@ -86,6 +74,7 @@ net:
     final stopResult = await Process.run('mongod', ['--shutdown', '--config', '$path/mongod.conf']);
     print(stopResult.stdout);
     print(stopResult.stderr);
+    print("MongoDB closed");
   }
 }
 
@@ -111,42 +100,11 @@ abstract class Database {
 
 class BeaverDatabase extends Database {
 
-  late Map<String, EngineerPlugin> _plugins;
-  late Map<String, pj.Project> _projects;
-
   BeaverDatabase(String name) : super(name: name);
 
-  Future<void> addProject(pj.Project project) async {
-    await projectsCollection.add(project);
-    _projects[project.name] = project;
-  }
+  DbCollection get projects => db.collection("projects");
 
-  Future<void> updateProject(ObjectId id, ModifierBuilder modify) async => await projectsCollection.modify(id, modify);
-
-  Future<pj.Project?> removeProject(String name) async {
-    await projectsCollection.delete(_projects[name]!.id);
-    return _projects.remove(name);
-  }
-
-  Future<void> addPlugin(EngineerPlugin plugin) async {
-    await pluginsCollection.add(plugin);
-    _plugins[plugin.identifier] = plugin;
-  }
-
-  Future<void> updatePlugin(ObjectId id, ModifierBuilder modify) async => await pluginsCollection.modify(id, modify);
-
-  Future<EngineerPlugin?> removePlugin(String identifier) async {
-    await pluginsCollection.delete(_plugins[name]!.id);
-    return _plugins.remove(identifier);
-  }
-
-  Map<String, EngineerPlugin> get plugins => _plugins;
-
-  Map<String, pj.Project> get projects => _projects;
-
-  DbCollection get projectsCollection => db.collection("projects");
-
-  DbCollection get pluginsCollection => db.collection("plugins");
+  DbCollection get plugins => db.collection("plugins");
 }
 
 class ProjectDatabase extends Database {
@@ -160,7 +118,7 @@ class ProjectDatabase extends Database {
 
 extension DatabaseCollection on DbCollection {
 
-  Future<Map<String, dynamic>?> getById(ObjectId id) async => findOne(where.id(id));
+  Future<Map<String, dynamic>?> getById(id) async => findOne(where.id(id is String ? ObjectId.fromHexString(id) : id));
 
   Future<List<Map<String, dynamic>>> getByIds(List<ObjectId> ids, {Map<String, bool> sort = const {}, int? limit}) async {
     SelectorBuilder builder = where.all("_id", ids);
@@ -188,15 +146,15 @@ extension DatabaseCollection on DbCollection {
 
   Future<void> addAll(List<Savable> savable) async => await insertMany(List.generate(savable.length, (index) => savable[index].toJson()));
 
-  Future<void> modify(ObjectId id, ModifierBuilder builder) async => await updateOne(where.id(id), builder);
+  Future<void> modify(id, ModifierBuilder builder) async => await updateOne(where.id(id is String ? ObjectId.fromHexString(id) : id), builder);
 
   Future<void> modifyAll(List<ObjectId> ids, ModifierBuilder builder) async => await updateMany(where.all("_id", ids), builder);
 
-  Future<bool> delete(ObjectId id) async => (await deleteOne(where.id(id))).nRemoved > 0;
+  Future<bool> delete(id) async => (await deleteOne(where.id(id is String ? ObjectId.fromHexString(id) : id))).nRemoved > 0;
 
   Future<int> deleteAll(List<ObjectId> ids) async => (await deleteOne(where.all("_id", ids))).nRemoved;
 
-  Future operator [](ObjectId id) async => await getById(id);
+  Future operator [](id) async => await getById(id);
 }
 
 abstract class JsonReadable<T> {

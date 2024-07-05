@@ -39,7 +39,7 @@ class Architect implements JsonMappable<Map<String, dynamic>> {
   Engineer? get engineer => engineers[selectEngineer];
 
   Future<void> build(ClientHttp client, ProjectDatabase database) async {
-    EngineerHttp http = engineer!.plugin.http;
+    EngineerHttp http = (await engineer!.plugin).http;
 
     if(await http.openWorksite(client, style, engineer!.options) == "open") {
       for(Map<String, dynamic> jsonLayer in await (await database.layers.find()).toList()) {

@@ -141,6 +141,18 @@ class Dimension implements JsonMappable<Map<String, dynamic>> {
       ((contain.x > pos.x && contain.x < pos.x + size.width -1) || size.width == 0) &&
       ((contain.z > pos.z && contain.z < pos.z + size.length -1) || size.length == 0) &&
       ((contain.y > pos.y && contain.y < pos.y + size.height -1) || size.height == 0);
+
+  Dimension? inside(Dimension dim) {
+    if(dim.contains(pos)) {
+      return Dimension(pos, Size3D(
+          min(size.width, dim.pos.x + dim.size.width - pos.x),
+          min(size.length, dim.pos.z + dim.size.length - pos.z),
+          min(size.height, dim.pos.y + dim.size.height - pos.y)
+      ));
+    } else {
+      return null;
+    }
+  }
 }
 
 class Rotation3D implements JsonMappable<Map<String, double>> {

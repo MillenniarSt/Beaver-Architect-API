@@ -13,11 +13,10 @@ abstract class Builder implements Savable {
   late final ObjectId id;
 
   late String name;
-  int opacity = 50;
 
   late Area area;
 
-  Builder(this.name, this.area, {this.opacity = 30}) {
+  Builder(this.name, this.area) {
     id = ObjectId();
   }
 
@@ -29,7 +28,6 @@ abstract class Builder implements Savable {
   void json(Map<String, dynamic> json) {
     id = json["_id"];
     name = json["name"];
-    opacity = json["opacity"];
     area = jsonArea(json["area"])!;
   }
 
@@ -37,14 +35,6 @@ abstract class Builder implements Savable {
   Map<String, dynamic> toJson() => {
     "_id": id,
     "name": name,
-    "opacity": opacity,
-    "area": area.toJson()
-  };
-
-  Map<String, dynamic> toJsonTile() => {
-    "_id": id,
-    "name": name,
-    "opacity": opacity,
     "area": area.toJson()
   };
 }

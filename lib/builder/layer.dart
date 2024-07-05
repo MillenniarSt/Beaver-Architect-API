@@ -7,10 +7,11 @@ import '../data/database.dart';
 
 class Layer extends Builder {
 
-  List<Room> rooms = [];
-  List<Wall> walls = [];
+  //Properties from the database, they will not be updated
+  late final List<Room> rooms;
+  late final List<Wall> walls;
 
-  Layer(super.name, super.area, {super.opacity});
+  Layer(super.name, super.area);
 
   Layer.json(super.json) : super.json();
 
