@@ -1,6 +1,6 @@
-import 'dart:convert' as convert;
 import 'dart:io';
 
+import 'package:beaver_builder_api/world/area.dart';
 import 'package:mongo_dart/mongo_dart.dart' as db;
 
 import '../architect/architect.dart';
@@ -12,7 +12,7 @@ import '../main.dart';
 import 'bbuilder.dart';
 import 'structure.dart';
 
-class Project extends Builder {
+class Project extends Builder<Parallelepiped> {
 
   late final ProjectHttp http = ProjectHttp(this);
 

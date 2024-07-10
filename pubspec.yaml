@@ -12,3 +12,4 @@ dependencies:
   shelf_router: ^1.1.4
   http: ^1.2.1
   mongo_dart: ^0.10.3
+  uuid: any

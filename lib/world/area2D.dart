@@ -1,4 +1,6 @@
 
+import 'package:beaver_builder_api/world/line.dart';
+
 import '../data/database.dart';
 import 'world2D.dart';
 
@@ -13,16 +15,23 @@ Area2D? jsonArea2d(Map<String, dynamic> json) {
 
 abstract class Area2D implements JsonMappable<Map<String, dynamic>> {
 
-  late Pos2D pos;
-  late Size2D size;
-
-  Area2D(this.pos, this.size);
-
-  Area2D.late();
+  Area2D();
 
   Area2D.json(Map<String, dynamic> json) {
     this.json(json);
   }
+
+  String get type;
+}
+
+abstract class RegularArea2D extends Area2D {
+
+  late Pos2D pos;
+  late Size2D size;
+
+  RegularArea2D(this.pos, this.size);
+
+  RegularArea2D.json(super.json) : super.json();
 
   @override
   void json(Map<String, dynamic> json) {
@@ -36,11 +45,29 @@ abstract class Area2D implements JsonMappable<Map<String, dynamic>> {
     "pos": pos.toJson(),
     "size": size.toJson()
   };
-
-  String get type;
 }
 
-class Rectangle extends Area2D {
+abstract class ComposedArea2D extends Area2D {
+
+  late List<Line> lines;
+
+  ComposedArea2D(this.lines);
+
+  ComposedArea2D.json(super.json) : super.json();
+
+  @override
+  void json(Map<String, dynamic> json) {
+    lines = List.generate(json["poss"].length, (index) => jsonLine(json["poss"][index])!);
+  }
+
+  @override
+  Map<String, dynamic> toJson() => {
+    "type": type,
+    "poss": List.generate(lines.length, (index) => lines[index].toJson())
+  };
+}
+
+class Rectangle extends RegularArea2D {
 
   late double leftTopCorner, leftBottomCorner, rightBottomCorner, rightTopCorner;
 
@@ -69,7 +96,7 @@ class Rectangle extends Area2D {
   String get type => "rectangle";
 }
 
-class Ellipse extends Area2D {
+class Ellipse extends RegularArea2D {
 
   Ellipse(super._start, super._end) : super();
 
@@ -79,56 +106,11 @@ class Ellipse extends Area2D {
   String get type => "ellipse";
 }
 
-class Polygon extends Area2D {
+class Polygon extends ComposedArea2D {
 
-  List<Pos2D> _poss = [];
-
-  Polygon(this._poss) : super.late() {
-    update();
-  }
+  Polygon(super.lines);
 
   Polygon.json(super.json) : super.json();
-
-  @override
-  void json(Map<String, dynamic> json) {
-    super.json(json);
-    for(int i = 0; i < json["poss"].length; i += 2) {
-      _poss.add(Pos2D.json(json["poss"][i]));
-    }
-  }
-
-  @override
-  Map<String, dynamic> toJson() => super.toJson()..["poss"] = List.generate(_poss.length, (index) => _poss[index].toJson());
-
-  @override
-  set pos(Pos2D value) {
-    Pos2D difPos = value - pos;
-    for(int i = 0; i < _poss.length; i++) {
-      _poss[i] += difPos;
-    }
-    super.pos = value;
-  }
-
-  @override
-  set size(Size2D value) {
-    for(int i = 0; i < _poss.length; i++) {
-      Pos2D difPos = _poss[i] - pos;
-      _poss[i] = Pos2D((difPos.x * value.width) / super.size.width, (difPos.z * value.length) / super.size.length) + pos;
-    }
-    super.size = value;
-  }
-
-  List<Pos2D> get poss => _poss;
-
-  set poss(List<Pos2D> value) {
-    _poss = value;
-    update();
-  }
-
-  update() {
-    super.pos = Pos2D.findPos(_poss);
-    super.size = Size2D.findSize(pos, _poss);
-  }
 
   @override
   String get type => "polygon";

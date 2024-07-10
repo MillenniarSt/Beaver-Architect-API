@@ -12,13 +12,27 @@ Area? jsonArea(Map<String, dynamic> json) {
 
 abstract class Area implements JsonMappable<Map<String, dynamic>> {
 
-  late Dimension dimension;
-
   Area();
 
   Area.json(Map<String, dynamic> map) {
     this.json(map);
   }
+
+  @override
+  Map<String, dynamic> toJson() => {
+    "type": type
+  };
+
+  String get type;
+}
+
+abstract class RegularArea extends Area {
+
+  late Dimension dimension;
+
+  RegularArea(this.dimension);
+
+  RegularArea.json(super.json) : super.json();
 
   @override
   void json(Map<String, dynamic> json) {
@@ -30,15 +44,11 @@ abstract class Area implements JsonMappable<Map<String, dynamic>> {
     "type": type,
     "dimension": dimension.toJson()
   };
-
-  String get type;
 }
 
-class Parallelepiped extends Area {
+class Parallelepiped extends RegularArea {
 
-  Parallelepiped(Dimension dimension) {
-    this.dimension = dimension;
-  }
+  Parallelepiped(super.dimension);
 
   Parallelepiped.json(Map<String, dynamic> map) : super.json(map);
 
@@ -46,20 +56,27 @@ class Parallelepiped extends Area {
   String get type => "parallelepiped";
 }
 
+class Sphere extends RegularArea {
+
+  Sphere(super.dimension);
+
+  Sphere.json(Map<String, dynamic> map) : super.json(map);
+
+  @override
+  String get type => "sphere";
+}
+
 class Prism<A extends Area2D> extends Area {
 
   late final A root;
+  late double height;
 
-  Prism(this.root, double y, double height) : super() {
-    dimension.pos = Pos3D(root.pos.x, root.pos.z, y);
-    dimension.size = Size3D(root.size.width, root.size.length, height);
-  }
+  Prism(this.root, double y, this.height) : super();
 
   Prism.json(Map<String, dynamic> map) : super.json(map);
 
   @override
   void json(Map<String, dynamic> json) {
-    super.json(json);
     root = jsonArea2d(json["root"]) as A;
   }
 
@@ -72,21 +89,11 @@ class Prism<A extends Area2D> extends Area {
   String get type => "prism";
 }
 
-class Sphere extends Area {
-
-  Sphere.json(Map<String, dynamic> map) : super.json(map);
-
-  @override
-  String get type => "sphere";
-}
-
-class SemiSphere extends Area {
+class SemiSphere extends RegularArea {
 
   late RegularRotation3D face;
 
-  SemiSphere(this.face, Dimension dimension) {
-    this.dimension = dimension;
-  }
+  SemiSphere(this.face, super.dimension);
 
   SemiSphere.json(Map<String, dynamic> map) : super.json(map);
 
@@ -108,17 +115,14 @@ class SemiSphere extends Area {
 class Cone<A extends Area2D> extends Area {
 
   late final A root;
+  late double height;
 
-  Cone(this.root, double y, double height) : super() {
-    dimension.pos = Pos3D(root.pos.x, root.pos.z, y);
-    dimension.size = Size3D(root.size.width, root.size.length, height);
-  }
+  Cone(this.root, double y, this.height);
 
   Cone.json(Map<String, dynamic> map) : super.json(map);
 
   @override
   void json(Map<String, dynamic> json) {
-    super.json(json);
     root = jsonArea2d(json["root"]) as A;
   }
 

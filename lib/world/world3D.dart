@@ -84,13 +84,14 @@ class Size3D extends Size2D {
   Size3D.json(super.json) : super.json();
 
   @override
-  void json(List<double> json) {
-    super.json(json);
-    height = json[2];
+  void json(List json) {
+    width = json[0].toDouble();
+    height = json[1].toDouble();
+    length = json[2].toDouble();
   }
 
   @override
-  List<double> toJson() => super.toJson()..add(height);
+  List<double> toJson() => [width, height, length];
 
   static Size3D findSize(Pos3D pos, Iterable<Pos3D> poss) {
     Pos3D found = Pos3D(

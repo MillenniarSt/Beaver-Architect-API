@@ -1,12 +1,6 @@
-import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:shelf/shelf.dart';
-import 'package:shelf/src/response.dart';
 
-import '../data/database.dart';
-import '../main.dart';
-import '../world/world3D.dart';
 import 'common.dart';
 
 ClientHttp localClient = ClientHttp.localHost(8226);

@@ -5,7 +5,7 @@ import '../world/area.dart';
 import 'bbuilder.dart';
 import '../data/database.dart';
 
-class Layer extends Builder {
+class Layer extends Builder<Parallelepiped> {
 
   //Properties from the database, they will not be updated
   late final List<Room> rooms;

@@ -7,14 +7,14 @@ import '../world/area.dart';
 
 final File defaultBackground = File("assets/background/default.png");
 
-abstract class Builder implements Savable {
+abstract class Builder<A extends Area> implements Savable {
 
   @override
   late final ObjectId id;
 
   late String name;
 
-  late Area area;
+  late A area;
 
   Builder(this.name, this.area) {
     id = ObjectId();
@@ -28,7 +28,7 @@ abstract class Builder implements Savable {
   void json(Map<String, dynamic> json) {
     id = json["_id"];
     name = json["name"];
-    area = jsonArea(json["area"])!;
+    area = jsonArea(json["area"])! as A;
   }
 
   @override
@@ -37,4 +37,12 @@ abstract class Builder implements Savable {
     "name": name,
     "area": area.toJson()
   };
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Builder && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

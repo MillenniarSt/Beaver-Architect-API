@@ -25,13 +25,13 @@ class ProjectHttp extends ServerConnectionHttp {
 
   void getToAllClient(String url, {Map<String, dynamic>? args}) {
     for(ClientHttp client in clients) {
-      client.get(url, args: args ?? {});
+      client.get("project/${project.id}/$url", args: args ?? {});
     }
   }
 
   void postToAllClient(String url, data) {
     for(ClientHttp client in clients) {
-      client.post(url, data);
+      client.post("project/${project.id}/$url", data);
     }
   }
 
@@ -59,13 +59,13 @@ class ProjectHttp extends ServerConnectionHttp {
       Structure structure = Structure("Structure", Parallelepiped(Dimension(Pos3D.json(data["pos"]), Size3D(10, 10, 10)).inside(project.area.dimension)!));
       await mongo.beaver.projects.modify(project.id, db.modify.push("structures", structure.id));
       await project.database.structures.add(structure);
-      postToAllClient("structure/add", structure);
+      getToAllClient("structure/add", args: {"id": structure.id, "name": structure.name});
       return ok("Structure added");
     },
     "/structure/delete": (data) async {
       await mongo.beaver.projects.modify(project.id, db.modify.pull("structures", data["id"]));
       await project.database.structures.delete(data["id"]);
-      getToAllClient("structure/remove", args: data);
+      getToAllClient("structure/remove", args: {"id": data["id"]});
       return ok("Structure deleted");
     },
     "/layer/list": (data) async => ok(await project.database.layers.getByIds(Structure.json((await project.database.structures.getById(data["structure"]))!).layers)),
