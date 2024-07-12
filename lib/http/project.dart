@@ -17,21 +17,21 @@ class ProjectHttp extends ServerConnectionHttp {
 
   final List<ClientHttp> clients = [];
 
-  ProjectHttp(this.project) : super(server.address, server.port);
+  ProjectHttp(this.project, super.address, super.port) : super();
 
-  ProjectHttp.localHost(this.project, super.port, ClientHttp local) : super.localHost() {
-    clients.add(local);
+  ProjectHttp.localHost(this.project) : super.localHost(server.port) {
+    clients.add(localClient);
   }
 
   void getToAllClient(String url, {Map<String, dynamic>? args}) {
     for(ClientHttp client in clients) {
-      client.get("project/${project.id}/$url", args: args ?? {});
+      client.get("project/${project.id.oid}/$url", args: args ?? {});
     }
   }
 
   void postToAllClient(String url, data) {
     for(ClientHttp client in clients) {
-      client.post("project/${project.id}/$url", data);
+      client.post("project/${project.id.oid}/$url", data);
     }
   }
 

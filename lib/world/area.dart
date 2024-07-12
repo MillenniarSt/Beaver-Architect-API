@@ -5,7 +5,10 @@ import 'area2D.dart';
 Area? jsonArea(Map<String, dynamic> json) {
   switch(json["type"]) {
     case "parallelepiped": return Parallelepiped.json(json);
+    case "sphere": return Sphere.json(json);
+    case "semi_sphere": return SemiSphere.json(json);
     case "prism": return Prism.json(json);
+    case "cone": return Cone.json(json);
   }
   return null;
 }
@@ -14,8 +17,8 @@ abstract class Area implements JsonMappable<Map<String, dynamic>> {
 
   Area();
 
-  Area.json(Map<String, dynamic> map) {
-    this.json(map);
+  Area.json(Map<String, dynamic> json) {
+    this.json(json);
   }
 
   @override
@@ -50,7 +53,7 @@ class Parallelepiped extends RegularArea {
 
   Parallelepiped(super.dimension);
 
-  Parallelepiped.json(Map<String, dynamic> map) : super.json(map);
+  Parallelepiped.json(super.json) : super.json();
 
   @override
   String get type => "parallelepiped";
@@ -60,7 +63,7 @@ class Sphere extends RegularArea {
 
   Sphere(super.dimension);
 
-  Sphere.json(Map<String, dynamic> map) : super.json(map);
+  Sphere.json(super.json) : super.json();
 
   @override
   String get type => "sphere";
@@ -73,7 +76,7 @@ class Prism<A extends Area2D> extends Area {
 
   Prism(this.root, double y, this.height) : super();
 
-  Prism.json(Map<String, dynamic> map) : super.json(map);
+  Prism.json(super.json) : super.json();
 
   @override
   void json(Map<String, dynamic> json) {
@@ -95,7 +98,7 @@ class SemiSphere extends RegularArea {
 
   SemiSphere(this.face, super.dimension);
 
-  SemiSphere.json(Map<String, dynamic> map) : super.json(map);
+  SemiSphere.json(super.json) : super.json();
 
   @override
   void json(Map<String, dynamic> json) {
@@ -119,7 +122,7 @@ class Cone<A extends Area2D> extends Area {
 
   Cone(this.root, double y, this.height);
 
-  Cone.json(Map<String, dynamic> map) : super.json(map);
+  Cone.json(super.json) : super.json();
 
   @override
   void json(Map<String, dynamic> json) {

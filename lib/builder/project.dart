@@ -10,11 +10,10 @@ import '../http/client.dart';
 import '../http/project.dart';
 import '../main.dart';
 import 'bbuilder.dart';
-import 'structure.dart';
 
 class Project extends Builder<Parallelepiped> {
 
-  late final ProjectHttp http = ProjectHttp(this);
+  ProjectHttp? http;
 
   late final ProjectDatabase database = ProjectDatabase(name);
 
@@ -77,18 +76,6 @@ class Project extends Builder<Parallelepiped> {
     structures = List.generate(json["structures"].length, (index) => json["structures"][index]);
   }
 
-  Future<void> addStructure(Structure structure) async {
-    http.postToAllClient("structure/add", structure);
-    await mongo.beaver.projects.modify(id, db.modify.push("structures", structure.id));
-    await database.structures.add(structure);
-  }
-
-  Future<bool> removeStructure(db.ObjectId id) async {
-    http.getToAllClient("structure/remove", args: {"id": id});
-    await mongo.beaver.projects.modify(id, db.modify.pull("structures", id));
-    return await database.structures.delete(id);
-  }
-
   Future<void> build(ClientHttp client) async {
     await architect.build(client, database);
   }
@@ -102,7 +89,8 @@ class Project extends Builder<Parallelepiped> {
     await mongo.beaver.projects.modify(id, db.modify.set("last_open", "${now.day}/${now.month}/${now.year}"));
 
     if(host == null || host == "null" || host.isEmpty) {
-      server.connect(http, "/project/${id.oid}");
+      http = ProjectHttp.localHost(this);
+      server.connect(http!, "/project/${id.oid}");
       return true;
     } else {
       //TODO
@@ -118,6 +106,7 @@ class Project extends Builder<Parallelepiped> {
 
     if(host == null || host == "null" || host.isEmpty) {
       server.disconnect("/project/${id.oid}");
+      http = null;
     } else {
       //TODO
     }
