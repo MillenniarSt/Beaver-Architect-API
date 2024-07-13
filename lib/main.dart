@@ -1,5 +1,4 @@
-import 'package:beaver_builder_api/data/database.dart';
-
+import 'data/database.dart';
 import 'http/server.dart';
 
 ServerHttp server = ServerHttp.localHost(8225);

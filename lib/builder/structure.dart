@@ -1,10 +1,7 @@
-import 'package:beaver_builder_api/builder/project.dart';
-import 'package:beaver_builder_api/world/area.dart';
 import 'package:mongo_dart/mongo_dart.dart' as db;
 
-import '../data/database.dart';
+import '../world/area.dart';
 import 'bbuilder.dart';
-import 'layer.dart';
 
 class Structure extends Builder<Parallelepiped> {
 

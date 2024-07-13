@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:beaver_builder_api/world/area.dart';
 import 'package:mongo_dart/mongo_dart.dart' as db;
 
 import '../architect/architect.dart';
@@ -9,6 +8,7 @@ import '../engineer/style.dart';
 import '../http/client.dart';
 import '../http/project.dart';
 import '../main.dart';
+import '../world/area.dart';
 import 'bbuilder.dart';
 
 class Project extends Builder<Parallelepiped> {

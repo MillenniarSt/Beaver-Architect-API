@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:beaver_builder_api/data/database.dart';
+import 'package:beaver_architect_api/data/database.dart';
 import 'package:mongo_dart/mongo_dart.dart' as db;
 import 'package:shelf/shelf.dart';
 

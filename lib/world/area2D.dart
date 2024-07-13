@@ -1,7 +1,5 @@
-
-import 'package:beaver_builder_api/world/line.dart';
-
 import '../data/database.dart';
+import 'line.dart';
 import 'world2D.dart';
 
 Area2D? jsonArea2d(Map<String, dynamic> json) {
