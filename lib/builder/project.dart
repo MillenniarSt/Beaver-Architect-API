@@ -15,7 +15,7 @@ class Project extends Builder<Parallelepiped> {
 
   ProjectHttp? http;
 
-  late final ProjectDatabase database = ProjectDatabase(name);
+  late final ProjectDatabase database = ProjectDatabase(id.oid);
 
   //Properties from the database, they will not be updated
   late final Architect architect;

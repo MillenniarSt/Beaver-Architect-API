@@ -47,19 +47,19 @@ class Pos2D implements JsonMappable<List> {
   int get hashCode => x.hashCode ^ z.hashCode;
 }
 
-class Size2D implements JsonMappable<List<double>> {
+class Size2D implements JsonMappable<List> {
 
   late final double width;
   late final double length;
 
   Size2D(this.width, this.length);
 
-  Size2D.json(List<double> json) {
+  Size2D.json(List json) {
     this.json(json);
   }
 
   @override
-  void json(List<double> json) {
+  void json(List json) {
     width = json[0];
     length = json[1];
   }

@@ -143,6 +143,8 @@ class Dimension implements JsonMappable<Map<String, dynamic>> {
       ((contain.z >= pos.z && contain.z <= pos.z + size.length -1) || size.length == 0) &&
       ((contain.y >= pos.y && contain.y <= pos.y + size.height -1) || size.height == 0);
 
+  bool containsDimension(Dimension dimension) => dimension.inside(this) == dimension;
+
   Dimension? inside(Dimension dim) {
     if(dim.contains(pos)) {
       return Dimension(pos, Size3D(

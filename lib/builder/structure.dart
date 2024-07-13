@@ -23,6 +23,6 @@ class Structure extends Builder<Parallelepiped> {
   @override
   void json(Map<String, dynamic> json) {
     super.json(json);
-    layers = List.generate(json["layers"].length, (index) => db.ObjectId.fromHexString(json["layers"][index]));
+    layers = List.generate(json["layers"].length, (index) => json["layers"][index]);
   }
 }

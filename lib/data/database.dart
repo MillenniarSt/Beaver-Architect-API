@@ -36,12 +36,8 @@ net:
     }
 
     final result = await Process.start('mongod', ['--config', '$path\\mongod.conf']);
-    result.stdout.transform(utf8.decoder).listen((data) {
-      print(data);
-    });
-    result.stderr.transform(utf8.decoder).listen((data) {
-      print('stderr: $data');
-    });
+    result.stdout.transform(utf8.decoder).listen((data) {});
+    result.stderr.transform(utf8.decoder).listen((data) {});
 
     await start();
 
@@ -121,7 +117,7 @@ extension DatabaseCollection on DbCollection {
   Future<Map<String, dynamic>?> getById(id) async => findOne(where.id(id is String ? ObjectId.fromHexString(id) : id));
 
   Future<List<Map<String, dynamic>>> getByIds(List<ObjectId> ids, {Map<String, bool> sort = const {}, int? limit}) async {
-    SelectorBuilder builder = where.all("_id", ids);
+    SelectorBuilder builder = where.oneFrom("_id", ids);
     for(String key in sort.keys) {
       builder.sortBy(key, descending: !sort[key]!);
     }

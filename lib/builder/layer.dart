@@ -11,7 +11,7 @@ class Layer extends Builder<Parallelepiped> {
   late final List<Room> rooms;
   late final List<Wall> walls;
 
-  Layer(super.name, super.area);
+  Layer(super.name, super.area) : rooms = [], walls = [];
 
   Layer.json(super.json) : super.json();
 

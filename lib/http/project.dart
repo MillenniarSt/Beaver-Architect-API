@@ -59,7 +59,7 @@ class ProjectHttp extends ServerConnectionHttp {
       Structure structure = Structure("Structure", Parallelepiped(Dimension(Pos3D.json(data["pos"]), Size3D(10, 10, 10)).inside(project.area.dimension)!));
       await mongo.beaver.projects.modify(project.id, db.modify.push("structures", structure.id));
       await project.database.structures.add(structure);
-      getToAllClient("structure/add", args: {"id": structure.id, "name": structure.name});
+      getToAllClient("structure/add", args: {"id": structure.id.oid, "name": structure.name});
       return ok("Structure added");
     },
     "/structure/delete": (data) async {
@@ -71,7 +71,7 @@ class ProjectHttp extends ServerConnectionHttp {
     "/layer/list": (data) async => ok(await project.database.layers.getByIds(Structure.json((await project.database.structures.getById(data["structure"]))!).layers)),
     "/layer/get": (data) async => ok(await project.database.layers.getById(data["id"])),
     "/layer/new": (data) async {
-      Layer layer = Layer("Layer", Parallelepiped(Dimension(Pos3D.json(data["pos"]), Size3D(10, 10, 10)).inside(project.area.dimension)!));
+      Layer layer = Layer("Layer", Parallelepiped(Dimension(Pos3D.zero, Size3D.json(data["size"])).inside(project.area.dimension)!));
       await project.database.structures.modify(data["structure"], db.modify.push("layers", layer.id));
       await project.database.layers.add(layer);
       postToAllClient("layer/add", layer.toJson()..["structure"] = data["structure"]);
@@ -80,7 +80,7 @@ class ProjectHttp extends ServerConnectionHttp {
     "/layer/remove": (data) async {
       await project.database.structures.modify(data["structure"], db.modify.pull("layers", data["id"]));
       await project.database.layers.delete(data["id"]);
-      getToAllClient("layer/remove", args: data);
+      getToAllClient("layer/remove", args: {"id": data["id"]});
       return ok("Layer deleted");
     },
 
