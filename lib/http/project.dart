@@ -58,12 +58,39 @@ class ProjectHttp extends ServerConnectionHttp {
     "/structure/new": (data) async {
       Structure structure = Structure("Structure", Parallelepiped(Dimension(Pos3D.json(data["pos"]), Size3D(10, 10, 10)).inside(project.area.dimension)!));
       await mongo.beaver.projects.modify(project.id, db.modify.push("structures", structure.id));
+      Layer layer = Layer("Layer 0", structure.area);
+      await project.database.layers.add(layer);
+      structure.layers.add(layer.id);
       await project.database.structures.add(structure);
-      getToAllClient("structure/add", args: {"id": structure.id.oid, "name": structure.name});
+      postToAllClient("structure/add", {
+        "structure": structure.toJson(),
+        "layers": [layer.toJson()]
+      });
+
       return ok("Structure added");
     },
+    "/structure/paste": (data) async {
+      Structure structure = Structure.paste(data);
+      await mongo.beaver.projects.modify(project.id, db.modify.push("structures", structure.id));
+      await project.database.structures.add(structure);
+      List<Map<String, dynamic>> layers = [];
+      for(Map<String, dynamic> jsonLayer in data["layers"]) {
+        Layer layer = Layer.paste(jsonLayer);
+        await project.database.layers.add(layer);
+        layers.add(layer.toJson());
+      }
+      postToAllClient("structure/add", {
+        "structure": structure.toJson(),
+        "layers": layers
+      });
+
+      return ok("Structure pasted");
+    },
     "/structure/delete": (data) async {
-      await mongo.beaver.projects.modify(project.id, db.modify.pull("structures", data["id"]));
+      for(db.ObjectId layerId in (await project.database.structures.getById(data["id"]))!["layers"]) {
+        await project.database.layers.delete(layerId);
+      }
+      await mongo.beaver.projects.modify(project.id, db.modify.pull("structures", {"_id": db.ObjectId.fromHexString(data["id"])}));
       await project.database.structures.delete(data["id"]);
       getToAllClient("structure/remove", args: {"id": data["id"]});
       return ok("Structure deleted");
@@ -74,13 +101,28 @@ class ProjectHttp extends ServerConnectionHttp {
       Layer layer = Layer("Layer", Parallelepiped(Dimension(Pos3D.zero, Size3D.json(data["size"])).inside(project.area.dimension)!));
       await project.database.structures.modify(data["structure"], db.modify.push("layers", layer.id));
       await project.database.layers.add(layer);
-      postToAllClient("layer/add", layer.toJson()..["structure"] = data["structure"]);
+      postToAllClient("layer/add", {
+        "layer": layer.toJson(),
+        "structure": data["structure"],
+        "index": (await project.database.structures.getById(data["structure"]))!["layers"].indexOf(layer.id)
+      });
       return ok("Layer added");
     },
-    "/layer/remove": (data) async {
-      await project.database.structures.modify(data["structure"], db.modify.pull("layers", data["id"]));
+    "/layer/paste": (data) async {
+      Layer layer = Layer.paste(data["layer"]);
+      await project.database.structures.modify(data["structure"], db.modify.push("layers", layer.id));
+      await project.database.layers.add(layer);
+      postToAllClient("layer/add", {
+        "layer": layer.toJson(),
+        "structure": data["structure"],
+        "index": (await project.database.structures.getById(data["structure"]))!["layers"].indexOf(layer.id)
+      });
+      return ok("Layer pasted");
+    },
+    "/layer/delete": (data) async {
+      await project.database.structures.modify(data["structure"], db.modify.pull("layers", db.ObjectId.fromHexString(data["id"])));
       await project.database.layers.delete(data["id"]);
-      getToAllClient("layer/remove", args: {"id": data["id"]});
+      getToAllClient("layer/remove", args: {"id": data["id"], "structure": data["structure"]});
       return ok("Layer deleted");
     },
 

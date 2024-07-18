@@ -142,7 +142,7 @@ extension DatabaseCollection on DbCollection {
 
   Future<void> addAll(List<Savable> savable) async => await insertMany(List.generate(savable.length, (index) => savable[index].toJson()));
 
-  Future<void> modify(id, ModifierBuilder builder) async => await updateOne(where.id(id is String ? ObjectId.fromHexString(id) : id), builder);
+  Future<void> modify(id, ModifierBuilder builder) async => (await updateOne(where.id(id is String ? ObjectId.fromHexString(id) : id), builder));
 
   Future<void> modifyAll(List<ObjectId> ids, ModifierBuilder builder) async => await updateMany(where.all("_id", ids), builder);
 
@@ -171,4 +171,12 @@ abstract class JsonMappable<T> implements JsonReadable<T>, JsonWritable<T> { }
 abstract class Savable implements JsonMappable<Map<String, dynamic>> {
 
   ObjectId get id;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+          other is Savable && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

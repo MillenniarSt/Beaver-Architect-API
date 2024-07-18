@@ -12,6 +12,10 @@ class Structure extends Builder<Parallelepiped> {
 
   Structure.json(super.json) : super.json();
 
+  Structure.paste(Map<String, dynamic> json) : super.late() {
+    paste(json);
+  }
+
   @override
   Map<String, dynamic> toJson() => super.toJson()..addAll({
     "layers": layers
@@ -21,5 +25,12 @@ class Structure extends Builder<Parallelepiped> {
   void json(Map<String, dynamic> json) {
     super.json(json);
     layers = List.generate(json["layers"].length, (index) => json["layers"][index]);
+  }
+
+  void paste(Map<String, dynamic> json) {
+    id = db.ObjectId.fromHexString(json["_id"]);
+    name = json["name"];
+    area = Parallelepiped.json(json["area"]);
+    layers = List.generate(json["layers"].length, (index) => db.ObjectId.fromHexString(json["layers"][index]["_id"]));
   }
 }

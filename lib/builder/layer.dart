@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:mongo_dart/mongo_dart.dart' as db;
 
 import '../engineer/components.dart';
 import '../world/area.dart';
@@ -15,6 +15,10 @@ class Layer extends Builder<Parallelepiped> {
 
   Layer.json(super.json) : super.json();
 
+  Layer.paste(Map<String, dynamic> json) : super.late() {
+    paste(json);
+  }
+
   @override
   Map<String, dynamic> toJson() => super.toJson()..addAll({
     "rooms": List.generate(rooms.length, (index) => rooms[index].toJson()),
@@ -24,6 +28,14 @@ class Layer extends Builder<Parallelepiped> {
   @override
   void json(Map<String, dynamic> json) {
     super.json(json);
+    rooms = List.generate(json["rooms"].length, (index) => Room.json(json["rooms"][index]));
+    walls = List.generate(json["walls"].length, (index) => Wall.json(json["walls"][index]));
+  }
+
+  void paste(Map<String, dynamic> json) {
+    id = db.ObjectId.fromHexString(json["_id"]);
+    name = json["name"];
+    area = Parallelepiped.json(json["area"]);
     rooms = List.generate(json["rooms"].length, (index) => Room.json(json["rooms"][index]));
     walls = List.generate(json["walls"].length, (index) => Wall.json(json["walls"][index]));
   }
@@ -39,7 +51,6 @@ class Room implements JsonMappable<Map<String, dynamic>> {
 
   late String name;
   late int color;
-  File? image;
 
   Room(this.area, this.floor, this.ceiling);
 
@@ -54,8 +65,7 @@ class Room implements JsonMappable<Map<String, dynamic>> {
     "ceiling": ceiling.toJson(),
     "gadgets": List.generate(gadgets.length, (index) => gadgets[index].toJson()),
     "name": name,
-    "color": color,
-    if(image != null) "image": image!.path
+    "color": color
   };
 
   @override
@@ -66,8 +76,5 @@ class Room implements JsonMappable<Map<String, dynamic>> {
     gadgets = List.generate(json["gadgets"].length, (index) => Gadget.json(json["gadgets"][index]));
     name = json["name"];
     color = json["color"];
-    if(json.containsKey("image")) {
-      image = File(json["image"]);
-    }
   }
 }
