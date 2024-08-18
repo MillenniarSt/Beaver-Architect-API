@@ -5,13 +5,14 @@
 //   ||   \\\===///   ||
 //   ||       |       ||
 //   ||       |       ||
-//    |\___   |   ___/|
+//   ||\___   |   ___/||
 //         \__|__/
 //
 //      By Millenniar
 //
 
-const generateID = require("mongodb").UUID.generate;
+const generateID = require('mongodb').UUID.generate;
+const World = require('./builder/world');
 
 class Project {
 
@@ -23,15 +24,19 @@ class Project {
 
     architect;
 
+    type;
     builder;
 
-    constructor(name, architect, builder) {
+    constructor(name, description, info, architect, type) {
         this._id = generateID();
         this.name = name;
-        this.description = "";
-        this.info = "";
+        this.description = description;
+        this.info = info;
         this.architect = architect;
-        this.builder = builder;
+        this.type = type;
+        switch(type) {
+            case 'world': builder = new World();
+        }
     }
 }
 

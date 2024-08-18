@@ -1,3 +1,16 @@
+//          _____
+//      ___/     \___
+//    |/  _.- _.-    \|
+//   ||\\=_  '    _=//||
+//   ||   \\\===///   ||
+//   ||       |       ||
+//   ||       |       ||
+//   ||\___   |   ___/||
+//         \__|__/
+//
+//      By Millenniar
+//
+
 const { Pos2D, Size2D, Dimension2D, Rotation2D } = require('./world2D');
 
 class Pos3D extends Pos2D {
