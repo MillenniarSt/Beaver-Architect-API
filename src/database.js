@@ -28,14 +28,24 @@ async function close() {
   await client.close()
 }
 
-async function addProject(project) {
-  db.collection('projects').insertOne(project, onError)
+function getAllProjects(query, callback) {
+  db.collection('projects').find(query).toArray(callback)
 }
 
-function onError(err, res) {
-  if (err) {
-    throw err
-  }
+function getProject(id, callback) {
+  db.collection('projects').findOne({ _id: id }, callback)
 }
 
-module.exports = { open, close, addProject }
+function addProject(project, callback) {
+  db.collection('projects').insertOne(project, callback)
+}
+
+function modifyProject(id, changes, callback) {
+  db.collection('projects').updateOne({ _id: id }, changes, callback)
+}
+
+function deleteProject(id, callback) {
+  db.collection('projects').deleteOne({ _id: id }, callback)
+}
+
+module.exports = { open, close, getAllProjects, getProject, addProject, modifyProject }

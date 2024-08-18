@@ -12,13 +12,13 @@
 //
 
 const generateID = require('mongodb').UUID.generate;
-const World = require('./builder/world');
 
 class Project {
 
     _id;
 
     name;
+    authors;
     description;
     info;
 
@@ -27,16 +27,31 @@ class Project {
     type;
     builder;
 
-    constructor(name, description, info, architect, type) {
+    location;
+
+    constructor(name, authors, description, info, architect, type) {
         this._id = generateID();
         this.name = name;
+        this.authors = authors;
         this.description = description;
         this.info = info;
         this.architect = architect;
         this.type = type;
-        switch(type) {
-            case 'world': builder = new World();
-        }
+        this.location = null;
+        this.builder = null;
+    }
+
+    toJson() {
+        return {
+            _id: this._id, 
+            name: this.name, 
+            authors: this.authors,
+            description: this.description,
+            info: this.info,
+            architect: this.architect.identifier,
+            type: this.type,
+            location: this.location
+        };
     }
 }
 
