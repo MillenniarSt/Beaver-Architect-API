@@ -11,15 +11,6 @@
 //      By Millenniar
 //
 
-// Dir paths
-
-const getAppDataPath = require('appdata-path')
-const path = require('path')
-
-const dir = getAppDataPath('Beaver Architect')
-const projectsDir = path.join(dir, 'projects')
-const architectsDir = path.join(dir, 'architects')
-
 // Database
 
 const db = require("./database")
@@ -31,14 +22,13 @@ db.open()
 const express = require('express')
 const app = express()
 const projectsRouter = require('./routes/projects')
+const settingsRouter = require('./routes/settings')
 
 app.use(express.json())
 
 app.use('/projects', projectsRouter)
+app.use('/settings', settingsRouter)
 
 app.listen(8025)
 
-
-//Exports
-
-module.exports = { dir, projectsDir, architectsDir }
+console.log('Express open on http://localhost:8025/')

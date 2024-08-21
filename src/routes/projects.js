@@ -1,38 +1,37 @@
+//          _____
+//      ___/     \___
+//    |/  _.- _.-    \|
+//   ||\\=_  '    _=//||
+//   ||   \\\===///   ||
+//   ||       |       ||
+//   ||       |       ||
+//   ||\___   |   ___/||
+//         \__|__/
+//
+//      By Millenniar
+//
+
 const express = require('express');
 const fs = require('fs-extra');
 const Project = require('../project');
 const router = express.Router()
-const dir = require('../index').projectsDir;
+const dir = require('../paths').projectsDir;
 const path = require('path');
-const { errorCopyFile, success, unsuccess, errorMongo, errorDeleteFile } = require('./util');
-const { addProject, modifyProject, getProject, getAllProjects } = require('../database');
+const { errorCopyFile, success, unsuccess } = require('./util');
+const { add, modify, get, getAll } = require('../database');
 
 let openProjects = {};
 
 router.get('/', (req, res) => {
-    const query = req.body;
+    const query = req.query;
 
-    getAllProjects(query, (err, result) => {
-        if(err) {
-            errorMongo(res, err, result)
-            return
-        }
-
-        success({projects: result})
-    })
+    getAll('projects', query, res, (result) => success(res, {projects: result}))
 });
 
 router.get('/:id', (req, res) => {
     const { id } = req.params;
 
-    getProject(id, (err, result) => {
-        if(err) {
-            errorMongo(res, err, result)
-            return
-        }
-
-        success({project: result})
-    })
+    get('projects', id, res, (result) => success(res, {project: result}))
 });
 
 router.post('/add', (req, res) => {
@@ -71,18 +70,12 @@ router.put('/:id/modify', (req, res) => {
                     return
                 }
 
-                modifyProject(id, {
+                modify('projects', id, {
                     name: changes.name,
                     authors: changes.authors,
                     description: changes.description,
                     info: changes.info
-                }, (err, result) => {
-                    if(err) {
-                        errorMongo(res, err, result)
-                        return
-                    }
-    
-                    success(res, { project: new Project(
+                }, res, () => success(res, { project: new Project(
                         changes.name,
                         changes.authors,
                         changes.description,
@@ -90,7 +83,7 @@ router.put('/:id/modify', (req, res) => {
                         new Architect(changes.architect),
                         changes.type
                     )})
-                })
+                )
             })
         })
     }
@@ -99,14 +92,7 @@ router.put('/:id/modify', (req, res) => {
 router.delete('/:id', (req, res) => {
     const { id } = req.params;
 
-    fs.remove(path.join(dir, id), (err) => {
-        if(err) {
-            errorDeleteFile(res, err, path.join(dir, id))
-            return
-        }
-
-        success()
-    })
+    fs.remove(path.join(dir, id), res, () => success(res))
 });
 
 router.put('/:id/saveas', (req, res) => {
@@ -127,14 +113,9 @@ router.put('/:id/saveas', (req, res) => {
             }
 
             project.location = path;
-            addProject(project, (err, result) => {
-                if(err) {
-                    errorMongo(res, err, result)
-                    return
-                }
-
-                success()
-            })
+            add('projects', project, res, () => success())
         })
     })
-});
+})
+
+module.exports = router;

@@ -12,6 +12,7 @@
 //
 
 const mongo = require("mongodb")
+const { errorMongo } = require("./routes/util")
 
 const url = "mongodb://localhost:27017/beaver_architect"
 const client = new mongo.MongoClient(url)
@@ -28,24 +29,24 @@ async function close() {
   await client.close()
 }
 
-function getAllProjects(query, callback) {
-  db.collection('projects').find(query).toArray(callback)
+function getAll(collection, query, res, success) {
+  db.collection(collection).find(query).toArray().catch((err) => errorMongo(res, err, 'get')).then((result) => success(result))
 }
 
-function getProject(id, callback) {
-  db.collection('projects').findOne({ _id: id }, callback)
+function get(collection, id, res, success) {
+  db.collection(collection).findOne({ _id: new mongo.ObjectId(id) }).catch((err) => errorMongo(res, err, 'get')).then((result) => success(result))
 }
 
-function addProject(project, callback) {
-  db.collection('projects').insertOne(project, callback)
+function add(collection, project, res, success) {
+  db.collection(collection).insertOne(project).catch((err) => errorMongo(res, err, 'add')).then((result) => success(result))
 }
 
-function modifyProject(id, changes, callback) {
-  db.collection('projects').updateOne({ _id: id }, changes, callback)
+function modify(collection, id, changes, res, success) {
+  db.collection(collection).updateOne({ _id: new mongo.ObjectId(id) }, changes).catch((err) => errorMongo(res, err, 'modify')).then((result) => success(result))
 }
 
-function deleteProject(id, callback) {
-  db.collection('projects').deleteOne({ _id: id }, callback)
+function remove(collection, id, res, success) {
+  db.collection(collection).deleteOne({ _id: new mongo.ObjectId(id) }).catch((err) => errorMongo(res, err, 'delete')).then((result) => success(result))
 }
 
-module.exports = { open, close, getAllProjects, getProject, addProject, modifyProject }
+module.exports = { open, close, getAll, get, add, modify, remove }

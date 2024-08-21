@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "scripts": {
-    "start": "npm"
+    "start": "node src/index.js"
   },
   "author": "Millenniar",
   "license": "ISC",
