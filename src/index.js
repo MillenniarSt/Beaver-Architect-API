@@ -29,6 +29,4 @@ app.use(express.json())
 app.use('/projects', projectsRouter)
 app.use('/settings', settingsRouter)
 
-app.listen(8025)
-
-console.log('Express open on http://localhost:8025/')
+app.listen(8025, () => console.log('Express open on http://localhost:8025/'))

@@ -30,23 +30,27 @@ async function close() {
 }
 
 function getAll(collection, query, res, success) {
-  db.collection(collection).find(query).toArray().catch((err) => errorMongo(res, err, 'get')).then((result) => success(result))
+  db.collection(collection).find(query).toArray().then((result) => success(result)).catch((err) => errorMongo(res, err, 'get'))
 }
 
 function get(collection, id, res, success) {
-  db.collection(collection).findOne({ _id: new mongo.ObjectId(id) }).catch((err) => errorMongo(res, err, 'get')).then((result) => success(result))
+  db.collection(collection).findOne({ _id: new mongo.ObjectId(id) }).then((result) => success(result)).catch((err) => errorMongo(res, err, 'get'))
 }
 
-function add(collection, project, res, success) {
-  db.collection(collection).insertOne(project).catch((err) => errorMongo(res, err, 'add')).then((result) => success(result))
+function add(collection, object, res, success) {
+  db.collection(collection).insertOne(object).then((result) => success(result)).catch((err) => errorMongo(res, err, 'add'))
 }
 
 function modify(collection, id, changes, res, success) {
-  db.collection(collection).updateOne({ _id: new mongo.ObjectId(id) }, changes).catch((err) => errorMongo(res, err, 'modify')).then((result) => success(result))
+  db.collection(collection).updateOne({ _id: new mongo.ObjectId(id) }, changes).then((result) => success(result)).catch((err) => errorMongo(res, err, 'modify'))
+}
+
+function modifySet(collection, id, changes, res, success) {
+  modify(collection, id, { $set: changes}, res, success)
 }
 
 function remove(collection, id, res, success) {
-  db.collection(collection).deleteOne({ _id: new mongo.ObjectId(id) }).catch((err) => errorMongo(res, err, 'delete')).then((result) => success(result))
+  db.collection(collection).deleteOne({ _id: new mongo.ObjectId(id) }).then((result) => success(result)).catch((err) => errorMongo(res, err, 'delete'))
 }
 
-module.exports = { open, close, getAll, get, add, modify, remove }
+module.exports = { open, close, getAll, get, add, modify, modifySet, remove }

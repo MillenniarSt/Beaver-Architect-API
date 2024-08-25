@@ -18,40 +18,57 @@ const router = express.Router()
 const dir = require('../paths').projectsDir;
 const path = require('path');
 const { errorCopyFile, success, unsuccess } = require('./util');
-const { add, modify, get, getAll } = require('../database');
-
-let openProjects = {};
+const db = require('../database');
 
 router.get('/', (req, res) => {
     const query = req.query;
 
-    getAll('projects', query, res, (result) => success(res, {projects: result}))
+    db.getAll('projects', query, res, (result) => success(res, {projects: result}))
 });
 
 router.get('/:id', (req, res) => {
     const { id } = req.params;
 
-    get('projects', id, res, (result) => success(res, {project: result}))
+    db.get('projects', id, res, (result) => success(res, {project: result}))
 });
 
-router.post('/add', (req, res) => {
-    const project = req.body;
+router.post('/', (req, res) => {
+    const data = req.body;
 
-    if(project.name === '') {
-        unsuccess(res, { invalidFields: ['name'] })
+    if(data.name === '') {
+        unsuccess(res, { invalidName: true })
     } else {
-        success(res, { project: new Project(
-            project.name,
-            project.authors,
-            project.description,
-            project.info,
-            new Architect(project.architect),
-            project.type
-        )})
+        const project = new Project(
+            data.name,
+            data.authors,
+            data.description,
+            data.info,
+            data.architect,
+            data.type
+        )
+        const id = project._id
+
+        fs.mkdirsSync(path.join(dir, id))
+
+        fs.copy(data.image, path.join(dir, id, 'image.png'), (err) => {
+            if(err) {
+                errorCopyFile(res, err, data.image, path.join(dir, id, 'image.png'))
+                return
+            }
+    
+            fs.copy(data.background, path.join(dir, id, 'background.png'), (err) => {
+                if(err) {
+                    errorCopyFile(res, data.background, path.join(dir, id, 'background.png'))
+                    return
+                }
+    
+                db.add('projects', project, res, () => success(res, { project }))
+            })
+        })
     }
 });
 
-router.put('/:id/modify', (req, res) => {
+router.put('/:id', (req, res) => {
     const { id } = req.params;
     const changes = req.body;
 
@@ -70,20 +87,12 @@ router.put('/:id/modify', (req, res) => {
                     return
                 }
 
-                modify('projects', id, {
+                db.modifySet('projects', id, {
                     name: changes.name,
                     authors: changes.authors,
                     description: changes.description,
                     info: changes.info
-                }, res, () => success(res, { project: new Project(
-                        changes.name,
-                        changes.authors,
-                        changes.description,
-                        changes.info,
-                        new Architect(changes.architect),
-                        changes.type
-                    )})
-                )
+                }, res, () => success(res))
             })
         })
     }
@@ -92,30 +101,8 @@ router.put('/:id/modify', (req, res) => {
 router.delete('/:id', (req, res) => {
     const { id } = req.params;
 
-    fs.remove(path.join(dir, id), res, () => success(res))
+    fs.rmSync(path.join(dir, id), { recursive: true })
+    db.remove('projects', id, res, () => success(res))
 });
-
-router.put('/:id/saveas', (req, res) => {
-    const { id } = req.params;
-    const path = req.body;
-    const project = openProjects.get(id);
-
-    fs.copyFile(changes.image, path.join(dir, id, 'image.png'), (err) => {
-        if(err) {
-            errorCopyFile(res, changes.image, path.join(dir, id, 'image.png'))
-            return
-        }
-
-        fs.copyFile(changes.background, path.join(dir, id, 'background.png'), (err) => {
-            if(err) {
-                errorCopyFile(res, changes.background, path.join(dir, id, 'background.png'))
-                return
-            }
-
-            project.location = path;
-            add('projects', project, res, () => success())
-        })
-    })
-})
 
 module.exports = router;

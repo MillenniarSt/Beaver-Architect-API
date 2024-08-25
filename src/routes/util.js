@@ -46,11 +46,11 @@ function errorMongo(res, err, action) {
     _error(res, 'Mongo', err, { action })
 }
 
-function errorCopyFile(res, file, dest) {
+function errorCopyFile(res, err, file, dest) {
     _error(res, 'CopyFile', err, {file, dest})
 }
 
-function errorDeleteFile(res, file) {
+function errorDeleteFile(res, err, file) {
     _error(res, 'DeleteFile', err, {file})
 }
 
