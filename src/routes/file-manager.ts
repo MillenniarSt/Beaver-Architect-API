@@ -101,7 +101,7 @@ fileManagerRouter.get('/read-all-dir', (req, res) => {
     if(typeof relPath === 'string') {
         const dirPath = path.join(dir, relPath)
         if(fs.existsSync(dirPath)) {
-            success(res, readDirRecursive(dirPath))
+            success(res, readDirRecursive(dirPath, req.query.relPaths ? relPath : dirPath))
         } else {
             errorReadDir(res, new Error('File does not exists'), dirPath)
         }
@@ -116,13 +116,13 @@ type FileEntry = {
     children?: FileEntry[]
 }
 
-function readDirRecursive(dir: string): FileEntry[] {
+function readDirRecursive(dir: string, relDir: string): FileEntry[] {
     return fs.readdirSync(dir, { withFileTypes: true }).map((entry) => {
-        const filePath = path.join(dir, entry.name)
+        const relFilePath = path.join(relDir, entry.name)
         return {
             name: entry.name,
-            path: filePath,
-            children: entry.isDirectory() ? readDirRecursive(filePath) : undefined
+            path: relFilePath,
+            children: entry.isDirectory() ? readDirRecursive(path.join(dir, entry.name), relFilePath) : undefined
         }
     })
 }

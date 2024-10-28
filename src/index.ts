@@ -18,6 +18,19 @@ import { openDatabase } from './database.js'
 import { architectsDir, dir, projectsDir } from './paths.js'
 import { loadPlugins } from './plugins.js'
 
+console.log('            _____            ')
+console.log('        ___/     \\___        ')
+console.log('      |/  _.- _.-    \\|      ')
+console.log('     ||\\\\=_  \'    _=//||     ')
+console.log('     ||   \\\\\\===///   ||     ')
+console.log('     ||       |       ||     ')
+console.log('     ||       |       ||     ')
+console.log('     ||\\___   |   ___/||     ')
+console.log('           \\__|__/           ')
+console.log('                             ')
+console.log('        By Millenniar        ')
+console.log('                             ')
+
 const log = console.log
 console.log = (...args) => {
     log('[     Server     ] ', ...args)
