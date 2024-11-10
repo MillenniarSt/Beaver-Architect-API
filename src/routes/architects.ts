@@ -12,13 +12,11 @@
 //
 
 import express from 'express'
-import fs from 'fs'
-import path from 'path'
 import { success } from './util.js'
-import { architectsDir } from '../paths.js'
+import { architects } from '../architects.js'
 
 export const architectsRouter = express.Router()
 
 architectsRouter.get('/', (req, res) => {
-    success(res, fs.readdirSync(architectsDir).map((dir: string) => JSON.parse(fs.readFileSync(path.join(architectsDir, dir, 'architect.json'), 'utf8'))))
+    success(res, architects.map((architect) => architect.clientData))
 })

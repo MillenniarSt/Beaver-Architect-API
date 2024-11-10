@@ -16,7 +16,7 @@ import fs from 'fs-extra'
 import { fileURLToPath } from 'url'
 import { openDatabase } from './database.js'
 import { architectsDir, dir, projectsDir } from './paths.js'
-import { loadPlugins } from './plugins.js'
+import { loadPlugins } from './architects.js'
 
 console.log('            _____            ')
 console.log('        ___/     \\___        ')
@@ -28,7 +28,8 @@ console.log('     ||       |       ||     ')
 console.log('     ||\\___   |   ___/||     ')
 console.log('           \\__|__/           ')
 console.log('                             ')
-console.log('        By Millenniar        ')
+console.log('       Beaver Architect      ')
+console.log('          Millenniar         ')
 console.log('                             ')
 
 const log = console.log

@@ -16,6 +16,7 @@
   "description": "",
   "devDependencies": {
     "@types/express": "^4.17.21",
+    "@types/ws": "^8.5.13",
     "gulp": "^5.0.0",
     "gulp-copy": "^4.0.1",
     "ts-node": "^10.9.2",
@@ -26,6 +27,7 @@
     "appdata-path": "^1.0.0",
     "express": "^4.19.2",
     "fs-extra": "^11.2.0",
-    "mongodb": "^6.8.0"
+    "mongodb": "^6.8.0",
+    "ws": "^8.18.0"
   }
 }

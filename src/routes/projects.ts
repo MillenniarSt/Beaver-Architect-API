@@ -17,8 +17,10 @@ import fs from 'fs-extra'
 import { __dirname } from '../index.js'
 import { add, DbCollection, get, getAll, set, remove } from '../database.js'
 import { success, unsuccess, errorCopyFile, resHandler } from './util.js'
-import { Project } from '../project.js'
+import { Project, ProjectData, projectSocketPaths } from '../project.js'
 import { projectsDir } from '../paths.js'
+import { findPort, openSocketServer } from '../socket.js'
+import { architects } from '../architects.js'
 
 export const projectsRouter = express.Router()
 
@@ -47,15 +49,16 @@ projectsRouter.post('/', (req, res) => {
     } else if(fs.existsSync(path.join(projectsDir, data.identifier))) {
         unsuccess(res, { invalidFields: { identifier: 'exists' } })
     } else {
-        const project = new Project(
-            data.identifier,
-            data.name,
-            data.authors,
-            data.description,
-            data.info,
-            data.architect,
-            data.type
-        )
+        const project: ProjectData = {
+            identifier: data.identifier,
+            name: data.name,
+            authors: data.authors,
+            description: data.description,
+            info: data.info,
+            architect: data.architect,
+            type: data.type,
+            builder: null
+        }
         const identifier = project.identifier
 
         fs.mkdirsSync(path.join(projectsDir, identifier))
@@ -129,4 +132,30 @@ projectsRouter.delete('/:identifier', (req, res) => {
 
     fs.removeSync(path.join(projectsDir, identifier))
     remove(DbCollection.PROJECTS, { identifier }, res, () => success(res))
+})
+
+projectsRouter.get('/:identifier/open-local', (req, res) => {
+    const { identifier } = req.params
+
+    get(DbCollection.PROJECTS, { identifier }, res, (result: ProjectData) => {
+
+        const project = new Project(result)
+        const port = findPort()
+
+        openSocketServer(port, (message, ws) => {
+            const f = projectSocketPaths.get(message.path)
+            if(f) {
+                f(project, message.data, ws)
+                return true
+            } else {
+                return false
+            }
+        })
+        
+        success(res, {
+            project: project,
+            architect: architects.find((architect) => architect.identifier === project.architect)!.clientData,
+            port: port
+        })
+    })
 })
