@@ -1,5 +1,5 @@
-import { WebSocketServer } from 'ws'
-import chalk from 'chalk'
+import { v4 } from 'uuid'
+import { WebSocket } from 'ws'
 
 export type WebSocketMessage = {
     path: string,
@@ -7,112 +7,90 @@ export type WebSocketMessage = {
     data: {}
 }
 
-export type WebSocketResponse = {
-    id: string,
-    data?: {},
-    err?: WebSocketError
-}
-
-export type WebSocketError = {
-    name: string,
-    message: string,
-    stack: string,
-    errno: string,
-    syscall: string
-}
-
 export let debugSocket = false
 
-export function findPort(): number {
-    return 8026
-}
+export class WebSocketConnection {
 
-export type OnMessage = (message: WebSocketMessage, ws: WsActions) => boolean
+    private ws: WebSocket | null = null
 
-export type WsActions = {
-    respond: (data: {}, err?: WebSocketError) => void,
-    send: (path: string, data?: {}) => void, 
-    sendAll: (path: string, data?: {}) => void
-}
+    private waitingRequests: Map<string, (value: any) => void> = new Map()
 
-export function openSocketServer(port: number, onMessage: OnMessage): WebSocketServer {
-    const wss = new WebSocketServer({ port })
-
-    console.log(`[ Socket ] |  OPEN  | WebSocketServer open on port ${port}`)
-
-    const sendAll = (path: string, data?: {}) => {
-        debugSendMessage(path)
-        wss.clients.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({ path, data }));
-            }
-        })
+    connectLocal(port: number): Promise<void> {
+        return this.connect(`ws://localhost:${port}`)
     }
 
-    wss.on('connection', (ws) => {
-        console.log(`[ Socket ] |  JOIN  | Client Connected on port ${port}`)
+    connect(url: string): Promise<void> {
+        return new Promise((resolve) => {
+            this.ws = new WebSocket(url)
 
-        const send = (path: string, data?: {}) => {
-            debugSendMessage(path)
-            ws.send(JSON.stringify({ path, data }))
-        }
-
-        const respond = (id: string | undefined | null, data: {}, err?: WebSocketError) => {
-            if(id === undefined) {
-                console.log(chalk.red(`[ Socket ] |  RES   | ERR | Trying to respond without a response id`))
-            } else {
-                debugRespondMessage(err)
-                ws.send(JSON.stringify({ id: id, data: data, err: err }))
+            this.ws.onopen = () => {
+                console.log(`Project Server Connected to WebSocketServer ${url}`)
+                resolve()
             }
-        }
 
-        ws.on('message', (data) => {
-            try {
-                const message: WebSocketMessage = JSON.parse(data.toString())
-                debugGetMessage(message.path)
-
+            this.ws.onmessage = (event) => {
                 try {
-                    if(!onMessage(message, { respond: (data, err) => respond(message.id, data, err), send, sendAll })) {
-                        console.log(chalk.redBright(`[ Socket ] |  GET   | ERR | Invalid Message Path : ${message.path}`))
-                    }
-                } catch(error) {
-                    respond(message.id ?? null, { path: message.path, data: message.data }, toSocketError(error))
-                }
-            } catch (error) {
-                console.log(chalk.redBright(`[ Socket ] |  GET   | ERR | Invalid Message`))
+                    const message = JSON.parse(String(event.data))
 
-                respond(null, {}, toSocketError(error))
+                    if (message.err) {
+                        console.error('Socket Error:', message.err)
+                    }
+
+                    if (message.id) {
+                        const resolve = this.waitingRequests.get(message.id)
+                        if (resolve) {
+                            resolve(message.data)
+                            this.waitingRequests.delete(message.id)
+                        } else {
+                            console.error('Invalid Response Id')
+                        }
+                    } else {
+                        //this.messageSubject.next(message)
+                    }
+                } catch (error) {
+                    console.error('Invalid socket message', error)
+                }
+            }
+
+            this.ws.onclose = () => {
+                console.warn('Connection WebSocket closed, trying to reconnect in 3s')
+                setTimeout(() => this.connect(url), 3000)
+            }
+
+            this.ws.onerror = (error) => {
+                console.error('WebSocket Error: ', error)
             }
         })
-    })
-
-    return wss
-}
-
-export function toSocketError(err: any): WebSocketError {
-    return {
-        name: err.name,
-        message: err.message,
-        stack: err.stack,
-        errno: err.errno,
-        syscall: err.syscall
     }
-}
 
-function debugGetMessage(path: string) {
-    if (debugSocket) {
-        console.log(chalk.gray(`[ Socket ] |  GET   | SUC | Message [${path}]`))
+    disconnect() {
+        if (this.isOpen) {
+            this.ws!.close()
+        }
     }
-}
 
-function debugSendMessage(path: string) {
-    if (debugSocket) {
-        console.log(chalk.gray(`[ Socket ] |  SEND  | SUC | Message [${path}]`))
+    send(path: string, data: {}) {
+        if (this.isOpen) {
+            this.ws!.send(JSON.stringify({ path, data }))
+        } else {
+            console.error('WebSocket Server connection not available')
+        }
     }
-}
 
-function debugRespondMessage(err?: WebSocketError) {
-    if (err) {
-        console.log(chalk.red(`[ Socket ] |  RES   | ERR | Internal Error ${err.stack}`))
+    request(path: string, data?: {}): Promise<any> {
+        return new Promise((resolve) => {
+            if (this.isOpen) {
+                const id = v4()
+                this.waitingRequests.set(id, resolve)
+                this.ws!.send(JSON.stringify({ path: path, id: id, data: data ?? {} }))
+            } else {
+                console.error('WebSocket Server connection not available')
+                resolve(undefined)
+            }
+        })
+    }
+
+    get isOpen(): boolean {
+        return this.ws !== null && this.ws.readyState === WebSocket.OPEN
     }
 }

@@ -11,12 +11,19 @@
 //      By Millenniar
 //
 
-import fs from "fs-extra"
+import fs from "fs"
 import path from "path"
-import { WsActions } from "./socket.js"
 import { projectsDir } from "./paths.js"
 import { Builder } from "./builder/builder.js"
 import { DataPack } from "./builder/data-pack/data-pack.js"
+import { Architect } from "./architect.js"
+import { OnMessage } from "./server.js"
+
+export let project: Project
+
+export function setProject(pj: Project) {
+    project = pj
+}
 
 /**
 * @param identifier should be no.space.with.dots
@@ -27,7 +34,6 @@ export type ProjectData = {
     name: string
     authors: string
     description: string
-    info: string
 
     architect: string
 
@@ -37,34 +43,88 @@ export type ProjectData = {
 
 export class Project {
 
-    identifier: string
+    readonly identifier: string
 
     name: string
     authors: string
     description: string
-    info: string
 
-    architect: string
+    readonly architect: Architect
 
-    type: ProjectType
+    readonly type: ProjectType
     builder: Builder | null
     dataPack: DataPack
 
-    constructor(data: ProjectData) {
+    constructor(data: ProjectData, architect: Architect) {
         this.identifier = data.identifier
         this.name = data.name
         this.authors = data.authors
         this.description = data.description
-        this.info = data.info
-        this.architect = data.architect
+        this.architect = architect
         this.type = data.type
         this.builder = null
         this.dataPack = new DataPack(data.identifier, data.name)
     }
+
+    random(): number {
+        return Math.random()
+    }
+
+    read(relPath: string): any {
+        return JSON.parse(fs.readFileSync(this.getAndCheckFilePath(relPath), 'utf8'))
+    }
+
+    readText(relPath: string): string {
+        return fs.readFileSync(this.getAndCheckFilePath(relPath), 'utf8')
+    }
+
+    write(relPath: string, json: {}) {
+        fs.writeFileSync(this.getFilePath(relPath), JSON.stringify(json))
+    }
+
+    writeText(relPath: string, text: string) {
+        fs.writeFileSync(this.getFilePath(relPath), text)
+    }
+
+    exists(relPath: string): boolean {
+        return fs.existsSync(this.getFilePath(relPath))
+    }
+
+    mkDir(relPath: string) {
+        fs.mkdirSync(this.getFilePath(relPath), { recursive: true })
+    }
+
+    readDir(relPath: string, recursive: boolean = false): string[] | Buffer[] {
+        return fs.readdirSync(this.getAndCheckFilePath(relPath), { recursive: recursive })
+    }
+
+    mapDir(relPath: string, dir: string = this.getAndCheckFilePath(relPath)): FileNode[] {
+        return fs.readdirSync(dir, { withFileTypes: true }).map((entry) => {
+            const relFilePath = path.join(relPath, entry.name)
+            return {
+                name: entry.name,
+                path: relFilePath,
+                children: entry.isDirectory() ? this.mapDir(path.join(dir, entry.name), relFilePath) : undefined
+            }
+        })
+    }
+
+    getAndCheckFilePath(relPath: string): string {
+        const filePath = this.getFilePath(relPath)
+        if (!fs.existsSync(filePath)) {
+            throw new Error(`Can not read file, it does not exist [${filePath}]`)
+        }
+        return filePath
+    }
+
+    getFilePath(relPath: string): string {
+        return path.join(projectsDir, this.identifier, relPath)
+    }
 }
 
-export enum ProjectType {
+export type FileNode = { name: string, path: string, children?: FileNode[] }
 
+export enum ProjectType {
     WORLD = 'world',
     STRUCTURE = 'structure',
     TERRAIN = 'terrain',
@@ -72,56 +132,26 @@ export enum ProjectType {
     DATA_PACK = 'data_pack'
 }
 
-export const projectSocketPaths: 
-    Map<string, (project: Project, data: any, ws: WsActions) => void>
-    = new Map([
-        
-        // File Manager
+export function registerProjectMessages(onMessage: OnMessage) {
+    onMessage.set('get', (data, ws) => {
+        ws.respond({
+            identifier: project.identifier,
+            name: project.name,
+            authors: project.authors,
+            description: project.description,
+            architect: project.architect.clientData,
+            type: project.type
+        })
+    })
 
-        ['file/read-text', (project, data, ws) => {
-            const filePath = path.join(projectsDir, project.identifier, data.path)
-            if(fs.existsSync(filePath)) {
-                ws.respond(fs.readFileSync(filePath, 'utf8'))
-            }
-        }],
-        ['file/read-json', (project, data, ws) => {
-            const filePath = path.join(projectsDir, project.identifier, data.path)
-            if(fs.existsSync(filePath)) {
-                ws.respond(JSON.parse(fs.readFileSync(filePath, 'utf8')))
-            }
-        }],
-        ['file/write-text', (project, data) => {
-            fs.writeFileSync(path.join(projectsDir, project.identifier, data.path), data.data)
-        }],
-        ['file/write-json', (project, data) => {
-            fs.writeFileSync(path.join(projectsDir, project.identifier, data.path), JSON.stringify(data.data))
-        }],
-        ['file/exists', (project, data, ws) => {
-            ws.respond(fs.existsSync(path.join(projectsDir, project.identifier, data.path)))
-        }],
-        ['file/mkdirs', (project, data) => {
-            fs.mkdirsSync(path.join(projectsDir, project.identifier, data.path))
-        }],
-        ['file/read-dir', (project, data, ws) => {
-            ws.respond(fs.readdirSync(path.join(projectsDir, project.identifier, data.path), { recursive: data.recursive }))
-        }],
-        ['file/read-all-dir', (project, data, ws) => {
-            const readDir = (dir: string, relDir: string): {} => {
-                return fs.readdirSync(dir, { withFileTypes: true }).map((entry) => {
-                    const relFilePath = path.join(relDir, entry.name)
-                    return {
-                        name: entry.name,
-                        path: relFilePath,
-                        children: entry.isDirectory() ? readDir(path.join(dir, entry.name), relFilePath) : undefined
-                    }
-                })
-            }
-            ws.respond(readDir(path.join(projectsDir, project.identifier, data.path), data.path))
-        }],
+    // File Manager
 
-        // Data Pack
-
-        ['data-pack/structure', (project, data, ws) => {
-            ws.respond(project.dataPack.getStructure(path.join(projectsDir, project.identifier, 'data_pack')))
-        }],
-    ])
+    onMessage.set('file/read-text', (data, ws) => ws.respond(project.readText(data.path)))
+    onMessage.set('file/read-json', (data, ws) => ws.respond(project.read(data.path)))
+    onMessage.set('file/write-text', (data) => project.writeText(data.path, data.data))
+    onMessage.set('file/write-json', (data) => project.write(data.path, data.data))
+    onMessage.set('file/exists', (data, ws) => ws.respond(project.exists(data.path)))
+    onMessage.set('file/mkdir', (data) => project.mkDir(data.path))
+    onMessage.set('file/read-dir', (data, ws) => ws.respond(project.readDir(data.path, data.recursive)))
+    onMessage.set('file/map-dir', (data, ws) => ws.respond(project.mapDir(data.path)))
+}

@@ -11,61 +11,44 @@
 //      By Millenniar
 //
 
+import fs from 'fs'
 import path from 'path'
-import fs from 'fs-extra'
-import { fileURLToPath } from 'url'
-import { openDatabase } from './database.js'
-import { architectsDir, dir, projectsDir } from './paths.js'
-import { loadPlugins } from './architects.js'
-
-console.log('            _____            ')
-console.log('        ___/     \\___        ')
-console.log('      |/  _.- _.-    \\|      ')
-console.log('     ||\\\\=_  \'    _=//||     ')
-console.log('     ||   \\\\\\===///   ||     ')
-console.log('     ||       |       ||     ')
-console.log('     ||       |       ||     ')
-console.log('     ||\\___   |   ___/||     ')
-console.log('           \\__|__/           ')
-console.log('                             ')
-console.log('       Beaver Architect      ')
-console.log('          Millenniar         ')
-console.log('                             ')
+import { Project, ProjectData, registerProjectMessages, setProject } from "./project.js"
+import { OnMessage, openSocketServer } from "./server.js"
+import { projectsDir } from './paths.js'
+import { loadArchitect } from './architect.js'
+import { registerSchematicMessages } from './builder/data-pack/schematic.js'
+import { registerStyleMessages } from './builder/data-pack/style.js'
 
 const log = console.log
 console.log = (...args) => {
     log('[     Server     ] ', ...args)
 }
 
-console.log('Starting...')
+console.log('Waiting data...')
 
-// Initialization
+process.on('message', async (message) => {
+    const data = JSON.parse(message as string)
+    
+    console.log(`Starting local project Server '${data.identifier}' on port ${data.port}...`)
 
-const __filename = fileURLToPath(import.meta.url)
-export const __dirname = path.dirname(__filename)
+    const projectData: ProjectData = JSON.parse(fs.readFileSync(path.join(projectsDir, data.identifier, 'project.json'), 'utf8'))
 
-if (!fs.existsSync(dir)) {
-    fs.mkdirsSync(projectsDir)
+    console.log(`Launching Architect ${projectData.architect}...`)
+    const architect = await loadArchitect(projectData.architect, projectData.identifier)
+    console.log(`Loaded Architect ${architect.name} [${projectData.architect}]`)
 
-    fs.mkdirsSync(architectsDir)
-    fs.mkdirSync(path.join(architectsDir, 'generic'))
-    fs.writeFileSync(path.join(architectsDir, 'generic', 'architect.json'), JSON.stringify({
-        identifier: 'generic',
-        name: 'Generic'
-    }, null, 4))
-    fs.copyFileSync(path.join(__dirname, 'generation', 'generic_architect_icon.svg'), path.join(architectsDir, 'generic', 'icon.svg'))
+    setProject(new Project(projectData, architect))
 
-    console.log('Generated default files and directories')
-}
+    await architect.open()
 
-// Plugins
+    const onSocketMessage: OnMessage = new Map()
+    registerProjectMessages(onSocketMessage)
+    registerStyleMessages(onSocketMessage)
+    registerSchematicMessages(onSocketMessage)
 
-loadPlugins()
+    openSocketServer(data.port, onSocketMessage)
+    console.log(`Opened local project Server '${data.identifier}' on port ${data.port}`)
 
-// Database
-
-openDatabase()
-
-// Http
-
-import './http.js'
+    process.send!('done')
+})

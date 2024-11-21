@@ -11,46 +11,75 @@
 //      By Millenniar
 //
 
-import { Pos3D } from "../world/world3D.js"
+import path from 'path'
 import { DataTypes, loadedDataPacks } from "./data-pack/data-pack.js"
-import { DataStyle } from "./data-pack/data.js"
+import { project } from '../project.js'
+import { displayName } from '../util.js'
 
 export abstract class AbstractBuilder {
 
     constructor(public name: string) { }
-
-    abstract getStructure(folder: string): any[]
 }
 
 export abstract class Builder extends AbstractBuilder {
 
-    constructor(private reference: ResourceReference<DataStyle>, name: string, public pos: Pos3D = new Pos3D(0, 0, 0)) {
-        super(name)
+    constructor(private reference: ResourceReference<Builder>) {
+        super(reference.name)
     }
 
-    getStructure(folder: string): any[] {
-        return []
-    }
-
-    get getReference(): ResourceReference<DataStyle> {
+    get getReference(): ResourceReference<Builder> {
         return this.reference
     }
 
-    set setReference(reference: ResourceReference<DataStyle>) {
+    set setReference(reference: ResourceReference<Builder>) {
         this.reference = reference
     }
+
+    save() {
+        project.write(this.reference.path, this.toJson())
+    }
+
+    abstract toJson(): {}
 }
 
-export class ResourceReference<D extends DataStyle> {
+export class ResourceReference<D extends Builder> {
 
     constructor(readonly pack: string, readonly folder: DataTypes, readonly location: string) { }
 
-    static fromString<D extends DataStyle>(string: string, folder: DataTypes): ResourceReference<D> {
-        const unpack = string.split(':')
-        return new ResourceReference<D>(unpack[0], folder, unpack[1])
+    static project<D extends Builder>(folder: DataTypes, location: string): ResourceReference<D> {
+        return new ResourceReference(project.identifier, folder, location)
     }
 
-    get(): D {
-        return loadedDataPacks.get(this.pack)!.dataStyles.get(this.folder)!.get(this.location) as D
+    static fromString<D extends Builder>(string: string, folder: DataTypes): ResourceReference<D> {
+        if(string.includes(':')) {
+            const unpack = string.split(':')
+            return new ResourceReference<D>(unpack[0], folder, unpack[1])
+        } else {
+            return new ResourceReference<D>(project.identifier, folder, string)
+        }
+    }
+
+    get path(): string {
+        if(project.identifier === this.pack) {
+            return path.join(this.folder, `${this.location}.json`)
+        } else {
+            return path.join('dependencies', this.pack, this.folder, `${this.location}.json`)
+        }
+    }
+
+    get name(): string {
+        return displayName(this.location)
+    }
+
+    toJson(): string {
+        if(project.identifier === this.pack) {
+            return this.location
+        } else {
+            return `${this.pack}:${this.location}`
+        }
+    }
+
+    toString(): string {
+        return this.toJson()
     }
 }
