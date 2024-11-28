@@ -3,6 +3,7 @@ import { OnMessage, WsActions } from "../../server.js";
 import { Size3D } from "../../world/world3D.js";
 import { Builder, ResourceReference } from "../builder.js";
 import { DataTypes } from "./data-pack.js";
+import { BasicMaterialPattern, Material, MaterialPattern, materialTypes } from "./materials.js";
 
 export type StyleUpdate = {
     save?: boolean
@@ -15,98 +16,54 @@ export type StyleUpdate = {
     updates?: {
         id: string,
         mode?: 'push' | 'delete',
-        components?: MaterialComponent[],
-        weight?: number
+        materials?: Material[]
     }[]
 }
 
 export class Style extends Builder {
 
-    materials: Record<string, Material<any>>
+    isAbstract: boolean
 
-    constructor(pack: string, location: string, materials: Record<string, Material<any>>) {
-        super(new ResourceReference(pack, DataTypes.SCHEMATICS, location))
-        this.materials = materials
+    patterns: Record<string, MaterialPattern<any>>
+
+    constructor(pack: string, location: string, isAbstract: boolean = false, patterns: Record<string, MaterialPattern<any>> = {}) {
+        super(new ResourceReference(pack, DataTypes.STYLES, location))
+        this.patterns = patterns
+        this.isAbstract = isAbstract
     }
 
     static fromRef(ref: ResourceReference<Style>): Style {
         const data = project.read(ref.path)
         return new Style(ref.pack, ref.location,
-            Object.fromEntries(data.materials.map((material: any) => [material.id, materialTypes[material.type](material.data)]))
+            data.isAbstract,
+            Object.fromEntries(data.patterns.map((material: any) => [material.id, materialTypes[material.type](material.data)]))
         )
     }
 
-    jsonMaterials(): { id: string, data: {} }[] {
-        return Object.entries(this.materials).map((entry) => {
+    jsonPatterns(): { id: string, materials: Material[] }[] {
+        return Object.entries(this.patterns).map((entry) => {
             return {
                 id: entry[0],
-                data: entry[1].toJson()
+                materials: entry[1].materials
             }
         })
     }
 
     toJson(): {} {
         return {
-            materials: this.jsonMaterials()
+            isAbstract: this.isAbstract,
+            patterns: this.jsonPatterns()
         }
     }
-}
-
-export type MaterialComponent = {
-    id: string,
-    weight: number
-}
-
-export abstract class Material<M extends MaterialComponent> {
-
-    abstract get type(): string
-
-    constructor(
-        public components: M[],
-        public weight: number
-    ) { }
-
-    abstract generatePattern(size: Size3D): string[][][]
-
-    toJson(): {} {
-        return {
-            type: this.type,
-            components: this.components,
-            weight: this.weight
-        }
-    }
-}
-
-export class BasicMaterial extends Material<MaterialComponent> {
-
-    get type(): string {
-        return 'basic'
-    }
-
-    static fromJson(json: any): BasicMaterial {
-        return new BasicMaterial(json.components, json.weight)
-    }
-
-    generatePattern(size: Size3D): string[][][] {
-        let pattern: string[][][] = []
-        for (let x = 0; x < size.width; x++) {
-            for (let y = 0; y < size.height; y++) {
-                for (let z = 0; z < size.length; z++) {
-                    pattern[x][y][z] = this.components[Math.floor(project.random() * this.components.length)].id
-                }
-            }
-        }
-        return pattern
-    }
-}
-
-const materialTypes: Record<string, (json: any) => Material<any>> = {
-    basic: BasicMaterial.fromJson
 }
 
 let opened: Map<string, Style> = new Map()
 
 export function registerStyleMessages(onMessage: OnMessage) {
+    onMessage.set('data-pack/styles/create', (data, ws) => {
+        new Style(project.identifier, data.ref).save()
+        ws.respond()
+    })
     onMessage.set('data-pack/styles/open', (data, ws) => {
         const ref = ResourceReference.fromString<Style>(data.ref, DataTypes.STYLES)
         let style = opened.get(ref.toJson())
@@ -115,13 +72,77 @@ export function registerStyleMessages(onMessage: OnMessage) {
             opened.set(ref.toJson(), style)
         }
 
+        console.log({
+            patterns: style.jsonPatterns()
+        })
         ws.respond({
-            materials: style.jsonMaterials()
+            patterns: style.jsonPatterns()
         })
     })
     onMessage.set('data-pack/styles/close', (data) => {
         opened.delete(data.ref)
     })
+
+    onMessage.set('data-pack/styles/create-pattern', (data, ws) => ensureStyle(data.ref, ws, async (style) => {
+        const pattern = new BasicMaterialPattern([])
+        if(!style.isAbstract) {
+            pattern.pushMaterial(await project.architect.connection.request('data-pack/materials/default'))
+        }
+        style.patterns[data.id] = pattern
+        return {
+            save: true,
+            updates: [{
+                id: data.id,
+                mode: 'push',
+                materials: pattern.materials
+            }]
+        }
+    }))
+    onMessage.set('data-pack/styles/add-material', (data, ws) => ensureStyle(data.ref, ws, async (style) => {
+        const pattern = style.patterns[data.pattern]
+        if(pattern.pushMaterial(data.id)) {
+            return {
+                save: true,
+                updates: [{
+                    id: data.id,
+                    materials: pattern.materials
+                }]
+            }
+        }
+        return {}
+    }))
+    onMessage.set('data-pack/styles/edit-material', (data, ws) => ensureStyle(data.ref, ws, async (style) => {
+        const pattern = style.patterns[data.pattern]
+        pattern.editMaterial(data.id, data.changes)
+        return {
+            save: true,
+            updates: [{
+                id: data.id,
+                materials: pattern.materials
+            }]
+        }
+    }))
+    onMessage.set('data-pack/styles/delete-material', (data, ws) => ensureStyle(data.ref, ws, async (style) => {
+        const pattern = style.patterns[data.pattern]
+        pattern.deleteMaterial(data.id)
+        return {
+            save: true,
+            updates: [{
+                id: data.id,
+                materials: pattern.materials
+            }]
+        }
+    }))
+    onMessage.set('data-pack/styles/delete-pattern', (data, ws) => ensureStyle(data.ref, ws, async (style) => {
+        delete style.patterns[data.id]
+        return {
+            save: true,
+            updates: [{
+                id: data.id,
+                mode: 'delete'
+            }]
+        }
+    }))
 }
 
 async function ensureStyle(ref: string, ws: WsActions, callback: (style: Style) => Promise<StyleUpdate> | Promise<void> | void) {
@@ -133,10 +154,10 @@ async function ensureStyle(ref: string, ws: WsActions, callback: (style: Style) 
                 style.save()
             }
             if (updates.client) {
-                ws.send('data-pack/schematics/update-client', { ref: ref, client: updates.client })
+                ws.send('data-pack/styles/update-client', { ref: ref, client: updates.client })
             }
             if (updates.updates) {
-                ws.sendAll('data-pack/schematics/update', { ref: ref, updates: updates.updates })
+                ws.sendAll('data-pack/styles/update', { ref: ref, updates: updates.updates })
             }
         }
     } else {

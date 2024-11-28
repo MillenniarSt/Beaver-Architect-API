@@ -24,7 +24,7 @@ export type WebSocketError = {
 export type OnMessage = Map<string, (data: any, ws: WsActions) => void>
 
 export type WsActions = {
-    respond: (data: {}, err?: WebSocketError) => void,
+    respond: (data?: {}, err?: WebSocketError) => void,
     send: (path: string, data?: {}) => void,
     sendAll: (path: string, data?: {}) => void
 }
@@ -55,7 +55,7 @@ export function openSocketServer(port: number, onMessage: OnMessage): WebSocketS
 
         const respond = (id: string | undefined | null, data: {}, err?: WebSocketError) => {
             if (id === undefined) {
-                console.log(chalk.red(`[ Socket ] |  RES   | ERR | Trying to respond without a response id`))
+                //console.log(chalk.red(`[ Socket ] |  RES   | ERR | Trying to respond without a response id`))
             } else {
                 debugRespondMessage(err)
                 ws.send(JSON.stringify({ id: id, data: data, err: err }))
@@ -70,7 +70,7 @@ export function openSocketServer(port: number, onMessage: OnMessage): WebSocketS
                 try {
                     const f = onMessage.get(message.path)
                     if(f) {
-                        f(message.data, { respond: (data, err) => respond(message.id, data, err), send, sendAll })
+                        f(message.data, { respond: (data, err) => respond(message.id, data ?? {}, err), send, sendAll })
                     } else {
                         console.log(chalk.redBright(`[ Socket ] |  GET   | ERR | Invalid Message Path : ${message.path}`))
                     }

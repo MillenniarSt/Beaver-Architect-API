@@ -13,7 +13,7 @@
 
 import { project } from "../../project.js"
 import { OnMessage, WsActions } from "../../server.js"
-import { Dimension3D } from "../../world/world3D.js"
+import { Dimension3D, Pos3D, Size3D } from "../../world/world3D.js"
 import { ResourceReference } from "../builder.js"
 import { DataTypes } from "./data-pack.js"
 import { BuilderElementArchitect } from "./../elements/architect.js"
@@ -46,6 +46,10 @@ export class Schematic extends RenderBuilder {
 let opened: Map<string, Schematic> = new Map()
 
 export function registerSchematicMessages(onMessage: OnMessage) {
+    onMessage.set('data-pack/schematics/create', (data, ws) => {
+        new Schematic(project.identifier, data.ref, new Dimension3D(Pos3D.ZERO, new Size3D(10, 10, 10))).save()
+        ws.respond()
+    })
     onMessage.set('data-pack/schematics/open', async (data, ws) => {
         const ref = ResourceReference.fromString<Schematic>(data.ref, DataTypes.SCHEMATICS)
         let schematic = opened.get(ref.toJson())

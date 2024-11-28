@@ -44,8 +44,6 @@ export class WebSocketConnection {
                         } else {
                             console.error('Invalid Response Id')
                         }
-                    } else {
-                        //this.messageSubject.next(message)
                     }
                 } catch (error) {
                     console.error('Invalid socket message', error)
