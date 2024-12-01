@@ -11,25 +11,35 @@
 //      By Millenniar
 //
 
-import { project } from "../../project.js"
+import { loadedProjects, project } from "../../project.js"
 import { OnMessage, WsActions } from "../../server.js"
 import { Dimension3D, Pos3D, Size3D } from "../../world/world3D.js"
-import { ResourceReference } from "../builder.js"
-import { DataTypes } from "./data-pack.js"
+import { ReferenceData, ResourceReference } from "../builder.js"
 import { BuilderElementArchitect } from "./../elements/architect.js"
 import { BuilderElement, BuilderElementUpdates } from "./../elements/elements.js"
 import { BuilderElementGroup } from "./../elements/group.js"
 import { RenderBuilder } from "../render-builder.js"
 
-export class Schematic extends RenderBuilder {
+export class SchematicReference extends ResourceReference<Schematic> {
 
-    constructor(pack: string, location: string, dimension: Dimension3D, elements: BuilderElement[] = []) {
-        super(new ResourceReference(pack, DataTypes.SCHEMATICS, location), dimension, elements)
+    get folder(): string {
+        return 'data_pack\\schematics'
     }
 
-    static fromRef(ref: ResourceReference<Schematic>): Schematic {
+    get(): Schematic {
+        return loadedProjects[this.pack].dataPack.builders.schematics.get(this.location)!
+    }
+}
+
+export class Schematic extends RenderBuilder {
+
+    constructor(ref: ResourceReference<Schematic>, dimension: Dimension3D, elements: BuilderElement[] = []) {
+        super(ref, dimension, elements)
+    }
+
+    static loadFromRef(ref: ResourceReference<Schematic>): Schematic {
         const data = project.read(ref.path)
-        return new Schematic(ref.pack, ref.location, 
+        return new Schematic(ref, 
             Dimension3D.fromJson(data.dimension), 
             data.elements.map((element: any) => BuilderElementGroup.getChildren[element.type](element))
         )
@@ -43,31 +53,18 @@ export class Schematic extends RenderBuilder {
     }
 }
 
-let opened: Map<string, Schematic> = new Map()
-
 export function registerSchematicMessages(onMessage: OnMessage) {
     onMessage.set('data-pack/schematics/create', (data, ws) => {
-        new Schematic(project.identifier, data.ref, new Dimension3D(Pos3D.ZERO, new Size3D(10, 10, 10))).save()
+        new Schematic(new SchematicReference(data.ref), new Dimension3D(Pos3D.ZERO, new Size3D(10, 10, 10))).save()
         ws.respond()
     })
-    onMessage.set('data-pack/schematics/open', async (data, ws) => {
-        const ref = ResourceReference.fromString<Schematic>(data.ref, DataTypes.SCHEMATICS)
-        let schematic = opened.get(ref.toJson())
-        if(!schematic) {
-            schematic = Schematic.fromRef(ref)
-            await schematic.init()
-            opened.set(ref.toJson(), schematic)
-        }
 
+    onMessage.set('data-pack/schematics/get', (data, ws) => ensureSchematic(data.ref, ws, (schematic) =>
         ws.respond({
-            tree: schematic.tree(),
-            view: schematic.view()
+            view: schematic.view(),
+            tree: schematic.tree()
         })
-    })
-    onMessage.set('data-pack/schematics/close', (data) => {
-        opened.delete(data.ref)
-    })
-
+    ))
     onMessage.set('data-pack/schematics/view', (data, ws) => ensureSchematic(data.ref, ws, (schematic) =>
         ws.respond(schematic.view())
     ))
@@ -100,8 +97,8 @@ export function registerSchematicMessages(onMessage: OnMessage) {
     }))
 }
 
-async function ensureSchematic(ref: string, ws: WsActions, callback: (schematic: Schematic) => Promise<BuilderElementUpdates> | Promise<void> | void) {
-    const schematic = opened.get(ref)
+async function ensureSchematic(ref: ReferenceData, ws: WsActions, callback: (schematic: Schematic) => Promise<BuilderElementUpdates> | Promise<void> | void) {
+    const schematic = new SchematicReference(ref).get()
     if (schematic) {
         const updates = await callback(schematic)
         if (updates) {

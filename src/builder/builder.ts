@@ -12,27 +12,38 @@
 //
 
 import path from 'path'
-import { DataTypes, loadedDataPacks } from "./data-pack/data-pack.js"
 import { project } from '../project.js'
 import { displayName } from '../util.js'
 
 export abstract class AbstractBuilder {
 
-    constructor(public name: string) { }
+    abstract get pack(): string
+
+    abstract get name(): string
+
+    async init(): Promise<void> { }
 }
 
 export abstract class Builder extends AbstractBuilder {
 
-    constructor(private reference: ResourceReference<Builder>) {
-        super(reference.name)
+    constructor(private _reference: ResourceReference<Builder>) {
+        super()
     }
 
-    get getReference(): ResourceReference<Builder> {
-        return this.reference
+    get pack(): string {
+        return this.reference.pack
+    }
+
+    get name(): string {
+        return this.reference.name
+    }
+
+    get reference(): ResourceReference<Builder> {
+        return this._reference
     }
 
     set setReference(reference: ResourceReference<Builder>) {
-        this.reference = reference
+        this._reference = reference
     }
 
     save() {
@@ -42,22 +53,32 @@ export abstract class Builder extends AbstractBuilder {
     abstract toJson(): {}
 }
 
-export class ResourceReference<D extends Builder> {
+export type ReferenceData = { pack?: string, location: string } | string
 
-    constructor(readonly pack: string, readonly folder: DataTypes, readonly location: string) { }
+export abstract class ResourceReference<B extends Builder> {
 
-    static project<D extends Builder>(folder: DataTypes, location: string): ResourceReference<D> {
-        return new ResourceReference(project.identifier, folder, location)
-    }
+    readonly pack: string
+    readonly location: string
 
-    static fromString<D extends Builder>(string: string, folder: DataTypes): ResourceReference<D> {
-        if(string.includes(':')) {
-            const unpack = string.split(':')
-            return new ResourceReference<D>(unpack[0], folder, unpack[1])
+    constructor(ref: ReferenceData) {
+        if(typeof ref === 'string') {
+            if(ref.includes(':')) {
+                const unpack = ref.split(':')
+                this.pack = unpack[0]
+                this.location = unpack[1]
+            } else {
+                this.pack = project.identifier
+                this.location = ref
+            }
         } else {
-            return new ResourceReference<D>(project.identifier, folder, string)
+            this.pack = ref.pack ?? project.identifier
+            this.location = ref.location
         }
     }
+
+    abstract get folder(): string
+
+    abstract get(): B
 
     get path(): string {
         if(project.identifier === this.pack) {

@@ -23,7 +23,12 @@ export let project: Project
 
 export function setProject(pj: Project) {
     project = pj
+    loadedProjects = Object.fromEntries([
+        [pj.identifier, pj]
+    ])
 }
+
+export let loadedProjects: Record<string, Project>
 
 /**
 * @param identifier should be no.space.with.dots
@@ -63,7 +68,11 @@ export class Project {
         this.architect = architect
         this.type = data.type
         this.builder = null
-        this.dataPack = new DataPack(data.identifier, data.name)
+        this.dataPack = new DataPack(this.identifier, data.name)
+    }
+
+    async init(on: (progress: number) => void) {
+        await this.dataPack.initChanneled(on)
     }
 
     random(): number {
@@ -142,6 +151,11 @@ export function registerProjectMessages(onMessage: OnMessage) {
             architect: project.architect.clientData,
             type: project.type
         })
+    })
+
+    onMessage.set('init', async (data, ws) => {
+        await project.init(ws.respond)
+        ws.respond('$close')
     })
 
     // File Manager

@@ -18,11 +18,11 @@ export abstract class MaterialPattern<M extends Material> {
 
     abstract buildMaterial(id: string, data: any): M
 
-    pushMaterial(id: string): boolean {
+    pushMaterial(id: string, data: any = {}): boolean {
         if(this.materials.find((material) => material.id === id)) {
             return false
         }
-        this.materials.push(this.buildMaterial(id, {}))
+        this.materials.push(this.buildMaterial(id, data))
         return true
     }
 
@@ -34,9 +34,8 @@ export abstract class MaterialPattern<M extends Material> {
         this.materials.splice(this.materials.findIndex((material) => material.id === id), 1)
     }
 
-    toJson(): {} {
+    dataJson(): {} {
         return {
-            type: this.type,
             materials: this.materials
         }
     }
@@ -48,8 +47,8 @@ export class BasicMaterialPattern extends MaterialPattern<Material> {
         return 'basic'
     }
 
-    static fromJson(json: any): BasicMaterialPattern {
-        return new BasicMaterialPattern(json.materials)
+    static fromData(data: any): BasicMaterialPattern {
+        return new BasicMaterialPattern(data.materials)
     }
 
     generatePattern(size: Size3D): string[][][] {
@@ -69,6 +68,6 @@ export class BasicMaterialPattern extends MaterialPattern<Material> {
     }
 }
 
-export const materialTypes: Record<string, (json: any) => MaterialPattern<any>> = {
-    basic: BasicMaterialPattern.fromJson
+export const materialTypes: Record<string, (data: any) => MaterialPattern<any>> = {
+    basic: BasicMaterialPattern.fromData
 }
