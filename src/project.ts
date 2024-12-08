@@ -17,7 +17,7 @@ import { projectsDir } from "./paths.js"
 import { Builder } from "./builder/builder.js"
 import { DataPack } from "./builder/data-pack/data-pack.js"
 import { Architect } from "./architect.js"
-import { OnMessage } from "./server.js"
+import { OnMessage, Server } from "./server.js"
 
 export let project: Project
 
@@ -59,6 +59,8 @@ export class Project {
     readonly type: ProjectType
     builder: Builder | null
     dataPack: DataPack
+
+    readonly server = new Server()
 
     constructor(data: ProjectData, architect: Architect) {
         this.identifier = data.identifier

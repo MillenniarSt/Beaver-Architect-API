@@ -2,7 +2,7 @@ import { ChildProcess, fork } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { architectsDir } from './paths.js';
-import { WebSocketConnection } from './socket.js';
+import { Connection, OnMessage } from './server.js';
 
 export class Architect {
 
@@ -12,7 +12,7 @@ export class Architect {
 
     settings = new Map<string, any>()
 
-    readonly connection = new WebSocketConnection()
+    readonly connection = new Connection()
 
     constructor(
         private process: ChildProcess,
@@ -24,8 +24,9 @@ export class Architect {
         this.port = port
     }
 
-    async open() {
-        await this.connection.connectLocal(this.port)
+    async open(onMessage: OnMessage) {
+        await this.connection.connectLocal(this.port, onMessage)
+        await this.connection.request('define', { side: 'server' })
     }
 
     get icon(): string {

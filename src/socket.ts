@@ -31,6 +31,7 @@ export class WebSocketConnection {
             this.ws.onmessage = (event) => {
                 try {
                     const message = JSON.parse(String(event.data))
+                    console.log('message', message)
 
                     if (message.err) {
                         console.error('Socket Error:', message.err)

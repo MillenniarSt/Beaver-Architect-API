@@ -1,4 +1,5 @@
 import { project } from "../../project.js"
+import { FormDataOutput } from "../../util.js"
 import { Size3D } from "../../world/world3D.js"
 
 export type Material = {
@@ -18,20 +19,18 @@ export abstract class MaterialPattern<M extends Material> {
 
     abstract buildMaterial(id: string, data: any): M
 
-    pushMaterial(id: string, data: any = {}): boolean {
-        if(this.materials.find((material) => material.id === id)) {
-            return false
-        }
+    abstract updateMaterial(material: M, changes: any): M
+
+    pushMaterial(id: string, data: any = {}) {
         this.materials.push(this.buildMaterial(id, data))
-        return true
     }
 
-    editMaterial(id: string, changes: any) {
-        this.materials[this.materials.findIndex((material) => material.id === id)] = this.buildMaterial(id, changes)
+    editMaterial(index: number, changes: FormDataOutput) {
+        this.materials[index] = this.updateMaterial(this.materials[index], changes)
     }
 
-    deleteMaterial(id: string) {
-        this.materials.splice(this.materials.findIndex((material) => material.id === id), 1)
+    deleteMaterial(index: number) {
+        this.materials.splice(index, 1)
     }
 
     dataJson(): {} {
@@ -65,6 +64,10 @@ export class BasicMaterialPattern extends MaterialPattern<Material> {
 
     buildMaterial(id: string, data: any): Material {
         return { id: id, weight: data.weight ?? 1}
+    }
+
+    updateMaterial(material: Material, changes: any): Material {
+        return { id: changes.id ?? material.id, weight: changes.weight ?? material.weight }
     }
 }
 

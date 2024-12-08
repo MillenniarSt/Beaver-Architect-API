@@ -26,7 +26,7 @@ export abstract class AbstractBuilder {
 
 export abstract class Builder extends AbstractBuilder {
 
-    constructor(private _reference: ResourceReference<Builder>) {
+    constructor(protected _reference: ResourceReference<Builder>) {
         super()
     }
 
@@ -80,6 +80,10 @@ export abstract class ResourceReference<B extends Builder> {
 
     abstract get(): B
 
+    get relativePack(): string | undefined {
+        return this.pack === project.identifier ? undefined : this.pack
+    }
+
     get path(): string {
         if(project.identifier === this.pack) {
             return path.join(this.folder, `${this.location}.json`)
@@ -90,6 +94,10 @@ export abstract class ResourceReference<B extends Builder> {
 
     get name(): string {
         return displayName(this.location)
+    }
+
+    equals(resource: ResourceReference<B>): boolean {
+        return this.pack === resource.pack && this.location === resource.location
     }
 
     toJson(): string {

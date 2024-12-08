@@ -12,13 +12,13 @@
 //
 
 import { loadedProjects, project } from "../../project.js"
-import { OnMessage, WsActions } from "../../server.js"
 import { Dimension3D, Pos3D, Size3D } from "../../world/world3D.js"
 import { ReferenceData, ResourceReference } from "../builder.js"
 import { BuilderElementArchitect } from "./../elements/architect.js"
 import { BuilderElement, BuilderElementUpdates } from "./../elements/elements.js"
 import { BuilderElementGroup } from "./../elements/group.js"
 import { RenderBuilder } from "../render-builder.js"
+import { ServerOnMessage, WsServerActions } from "../../server.js"
 
 export class SchematicReference extends ResourceReference<Schematic> {
 
@@ -53,7 +53,7 @@ export class Schematic extends RenderBuilder {
     }
 }
 
-export function registerSchematicMessages(onMessage: OnMessage) {
+export function registerSchematicMessages(onMessage: ServerOnMessage) {
     onMessage.set('data-pack/schematics/create', (data, ws) => {
         new Schematic(new SchematicReference(data.ref), new Dimension3D(Pos3D.ZERO, new Size3D(10, 10, 10))).save()
         ws.respond()
@@ -97,7 +97,7 @@ export function registerSchematicMessages(onMessage: OnMessage) {
     }))
 }
 
-async function ensureSchematic(ref: ReferenceData, ws: WsActions, callback: (schematic: Schematic) => Promise<BuilderElementUpdates> | Promise<void> | void) {
+async function ensureSchematic(ref: ReferenceData, ws: WsServerActions, callback: (schematic: Schematic) => Promise<BuilderElementUpdates> | Promise<void> | void) {
     const schematic = new SchematicReference(ref).get()
     if (schematic) {
         const updates = await callback(schematic)
