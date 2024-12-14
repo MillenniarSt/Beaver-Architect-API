@@ -16,8 +16,8 @@ import path from "path"
 import { projectsDir } from "./paths.js"
 import { Builder } from "./builder/builder.js"
 import { DataPack } from "./builder/data-pack/data-pack.js"
-import { Architect } from "./architect.js"
-import { OnMessage, Server } from "./server.js"
+import { Architect } from "./connection/architect.js"
+import { OnMessage, Server } from "./connection/server.js"
 
 export let project: Project
 
@@ -144,8 +144,8 @@ export enum ProjectType {
 }
 
 export function registerProjectMessages(onMessage: OnMessage) {
-    onMessage.set('get', (data, ws) => {
-        ws.respond({
+    onMessage.set('get', (data, client, id) => {
+        client.respond(id, {
             identifier: project.identifier,
             name: project.name,
             authors: project.authors,
@@ -155,19 +155,19 @@ export function registerProjectMessages(onMessage: OnMessage) {
         })
     })
 
-    onMessage.set('init', async (data, ws) => {
-        await project.init(ws.respond)
-        ws.respond('$close')
+    onMessage.set('init', async (data, client, id) => {
+        await project.init((progress) => client.respond(id, progress))
+        client.respond(id, '$close')
     })
 
     // File Manager
 
-    onMessage.set('file/read-text', (data, ws) => ws.respond(project.readText(data.path)))
-    onMessage.set('file/read-json', (data, ws) => ws.respond(project.read(data.path)))
+    onMessage.set('file/read-text', (data, client, id) => client.respond(id, project.readText(data.path)))
+    onMessage.set('file/read-json', (data, client, id) => client.respond(id, project.read(data.path)))
     onMessage.set('file/write-text', (data) => project.writeText(data.path, data.data))
     onMessage.set('file/write-json', (data) => project.write(data.path, data.data))
-    onMessage.set('file/exists', (data, ws) => ws.respond(project.exists(data.path)))
+    onMessage.set('file/exists', (data, client, id) => client.respond(id, project.exists(data.path)))
     onMessage.set('file/mkdir', (data) => project.mkDir(data.path))
-    onMessage.set('file/read-dir', (data, ws) => ws.respond(project.readDir(data.path, data.recursive)))
-    onMessage.set('file/map-dir', (data, ws) => ws.respond(project.mapDir(data.path)))
+    onMessage.set('file/read-dir', (data, client, id) => client.respond(id, project.readDir(data.path, data.recursive)))
+    onMessage.set('file/map-dir', (data, client, id) => client.respond(id, project.mapDir(data.path)))
 }

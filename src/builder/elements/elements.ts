@@ -1,24 +1,13 @@
+import { BaseUpdate, CheckUpdate, TreeUpdate } from "../../connection/directives/update.js"
 import { FormDataInput, FormDataOutput, SceneObject, SizeLimitation } from "../../util.js"
 import { Dimension3D, Pos3D, Size3D } from "../../world/world3D.js"
 
-export type BuilderElementUpdates = {
-    save?: boolean,
-    client?: {
-        editGraph?: EditGraph,
-        form?: FormDataInput[]
-    }
-    updates?: BuilderElementUpdate[]
-}
-
 export type BuilderElementUpdate = {
-    id: string,
-    mode?: 'push' | 'delete',
-    parent?: string | null
-
-    view?: ElementView,
-    node?: BuilderElementNode,
-    editGraph?: boolean,
-    form?: boolean
+    parent?: BaseUpdate<string | null>
+    view?: BaseUpdate<ElementView>,
+    node?: BaseUpdate<BuilderElementNode>,
+    editGraph?: CheckUpdate,
+    form?: CheckUpdate
 }
 
 export type ElementView = {
@@ -65,9 +54,9 @@ export abstract class BuilderElement {
     abstract editGraph(): Promise<EditGraph>
 
 
-    abstract setDimension(dimension: Dimension3D): Promise<BuilderElementUpdate[]>
+    abstract setDimension(dimension: Dimension3D): Promise<TreeUpdate<BuilderElementUpdate>>
 
-    abstract updateForm(updates: FormDataOutput): Promise<BuilderElementUpdate[]>
+    abstract updateForm(updates: FormDataOutput): Promise<TreeUpdate<BuilderElementUpdate>>
 
 
     abstract toJson(): {}

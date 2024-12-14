@@ -1,8 +1,10 @@
 import { v4 } from "uuid"
 import { FormDataInput, FormDataOutput, RelativeNumber, SizeLimitation } from "../../util.js"
 import { Dimension3D, Pos3D, Size3D } from "../../world/world3D.js"
-import { Anchor, BuilderElement, BuilderElementNode, BuilderElementUpdate, BuilderElementUpdates, EditGraph, ElementView } from "./elements.js"
+import { Anchor, BuilderElement, BuilderElementNode, BuilderElementUpdate, EditGraph, ElementView } from "./elements.js"
 import { BuilderElementArchitect } from "./architect.js"
+import { Director } from "../../connection/director.js"
+import { BaseUpdate, CheckUpdate, TreeUpdate } from "../../connection/directives/update.js"
 
 export class BuilderElementGroup extends BuilderElement {
 
@@ -39,7 +41,7 @@ export class BuilderElementGroup extends BuilderElement {
     }
 
     async init(): Promise<void> {
-        for(let i = 0; i < this.children.length; i++) {
+        for (let i = 0; i < this.children.length; i++) {
             await this.children[i].init()
         }
     }
@@ -48,19 +50,21 @@ export class BuilderElementGroup extends BuilderElement {
         return this.dimension
     }
 
-    async setDimension(dimension: Dimension3D): Promise<BuilderElementUpdate[]> {
-        if(this.dimension.equals(dimension)) {
-            return []
+    async setDimension(dimension: Dimension3D): Promise<TreeUpdate<BuilderElementUpdate>> {
+        if (this.dimension.equals(dimension)) {
+            return new TreeUpdate([])
         }
 
         this.flex.update(this.dimension, dimension, this.children)
         this.dimension = dimension
-        return [{
+        return new TreeUpdate([{
             id: this.id,
-            view: this.view(),
-            editGraph: true,
-            form: true
-        }]
+            data: {
+                view: new BaseUpdate(this.view()),
+                editGraph: new CheckUpdate(),
+                form: new CheckUpdate()
+            }
+        }])
     }
 
     node(): BuilderElementNode {
@@ -106,7 +110,7 @@ export class BuilderElementGroup extends BuilderElement {
         }
     }
 
-    async updateForm(updates: FormDataOutput): Promise<BuilderElementUpdate[]> {
+    async updateForm(updates: FormDataOutput): Promise<TreeUpdate<BuilderElementUpdate>> {
         const dimensionUpdates = await this.setDimension(new Dimension3D(
             updates.pos ? Pos3D.fromJson(updates.pos) : this.dimension.pos,
             updates.size ? Size3D.fromJson(updates.size) : this.dimension.size
@@ -212,9 +216,9 @@ export class FlexGroup {
 }
 
 export enum FlexGroupAlignment {
-    LEFT = 'left', 
+    LEFT = 'left',
     CENTER = 'center',
-    RIGHT = 'right', 
+    RIGHT = 'right',
     FILL = 'fill'
 }
 
@@ -236,8 +240,8 @@ export class FlexGroupAxis {
     ) { }
 
     static fromJson(json: any): FlexGroupAxis {
-        return new FlexGroupAxis(json.alignment, json.repeat, 
-            json.gap ? RelativeNumber.fromJson(json.gap) : undefined, 
+        return new FlexGroupAxis(json.alignment, json.repeat,
+            json.gap ? RelativeNumber.fromJson(json.gap) : undefined,
             [RelativeNumber.fromJson(json.padding[0]), RelativeNumber.fromJson(json.padding[1])]
         )
     }

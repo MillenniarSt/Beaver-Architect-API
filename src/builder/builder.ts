@@ -14,6 +14,8 @@
 import path from 'path'
 import { project } from '../project.js'
 import { displayName } from '../util.js'
+import { Director } from '../connection/director.js'
+import { SaveDirective } from '../connection/directives/save.js'
 
 export abstract class AbstractBuilder {
 
@@ -42,7 +44,7 @@ export abstract class Builder extends AbstractBuilder {
         return this._reference
     }
 
-    set setReference(reference: ResourceReference<Builder>) {
+    setReference(director: Director, reference: ResourceReference<Builder>) {
         this._reference = reference
     }
 
@@ -51,6 +53,12 @@ export abstract class Builder extends AbstractBuilder {
     }
 
     abstract toJson(): {}
+
+    saveDirector(director: Director) {
+        director.addDirective(new SaveDirective(this.reference))
+    }
+
+    abstract update(director: Director, update: {}): void
 }
 
 export type ReferenceData = { pack?: string, location: string } | string
@@ -78,7 +86,16 @@ export abstract class ResourceReference<B extends Builder> {
 
     abstract get folder(): string
 
-    abstract get(): B
+    protected abstract _get(): B | undefined
+
+    get(): B {
+        const builder = this._get()
+        if(builder) {
+            return builder
+        } else {
+            throw new Error(`Can not access to Builder '${this.toString()}', it not exists or it is not registered`)
+        }
+    }
 
     get relativePack(): string | undefined {
         return this.pack === project.identifier ? undefined : this.pack

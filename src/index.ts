@@ -16,10 +16,10 @@ import path from 'path'
 import chalk from 'chalk'
 import { project, Project, ProjectData, registerProjectMessages, setProject } from "./project.js"
 import { projectsDir } from './paths.js'
-import { loadArchitect } from './architect.js'
+import { loadArchitect } from './connection/architect.js'
 import { registerSchematicMessages } from './builder/data-pack/schematic.js'
 import { registerStyleMessages } from './builder/data-pack/style.js'
-import { OnMessage, ServerOnMessage } from './server.js'
+import { OnMessage, ServerOnMessage } from './connection/server.js'
 
 const log = console.log
 console.log = (...args) => {
@@ -68,11 +68,6 @@ process.on('message', async (message) => {
 
     project.server.open(data.port, onServerMessage)
     console.info(`Opened local project Server '${data.identifier}' on port ${data.port}`)
-
-    const onMessage: OnMessage = new Map()
-    registerProjectMessages(onMessage)
-
-    await architect.open(onMessage)
 
     process.send!('done')
 })
