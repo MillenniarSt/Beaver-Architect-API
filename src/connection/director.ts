@@ -1,30 +1,25 @@
 import { Directive } from "./directives/directive.js";
-import { Side } from "./sides.js";
+import { ServerOnMessage } from "./server.js";
+import { ClientSide, Side } from "./sides.js";
 
-export class Director {
+export abstract class Director<S extends Side> {
 
-    protected directives: Map<string, Directive> = new Map()
+    protected readonly directives: Map<string, Directive> = new Map()
 
-    readonly sender: Side
+    readonly sender: S
 
-    constructor(sender: Side) {
+    constructor(sender: S) {
         this.sender = sender
     }
 
-    public static async execute(side: Side, exe: (director: Director) => Promise<void>) {
-        const director = new Director(side)
-        await exe(director)
-        director.send()
-    }
-
     clear() {
-        this.directives = new Map()
+        this.directives.clear()
     }
 
-    addDirective(directive: Directive) {
+    async addDirective(directive: Directive) {
         const existing = this.directives.get(directive.path)
         if(existing) {
-            existing.override(directive)
+            await existing.override(directive)
         } else {
             this.directives.set(directive.path, directive)
         }
@@ -35,4 +30,43 @@ export class Director {
 
         this.clear()
     }
+}
+
+export type ClientDirectorExe = (director: ClientDirector) => Promise<void>
+
+export class ClientDirector extends Director<ClientSide> {
+
+    readonly exe: ClientDirectorExe
+    readonly undo: ClientDirectorExe
+
+    constructor(sender: ClientSide, exe: ClientDirectorExe, undo: ClientDirectorExe) {
+        super(sender)
+        this.exe = exe
+        this.undo = undo
+    }
+
+    public static async execute(side: ClientSide, exe: ClientDirectorExe, undo: ClientDirectorExe = async (f) => {}) {
+        const director = new ClientDirector(side, exe, undo)
+        await director.do()
+        director.send()
+    }
+
+    do(): Promise<void> {
+        this.sender.do({
+            undo: async () => {
+                await this.undo(this)
+                this.send()
+            },
+            redo: async () => {
+                await this.exe(this)
+                this.send()
+            }
+        })
+        return this.exe(this)
+    }
+}
+
+export function registerDirectorMessages(onMessage: ServerOnMessage) {
+    onMessage.set('client/undo', (data, client) => client.undo())
+    onMessage.set('client/redo', (data, client) => client.redo())
 }

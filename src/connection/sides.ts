@@ -1,6 +1,7 @@
 import { v4 } from "uuid"
 import { WebSocket } from "ws"
 import { WebSocketError, WebSocketResponse } from "./server.js"
+import { ClientDirector } from "./director.js"
 
 export abstract class Side {
 
@@ -10,11 +11,11 @@ export abstract class Side {
         readonly socket: WebSocket
     ) { }
 
-    send(path: string, data?: {}) {
+    send(path: string, data?: {} | null) {
         this.socket.send(JSON.stringify({ path, data: data ?? {} }))
     }
 
-    request(path: string, data?: {}): Promise<any> {
+    request(path: string, data?: {} | null): Promise<any> {
         return new Promise((resolve) => {
             const id = v4()
             this.waitingRequests.set(id, resolve)
@@ -41,9 +42,43 @@ export abstract class Side {
     }
 }
 
+export type ClientHistoryDo = {
+    undo: () => Promise<void>
+    redo: () => Promise<void>
+}
+
 export class ClientSide extends Side {
 
-    
+    protected history: ClientHistoryDo[] = []
+    protected historyIndex = 0
+
+    do(update: ClientHistoryDo) {
+        if (this.historyIndex < this.history.length) {
+            this.history = this.history.slice(0, this.historyIndex + 1)
+        }
+        this.history.push(update)
+        this.historyIndex++
+
+        console.debug(this.historyIndex, '-', this.history.length)
+    }
+
+    async undo() {
+        if (this.historyIndex > 0) {
+            this.historyIndex--
+            await this.history[this.historyIndex].undo()
+        }
+
+        console.debug(this.historyIndex, '-', this.history.length)
+    }
+
+    async redo() {
+        if (this.historyIndex < this.history.length) {
+            await this.history[this.historyIndex].redo()
+            this.historyIndex++
+        }
+
+        console.debug(this.historyIndex, '-', this.history.length)
+    }
 }
 
 export class ArchitectSide extends Side {

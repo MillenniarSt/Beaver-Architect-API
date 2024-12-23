@@ -4,5 +4,5 @@ export abstract class Directive {
 
     abstract send(): void
 
-    abstract override(directive: Directive): void
+    abstract override(directive: Directive): Promise<void>
 }

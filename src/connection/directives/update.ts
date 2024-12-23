@@ -1,220 +1,222 @@
 import { ResourceReference } from "../../builder/builder.js";
-import { project } from "../../project.js";
+import { server } from "../server.js";
 import { Directive } from "./directive.js";
 
-export class UpdateDirective<U extends Update> extends Directive {
+export class UpdateDirective<T> extends Directive {
 
     constructor(
         readonly path: string,
-        readonly update: U
+        readonly update: Update<T>,
+        protected data?: T
     ) {
         super()
     }
 
-    send(): void {
-        project.server.sendAll(this.path, this.toJson())
+    send() {
+        server.sendAll(this.path, this.data)
     }
 
-    override(directive: UpdateDirective<U>): void {
-        this.update.override(directive.update)
-    }
-
-    toJson(): {} {
-        return this.update.toJson() ?? {}
+    async override(directive: UpdateDirective<T>): Promise<void> {
+        this.data = await this.update.update(this.data, directive.data)
     }
 }
 
-export type BuilderDirectiveValue<U extends Update> = {
+export type BuilderDirectiveValue<T> = {
     ref: ResourceReference<any>
-    update: U
+    update?: T
 }
 
-export class BuilderDirective<U extends Update> extends Directive {
+export class BuilderDirective<T> extends Directive {
 
     constructor(
         readonly path: string,
-        readonly builders: BuilderDirectiveValue<U>[]
+        readonly update: Update<T>,
+        readonly builders: BuilderDirectiveValue<T>[]
     ) {
         super()
     }
 
-    static update<U extends Update>(path: string, ref: ResourceReference<any>, update: U): BuilderDirective<U> {
-        return new BuilderDirective(path, [{ ref: ref, update: update }])
+    static update<T>(path: string, ref: ResourceReference<any>, update: Update<T>, data?: T): BuilderDirective<T> {
+        return new BuilderDirective(path, update, [{ ref: ref, update: data }])
     }
 
-    send(): void {
-        project.server.sendAll(this.path, this.toJson())
+    send() {
+        server.sendAll(this.path, this.toJson())
     }
 
-    override(directive: BuilderDirective<U>): void {
-        directive.builders.forEach((builder) => {
+    async override(directive: BuilderDirective<T>): Promise<void> {
+        for(let i = 0; i < directive.builders.length; i++) {
+            const builder = directive.builders[i]
             const existing = this.builders.find((b) => b.ref.equals(builder.ref))
             if (existing) {
-                existing.update.override(builder.update)
+                existing.update = this.update.updateState(existing.update, builder.update)
             } else {
                 this.builders.push(builder)
             }
-        })
+        }
     }
 
     toJson(): {} {
         return this.builders.map((builder) => {
             return {
                 ref: builder.ref.toJson(),
-                update: builder.update.toJson()
+                update: builder.update
             }
         })
     }
 }
 
-export abstract class Update {
+export type UpdateListener<T> = (state: T) => Promise<void>
 
-    abstract override(update: Update): void
-
-    abstract toJson(): {} | null | undefined
-}
-
-export class BaseUpdate<T> extends Update {
+export abstract class Update<T> {
 
     constructor(
-        public value: T
+        public listeners: UpdateListener<Exclude<T, undefined>>[] = []
+    ) { }
+
+    async update(state: T | undefined, newState: T | undefined): Promise<T | undefined> {
+        const updateState = this.updateState(state, newState)
+        if(updateState != undefined) {
+            for(let i = 0; i < this.listeners.length; i++) {
+                await this.listeners[i](updateState as Exclude<T, undefined>)
+            }
+        }
+        return updateState
+    }
+
+    abstract updateState(state: T | undefined, newState: T | undefined): T | undefined
+}
+
+export class VarUpdate<T> extends Update<T> {
+
+    updateState(state: T | undefined, newState: T | undefined): T | undefined {
+        if (newState != undefined) {
+            return newState
+        }
+    }
+}
+
+export class CheckUpdate extends Update<boolean> {
+
+    updateState(state: boolean | undefined, newState: boolean | undefined): boolean | undefined {
+        return newState ?? state
+    }
+}
+
+export class VarConditionedUpdate<T> extends Update<T> {
+
+    constructor(
+        readonly condition: (state: T | undefined, newState: T | undefined) => T | undefined
     ) {
         super()
     }
 
-    override(update: BaseUpdate<T>): void {
-        this.value = update.value
-    }
-
-    toJson(): {} | null | undefined {
-        return this.value
-    }
-}
-
-export class CheckUpdate extends BaseUpdate<boolean> {
-
-    constructor(
-        value?: boolean
-    ) {
-        super(value ?? true)
-    }
-
-    override(update: BaseUpdate<boolean>): void {
-        if (update.value) {
-            this.value = update.value
+    updateState(state: T | undefined, newState: T | undefined): T | undefined {
+        if (newState != undefined && this.condition(state, newState)) {
+            return newState
         }
     }
 }
 
-export class BaseConditionedUpdate<T> extends BaseUpdate<T> {
+export class ArrayUpdate<T> extends Update<T[]> {
 
-    constructor(
-        value: T,
-        readonly condition: (update: BaseUpdate<T>) => boolean
-    ) {
-        super(value)
-    }
-
-    override(update: BaseUpdate<T>): void {
-        if (this.condition(update)) {
-            this.value = update.value
+    updateState(state: T[] | undefined, newState: T[] | undefined): T[] | undefined {
+        if (state != undefined) {
+            state.push(...newState ?? [])
+        } else {
+            return newState
         }
     }
 }
 
-export class ArrayUpdate<T> extends BaseUpdate<T[]> {
+export class ObjectUpdate<T extends Record<string, {} | null | undefined>> extends Update<T> {
 
-    override(update: ArrayUpdate<T>): void {
-        this.value.push(...update.value)
-    }
-}
-
-export class ObjectUpdate<T extends Record<string, Update | undefined>> extends BaseUpdate<T> {
+    readonly updates: [string, Update<any>][]
 
     constructor(
-        value: T
+        updates: { [K in keyof T]: Update<T[K]> }
     ) {
-        super(value)
+        super()
+        this.updates = Object.entries(updates)
     }
 
-    override(update: ObjectUpdate<T>): void {
-        Object.entries(update.value).forEach((entry) => {
-            if (entry[1]) {
-                const existing = this.value[entry[0]]
-                if (existing) {
-                    existing.override(entry[1])
-                } else {
-                    (this.value as Record<string, Update>)[entry[0]] = entry[1]
-                }
+    updateState(state: T | undefined, newState: T | undefined): T | undefined {
+        if (newState) {
+            if (!state) {
+                return newState
             }
-        })
-    }
 
-    toJson(): {} | null | undefined {
-        return Object.fromEntries(Object.entries(this.value).map((entry) => [entry[0], entry[1]?.toJson()]))
+            return Object.fromEntries(this.updates.map((entry) => [entry[0], entry[1].updateState(state[entry[0]], newState[entry[0]])])) as T
+        }
+        return state
     }
 }
 
-export type ListUpdateObject<T> = {
-    id: string,
-    mode?: 'push' | 'delete',
+export type ListUpdateObject<D> = {
+    id: string
+    mode?: 'push' | 'delete'
+    data?: D
+}
+
+export abstract class AbstractListUpdate<D, T extends ListUpdateObject<D>> extends Update<T[]> {
+
+    constructor(
+        readonly objectUpdate: Update<D>,
+        listeners: UpdateListener<T[]>[] = []
+    ) {
+        super(listeners)
+    }
+
+    updateState(state: T[] | undefined, newState: T[] | undefined): T[] | undefined {
+        if(newState) {
+            if(!state) {
+                return newState
+            }
+
+            newState.forEach((object) => {
+                const index = state.findIndex((obj) => obj.id === object.id)
+                if (index < 0) {
+                    state.push(object)
+                } else {
+                    if (state[index].mode === 'push' && object.mode !== 'delete') {
+                        object.mode = 'push'
+                    }
+                    state[index] = this.set(state[index], object)
+                }
+            })
+        }
+        return state
+    }
+
+    abstract set(state: T, object: T): T
+}
+
+export class ListUpdate<T> extends AbstractListUpdate<T, ListUpdateObject<T>> {
+
+    set(state: ListUpdateObject<T>, object: ListUpdateObject<T>): ListUpdateObject<T> {
+        return {
+            id: object.id,
+            mode: object.mode,
+            data: this.objectUpdate.updateState(state.data, object.data)
+        }
+    }
+}
+
+export type TreeUpdateNode<T> = {
+    id: string
+    mode?: 'push' | 'delete'
+    children?: TreeUpdateNode<T>[]
     data?: T
 }
 
-export class ListUpdate<T> extends BaseUpdate<ListUpdateObject<T>[]> {
+export class TreeUpdate<T> extends AbstractListUpdate<T, TreeUpdateNode<T>> {
 
-    override(update: ListUpdate<T>): void {
-        update.value.forEach((v1) => {
-            const index = this.value.findIndex((v2) => v2.id === v1.id)
-            if (index < 0) {
-                this.value.push(v1)
-            } else {
-                if (this.value[index].mode === 'push' && v1.mode !== 'delete') {
-                    v1.mode = 'push'
-                }
-                this.set(index, v1)
-            }
-        })
-    }
-
-    protected set(index: number, v: ListUpdateObject<T>) {
-        this.value[index] = v
-    }
-}
-
-export class TreeUpdate<T extends Record<string, Update | undefined>> extends ListUpdate<T> {
-
-    protected set(index: number, v: ListUpdateObject<T>) {
-        if (v.mode === 'delete') {
-            this.value[index] = v
-        } else {
-            this.value[index] = {
-                id: v.id,
-                mode: v.mode,
-                data: Object.fromEntries(Object.entries(v.data ?? {}).map((entry) => {
-                    this.value[index].data = {} as T
-                    if (entry[1]) {
-                        const existing = this.value[index].data[entry[0]]
-                        if (existing) {
-                            existing.override(entry[1])
-                            return [entry[0], existing]
-                        } else {
-                            return [entry[0], entry[1]]
-                        }
-                    }
-                    return [entry[0], this.value[index].data[entry[0]]]
-                })) as T
-            }
+    set(state: TreeUpdateNode<T>, object: TreeUpdateNode<T>): TreeUpdateNode<T> {
+        return {
+            id: object.id,
+            mode: object.mode,
+            children: this.updateState(state.children, object.children),
+            data: this.objectUpdate.updateState(state.data, object.data)
         }
-    }
-
-    toJson(): ListUpdateObject<{}>[] {
-        return this.value.map((v) => {
-            return {
-                id: v.id,
-                mode: v.mode,
-                data: v.data ? Object.fromEntries(Object.entries(v.data).map((entry) => [entry[0], entry[1]?.toJson()])) : undefined
-            }
-        })
     }
 }

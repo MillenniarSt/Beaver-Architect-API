@@ -60,8 +60,6 @@ export class Project {
     builder: Builder | null
     dataPack: DataPack
 
-    readonly server = new Server()
-
     constructor(data: ProjectData, architect: Architect) {
         this.identifier = data.identifier
         this.name = data.name

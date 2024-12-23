@@ -1,9 +1,15 @@
-import { BaseUpdate, TreeUpdate } from "../connection/directives/update.js"
-import { Director } from "../connection/director.js"
+import { TreeUpdate } from "../connection/directives/update.js"
+import { ClientDirector } from "../connection/director.js"
 import { FormDataInput, FormDataOutput, MappedTree } from "../util.js"
 import { Dimension3D } from "../world/world3D.js"
 import { Builder, ResourceReference } from "./builder.js"
 import { BuilderElement, BuilderElementNode, BuilderElementUpdate, EditGraph, ElementView } from "./elements/elements.js"
+
+export type BuilderElementsUpdate = {
+    id: string,
+    mode?: 'push' | 'delete',
+    data?: BuilderElementUpdate
+}
 
 export abstract class RenderBuilder extends Builder {
 
@@ -45,22 +51,32 @@ export abstract class RenderBuilder extends Builder {
         }
     }
 
-    async setDimension(director: Director, dimension: Dimension3D): Promise<void> {
+    async setDimension(director: ClientDirector, dimension: Dimension3D): Promise<void> {
         for (let i = 0; i < this.elements.nodes.length; i++) {
             const element = this.elements.nodes[i]
-            this.update(director, { elements: await element.setDimension(element.anchor.update(this.dimension, dimension, element.getDimension())) })
+            this.update(director, {
+                elements: [{
+                    id: element.id,
+                    data: await element.setDimension(element.anchor.update(this.dimension, dimension, element.getDimension()))
+                }]
+            })
         }
         this.dimension = dimension
 
         this.saveDirector(director)
     }
 
-    async updateForm(director: Director, ids: string[], updates: FormDataOutput): Promise<void> {
-        this.saveDirector(director)
-        this.update(director, { elements: await this.elements.getById(ids[0]).updateForm(updates) })
+    async updateForm(director: ClientDirector, ids: string[], updates: FormDataOutput): Promise<void> {
+        if (ids.length === 1) {
+            this.saveDirector(director)
+            this.update(director, { elements: [{
+                id: ids[0],
+                data: await this.elements.getById(ids[0]).updateForm(updates)
+            }] })
+        }
     }
 
-    async pushElements(director: Director, elements: BuilderElement[], parent?: string): Promise<void> {
+    async pushElements(director: ClientDirector, elements: BuilderElement[], parent?: string): Promise<void> {
         for (let i = 0; i < elements.length; i++) {
             await elements[i].init()
         }
@@ -69,64 +85,64 @@ export abstract class RenderBuilder extends Builder {
         if (parent) {
             const parentElement = this.elements.getById(parent)
             this.update(director, {
-                elements: new TreeUpdate([
-                    {
-                        id: parent,
-                        data: {
-                            view: new BaseUpdate(parentElement.view()),
-                            node: new BaseUpdate(parentElement.node())
-                        }
+                elements: [{
+                    id: parent,
+                    data: {
+                        view: parentElement.view(),
+                        node: parentElement.node()
                     }
-                ])
+                }]
             })
         } else {
             this.update(director, {
-                elements: new TreeUpdate(elements.map((element) => {
+                elements: elements.map((element) => {
                     return {
                         id: element.id,
                         mode: 'push',
                         data: {
-                            view: new BaseUpdate(element.view()),
-                            node: new BaseUpdate(element.node())
+                            view: element.view(),
+                            node: element.node()
                         }
                     }
-                }))
+                })
             })
         }
         this.saveDirector(director)
     }
 
-    async deleteElements(director: Director, ids: string[]): Promise<void> {
+    async deleteElements(director: ClientDirector, ids: string[]): Promise<void> {
         const deleted = this.elements.delete(ids)
         this.update(director, {
-            elements: new TreeUpdate(deleted.map((id) => {
+            elements: deleted.map((id) => {
                 return {
                     id: id,
                     mode: 'delete'
                 }
-            }))
+            })
         })
         this.saveDirector(director)
     }
 
-    async moveElements(director: Director, ids: string[], parent?: string): Promise<void> {
+    async moveElements(director: ClientDirector, ids: string[], parent?: string): Promise<void> {
         const elements = ids.map((id) => this.elements.getById(id))
         this.elements.move(ids, parent)
 
-        this.update(director, { elements: new TreeUpdate([
-            ...elements.map((element) => {
-                return {
-                    id: element.id,
-                    data: {
-                        parent: new BaseUpdate(parent ?? null)
+        this.update(director, {
+            elements: [
+                ...elements.map((element) => {
+                    return {
+                        id: element.id,
+                        data: {
+                            parent: parent ?? null
+                        }
                     }
-                }
-            })
-        ]) })
+                })
+            ]
+        })
         this.saveDirector(director)
     }
 
-    abstract update(director: Director, update: {
-        elements: TreeUpdate<BuilderElementUpdate>
+    abstract update(director: ClientDirector, update: {
+        elements?: BuilderElementsUpdate[]
     }): void
 }

@@ -28,17 +28,6 @@ export type OnMessage = Map<string, (data: any, sender: Side, id?: string) => vo
 export type ServerOnMessage = Map<string, (data: any, client: ClientSide, id?: string) => void>
 export type ArchitectOnMessage = Map<string, (data: any, client: ArchitectSide, id?: string) => void>
 
-/*export type WsServerActions = {
-    respond: (data?: {}, err?: WebSocketError) => void,
-    send: (path: string, data?: {}) => void,
-    sendAll: (path: string, data?: {}) => void
-}
-
-export type WsActions = {
-    respond: (data?: {}, err?: WebSocketError) => void,
-    send: (path: string, data?: {}) => void
-}*/
-
 export class Server {
 
     private _wss: WebSocketServer | null = null
@@ -85,7 +74,7 @@ export class Server {
         })
     }
 
-    sendAll(path: string, data?: {}) {
+    sendAll(path: string, data?: {} | null) {
         this.clients.forEach((client) => {
             client.send(path, data)
         })
@@ -95,6 +84,8 @@ export class Server {
         return this._wss!
     }
 }
+
+export const server = new Server()
 
 export function toSocketError(err: any): WebSocketError {
     return {

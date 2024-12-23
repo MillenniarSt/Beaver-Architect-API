@@ -19,7 +19,8 @@ import { projectsDir } from './paths.js'
 import { loadArchitect } from './connection/architect.js'
 import { registerSchematicMessages } from './builder/data-pack/schematic.js'
 import { registerStyleMessages } from './builder/data-pack/style.js'
-import { OnMessage, ServerOnMessage } from './connection/server.js'
+import { OnMessage, server, ServerOnMessage } from './connection/server.js'
+import { registerDirectorMessages } from './connection/director.js'
 
 const log = console.log
 console.log = (...args) => {
@@ -63,10 +64,11 @@ process.on('message', async (message) => {
 
     const onServerMessage: ServerOnMessage = new Map()
     registerProjectMessages(onServerMessage as OnMessage)
+    registerDirectorMessages(onServerMessage)
     registerStyleMessages(onServerMessage)
     registerSchematicMessages(onServerMessage)
 
-    project.server.open(data.port, onServerMessage)
+    server.open(data.port, onServerMessage)
     console.info(`Opened local project Server '${data.identifier}' on port ${data.port}`)
 
     process.send!('done')

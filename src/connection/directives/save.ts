@@ -4,18 +4,24 @@ import { Directive } from "./directive.js";
 export class SaveDirective extends Directive {
 
     get path(): string {
-        return `${this.ref.pack}:${this.ref.folder}\\${this.ref.location}`
+        return 'save'
     }
 
     constructor(
-        readonly ref: ResourceReference<any>
+        readonly references: ResourceReference<any>[]
     ) {
         super()
     }
 
-    send(): void {
-        this.ref.get().save()
+    send() {
+        this.references.forEach((reference) => reference.get().save())
     }
 
-    override(directive: Directive): void { }
+    async override(directive: SaveDirective): Promise<void> {
+        directive.references.forEach((reference) => {
+            if(!this.references.find((ref) => ref.equals(reference))) {
+                this.references.push(reference)
+            }
+        })
+    }
 }

@@ -1,22 +1,36 @@
 import { loadedProjects, project } from "../../project.js";
 import { ServerOnMessage } from "../../connection/server.js";
 import { Builder, ResourceReference } from "../builder.js";
-import { BasicMaterialPattern, MaterialPattern, materialTypes } from "./materials.js";
-import { BaseUpdate, BuilderDirective, ListUpdate, ObjectUpdate } from "../../connection/directives/update.js";
-import { Director } from "../../connection/director.js";
+import { BasicMaterialPattern, MaterialPattern, materialTypes, patternUpdate, PatternUpdate } from "./materials.js";
+import { BuilderDirective, ListUpdate, ObjectUpdate, VarUpdate } from "../../connection/directives/update.js";
+import { ClientDirector } from "../../connection/director.js";
+import { Size3D } from "../../world/world3D.js";
 
 export type StyleUpdate = {
-    isAbstract?: BaseUpdate<boolean>
-    implementations?: ListUpdate<{
+    isAbstract?: boolean
+    implementations?: {
+        id: string,
+        mode?: 'push' | 'delete',
+        data?: {
+            pack?: string,
+            location: string
+        }
+    }[]
+    patterns?: {
+        id: string,
+        mode?: 'push' | 'delete',
+        data?: PatternUpdate
+    }[]
+}
+
+export const styleUpdate = new ObjectUpdate<StyleUpdate>({
+    isAbstract: new VarUpdate<boolean>(),
+    implementations: new ListUpdate(new VarUpdate<{
         pack?: string,
         location: string
-    }>
-    patterns?: ListUpdate<{
-        id?: string,
-        type?: string,
-        materials?: boolean
-    }>
-}
+    }>()),
+    patterns: new ListUpdate(patternUpdate)
+})
 
 export class StyleReference extends ResourceReference<Style> {
 
@@ -64,16 +78,31 @@ export class Style extends Builder {
         return false
     }
 
-    edit(director: Director, changes: { isAbstract?: boolean }) {
+    implementationsOfPattern(id: string, includeSelf: boolean = false): ResourceReference<Style>[] {
+        let implementations: ResourceReference<Style>[] = []
+        if (this.patterns.has(id) && includeSelf) {
+            implementations.push(this.reference)
+        }
+        this.implementations.forEach((implementation) => implementations.push(...implementation.get().implementationsOfPattern(id, true)))
+        return implementations
+    }
+
+    edit(director: ClientDirector, changes: { isAbstract?: boolean }) {
         if (changes.isAbstract !== undefined) {
             this.isAbstract = changes.isAbstract
-            this.update(director, { isAbstract: new BaseUpdate(changes.isAbstract) })
+            this.update(director, { isAbstract: changes.isAbstract })
         }
 
         this.saveDirector(director)
     }
 
-    pushImplementation(director: Director, implementation: ResourceReference<Style>) {
+    undoChanges(changes: { isAbstract?: boolean }): { isAbstract?: boolean } {
+        const undoChanges: { isAbstract?: boolean } = {}
+        if (changes.isAbstract) undoChanges.isAbstract = this.isAbstract
+        return undoChanges
+    }
+
+    pushImplementation(director: ClientDirector, implementation: ResourceReference<Style>) {
         if (this.containsImplementation(implementation)) {
             console.warn(`Can not push implementation ${implementation}: it is already contained in ${this.reference.toString()}`)
         } else if (implementation.get().containsImplementation(this.reference)) {
@@ -86,74 +115,129 @@ export class Style extends Builder {
             })
             this.implementations.push(implementation)
 
-            this.update(director, { implementations: new ListUpdate([{
-                id: implementation.toString(),
-                mode: 'push',
-                data: { pack: implementation.relativePack, location: implementation.location }
-            }]) })
+            this.update(director, {
+                implementations: [{
+                    id: implementation.toString(),
+                    mode: 'push',
+                    data: { pack: implementation.relativePack, location: implementation.location }
+                }]
+            })
             this.saveDirector(director)
         }
     }
 
-    deleteImplementation(director: Director, implementation: ResourceReference<Style>) {
+    deleteImplementation(director: ClientDirector, implementation: ResourceReference<Style>) {
         const index = this.implementations.findIndex((imp) => imp.equals(implementation))
         if (index >= 0) {
             this.implementations.splice(index, 1)
             implementation.get().patterns.forEach((pattern, id) => {
-                this.deletePattern(director, id)
+                if (this.implementationsOfPattern(id).length === 1) {
+                    this.deletePattern(director, id)
+                } else {
+                    this.update(director, {
+                        patterns: [{
+                            id: id,
+                            data: {
+                                fromImplementations: this.implementationsOfPattern(id).map((ref) => ref.toString())
+                            }
+                        }]
+                    })
+                }
             })
-            
-            this.update(director, { implementations: new ListUpdate([{
-                id: implementation.toString(),
-                mode: 'delete'
-            }]) })
+
+            this.update(director, {
+                implementations: [{
+                    id: implementation.toString(),
+                    mode: 'delete'
+                }]
+            })
+            this.saveDirector(director)
+        } else {
+            console.warn(`Can not remove implementation ${implementation} that not exists in ${this.reference.toString()}`)
+        }
+    }
+
+    getPattern(id: string): MaterialPattern<any> {
+        const pattern = this.patterns.get(id)
+        if (!pattern) {
+            throw new Error(`Can not find pattern with id ${id}, it not exists in ${this.reference.toString()}`)
+        }
+        return pattern
+    }
+
+    pushPattern(director: ClientDirector, id: string, pattern: MaterialPattern<any>) {
+        if (this.patterns.has(id)) {
+            console.warn(`Can not push pattern with id ${id}, it already exists in ${this.reference.toString()}`)
+        } else {
+            this.patterns.set(id, pattern)
+            this.update(director, {
+                patterns: [{
+                    id: id,
+                    mode: 'push',
+                    data: {
+                        type: pattern.type,
+                        fromImplementations: this.implementationsOfPattern(id).map((ref) => ref.toString())
+                    }
+                }]
+            })
             this.saveDirector(director)
         }
-        console.warn(`Can not remove implementation ${implementation} that not exists in ${this.reference.toString()}`)
     }
 
-    pushPattern(director: Director, id: string, pattern: MaterialPattern<any>) {
-        this.patterns.set(id, pattern)
-        this.update(director, {
-            patterns: new ListUpdate([{
-                id: id,
-                mode: 'push',
-                data: {}
-            }])
-        })
-        this.saveDirector(director)
-    }
-
-    editPattern(director: Director, id: string, changes: { id?: string }) {
-        if (changes.id) {
-            const pattern = this.patterns.get(id)!
-            this.patterns.delete(id)
-            this.patterns.set(changes.id, pattern)
-            this.update(director, {
-                patterns: new ListUpdate([{
-                    id: id,
-                    data: {
-                        id: changes.id
-                    }
-                }])
-            })
+    editPattern(director: ClientDirector, id: string, changes: { id?: string }) {
+        const pattern = this.patterns.get(id)
+        if (pattern) {
+            if (changes.id) {
+                this.patterns.delete(id)
+                this.patterns.set(changes.id, pattern)
+                this.update(director, {
+                    patterns: [{
+                        id: id,
+                        data: {
+                            id: changes.id
+                        }
+                    }]
+                })
+            }
+            this.saveDirector(director)
+        } else {
+            console.warn(`Can not edit pattern with id ${id}, it not exists in ${this.reference.toString()}`)
         }
-        this.saveDirector(director)
     }
 
-    deletePattern(director: Director, id: string) {
-        this.patterns.delete(id)
+    deletePattern(director: ClientDirector, id: string) {
+        if (this.patterns.has(id)) {
+            this.patterns.delete(id)
+            this.update(director, {
+                patterns: [{
+                    id: id,
+                    mode: 'delete'
+                }]
+            })
+            this.saveDirector(director)
+        } else {
+            console.warn(`Can not delete pattern with id ${id}, it not exists in ${this.reference.toString()}`)
+        }
+    }
+
+    patternUndoChanges(id: string, changes: { id?: string }): { id?: string } {
+        const undoChanges: { id?: string } = {}
+        if (changes.id) undoChanges.id = id
+        return undoChanges
+    }
+
+    updateMaterial(director: ClientDirector, pattern: string) {
         this.update(director, {
-            patterns: new ListUpdate([{
-                id: id,
-                mode: 'delete'
-            }])
+            patterns: [{
+                id: pattern,
+                data: { materials: true }
+            }]
         })
         this.saveDirector(director)
     }
 
-    update(director: Director, update: StyleUpdate) {
-        director.addDirective(BuilderDirective.update('data-pack/styles/update', this.reference, new ObjectUpdate(update)))
+    update(director: ClientDirector, update: StyleUpdate) {
+        director.addDirective(BuilderDirective.update('data-pack/styles/update', this.reference, styleUpdate, update))
     }
 
     mapPatterns(map: (pattern: MaterialPattern<any>, id: string) => any): any[] {
@@ -206,9 +290,13 @@ export function registerStyleMessages(onMessage: ServerOnMessage) {
                 return { pack: implementation.relativePack, location: implementation.location }
             }),
             patterns: style.mapPatterns((pattern, id) => {
-                return { id: id, type: pattern.type }
+                return { id: id, type: pattern.type, fromImplementations: style.implementationsOfPattern(id).map((ref) => ref.toString()) }
             })
         })
+    })
+    onMessage.set('data-pack/styles/generate-pattern', (data, client, id) => {
+        const style = new StyleReference(data.ref).get()
+        client.respond(id, style.getPattern(data.pattern).generate(Size3D.fromJson(data.size)))
     })
 
     onMessage.set('data-pack/styles/possible-implementations', (data, client, id) => {
@@ -226,79 +314,110 @@ export function registerStyleMessages(onMessage: ServerOnMessage) {
         client.respond(id, implementations)
     })
 
-    onMessage.set('data-pack/styles/edit', (data, client) => Director.execute(client, async (director) => {
+    onMessage.set('data-pack/styles/edit', (data, client) => {
         const style = new StyleReference(data.ref).get()
-        style.edit(director, data.changes)
-    }))
-    onMessage.set('data-pack/styles/push-implementation', (data, client) => Director.execute(client, async (director) => {
+        const undoChanges = style.undoChanges(data.changes)
+        ClientDirector.execute(client,
+            async (director) => style.edit(director, data.changes),
+            async (director) => style.edit(director, undoChanges)
+        )
+    })
+    onMessage.set('data-pack/styles/push-implementation', (data, client) => {
         const style = new StyleReference(data.ref).get()
-        return style.pushImplementation(director, new StyleReference(data.implementation))
-    }))
-    onMessage.set('data-pack/styles/delete-implementation', (data, client) => Director.execute(client, async (director) => {
+        ClientDirector.execute(client,
+            async (director) => style.pushImplementation(director, new StyleReference(data.implementation)),
+            async (director) => style.deleteImplementation(director, new StyleReference(data.implementation))
+        )
+    })
+    onMessage.set('data-pack/styles/delete-implementation', (data, client) => {
         const style = new StyleReference(data.ref).get()
-        return style.deleteImplementation(director, new StyleReference(data.implementation))
-    }))
+        ClientDirector.execute(client,
+            async (director) => style.deleteImplementation(director, new StyleReference(data.implementation)),
+            async (director) => style.pushImplementation(director, new StyleReference(data.implementation))
+        )
+    })
 
-    onMessage.set('data-pack/styles/create-pattern', (data, client) => Director.execute(client, async (director) => {
+    onMessage.set('data-pack/styles/create-pattern', (data, client) => {
         const style = new StyleReference(data.ref).get()
-        const pattern = new BasicMaterialPattern([])
-        if (!style.isAbstract) {
-            pattern.pushMaterial((await project.architect.server.request('data-pack/materials/default')).id)
-        }
-        style.pushPattern(director, data.id, pattern)
-    }))
-    onMessage.set('data-pack/styles/edit-pattern', (data, client) => Director.execute(client, async (director) => {
+        ClientDirector.execute(client,
+            async (director) => {
+                const pattern = new BasicMaterialPattern([])
+                if (!style.isAbstract) {
+                    pattern.pushMaterial((await project.architect.server.request('data-pack/materials/default')).id)
+                }
+                style.pushPattern(director, data.id, pattern)
+            },
+            async (director) => style.deletePattern(director, data.id)
+        )
+    })
+    onMessage.set('data-pack/styles/edit-pattern', (data, client) => {
         const style = new StyleReference(data.ref).get()
-        style.editPattern(director, data.id, data.changes)
-    }))
-    onMessage.set('data-pack/styles/delete-pattern', (data, client) => Director.execute(client, async (director) => {
+        const undoChanges = style.patternUndoChanges(data.id, data.changes)
+        ClientDirector.execute(client,
+            async (director) => style.editPattern(director, data.id, data.changes),
+            async (director) => style.editPattern(director, data.id, undoChanges)
+        )
+    })
+    onMessage.set('data-pack/styles/delete-pattern', (data, client) => {
         const style = new StyleReference(data.ref).get()
-        style.deletePattern(director, data.id)
-    }))
+        const pattern = style.getPattern(data.id)
+        ClientDirector.execute(client,
+            async (director) => style.deletePattern(director, data.id),
+            async (director) => style.pushPattern(director, data.id, pattern)
+        )
+    })
     onMessage.set('data-pack/styles/get-pattern', (data, client, id) => {
         const style = new StyleReference(data.ref).get()
-        const pattern = style.patterns.get(data.pattern)!
+        const pattern = style.getPattern(data.id)
         client.respond(id, {
             type: pattern.type,
             materials: pattern.materials
         })
     })
 
-    onMessage.set('data-pack/styles/add-material', (data, client) => Director.execute(client, async (director) => {
+    onMessage.set('data-pack/styles/add-material', async (data, client) => {
         const style = new StyleReference(data.ref).get()
-        const pattern = style.patterns.get(data.pattern)!
+        const pattern = style.getPattern(data.pattern)
         data.id = data.id ?? (await project.architect.server.request('data-pack/materials/default')).id
-        pattern.pushMaterial(data.id)
-        style.update(director, {
-            patterns: new ListUpdate([{
-                id: data.pattern,
-                data: { materials: true }
-            }])
-        })
-        style.saveDirector(director)
-    }))
-    onMessage.set('data-pack/styles/edit-material', (data, client) => Director.execute(client, async (director) => {
+        ClientDirector.execute(client,
+            async (director) => {
+                pattern.pushMaterial(data.id)
+                style.updateMaterial(director, data.pattern)
+            },
+            async (director) => {
+                pattern.deleteMaterial(pattern.materials.findIndex((material) => material.id === data.id))
+                style.updateMaterial(director, data.pattern)
+            }
+        )
+    })
+    onMessage.set('data-pack/styles/edit-material', (data, client) => {
         const style = new StyleReference(data.ref).get()
-        const pattern = style.patterns.get(data.pattern)!
-        pattern.editMaterial(data.index, data.changes)
-        style.update(director, {
-            patterns: new ListUpdate([{
-                id: data.pattern,
-                data: { materials: true }
-            }])
-        })
-        style.saveDirector(director)
-    }))
-    onMessage.set('data-pack/styles/delete-material', (data, client) => Director.execute(client, async (director) => {
+        const pattern = style.getPattern(data.pattern)
+        const material = pattern.copyMaterial(data.index)
+        ClientDirector.execute(client,
+            async (director) => {
+                pattern.editMaterial(data.index, data.changes)
+                style.updateMaterial(director, data.pattern)
+            },
+            async (director) => {
+                pattern.materials[data.index] = material
+                style.updateMaterial(director, data.pattern)
+            }
+        )
+    })
+    onMessage.set('data-pack/styles/delete-material', (data, client) => {
         const style = new StyleReference(data.ref).get()
-        const pattern = style.patterns.get(data.pattern)!
-        pattern.deleteMaterial(data.index)
-        style.update(director, {
-            patterns: new ListUpdate([{
-                id: data.pattern,
-                data: { materials: true }
-            }])
-        })
-        style.saveDirector(director)
-    }))
+        const pattern = style.getPattern(data.pattern)
+        const material = pattern.materials[data.index]
+        ClientDirector.execute(client,
+            async (director) => {
+                pattern.deleteMaterial(data.index)
+                style.updateMaterial(director, data.pattern)
+            },
+            async (director) => {
+                pattern.materials.push(material)
+                style.updateMaterial(director, data.pattern)
+            }
+        )
+    })
 }
