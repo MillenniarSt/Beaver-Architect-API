@@ -7,12 +7,10 @@
     "test": "npx tsc & node dist/index.js",
     "build": "npx tsc",
     "install": "npx tsc & gulp install",
-
     "ci": "npx tsc & gulp install-src",
     "i": "gulp install-src",
     "im": "gulp install-modules",
     "uninstall": "gulp uninstall",
-
     "clean": "gulp clean",
     "compress": "gulp compress"
   },

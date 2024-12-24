@@ -13,8 +13,7 @@
 
 import fs from 'fs'
 import path from 'path'
-import chalk from 'chalk'
-import { project, Project, ProjectData, registerProjectMessages, setProject } from "./project.js"
+import { Project, ProjectData, registerProjectMessages, setProject } from "./project.js"
 import { projectsDir } from './paths.js'
 import { loadArchitect } from './connection/architect.js'
 import { registerSchematicMessages } from './builder/data-pack/schematic.js'
@@ -24,7 +23,7 @@ import { registerDirectorMessages } from './connection/director.js'
 
 const log = console.log
 console.log = (...args) => {
-    log(chalk.gray('[     Server     ]', ...args))
+    log('\x1b[90m[     Server     ]', ...args, '\x1b[0m')
 }
 
 const info = console.info
@@ -34,12 +33,12 @@ console.info = (...args) => {
 
 const warn = console.warn
 console.warn = (...args) => {
-    warn(chalk.yellow('[     Server     ] | WARN |', ...args))
+    warn('\x1b[33m[     Server     ] | WARN |', ...args, '\x1b[0m')
 }
 
 const error = console.error
 console.error = (...args) => {
-    error(chalk.red('[     Server     ] | ERROR |', ...args))
+    error('\x1b[31m[     Server     ] | ERROR |', ...args, '\x1b[0m')
 }
 
 const debug = console.debug
@@ -52,7 +51,7 @@ console.log('Waiting data...')
 process.on('message', async (message) => {
     const data = JSON.parse(message as string)
     
-    console.info(`Starting local project Server '${data.identifier}' on port ${data.port}...`)
+    console.info(`Starting local project Server '${data.identifier}' on port ${data.port} ${data.isPublic ? '[PUBLIC]' : ''}...`)
 
     const projectData: ProjectData = JSON.parse(fs.readFileSync(path.join(projectsDir, data.identifier, 'project.json'), 'utf8'))
 
@@ -68,7 +67,7 @@ process.on('message', async (message) => {
     registerStyleMessages(onServerMessage)
     registerSchematicMessages(onServerMessage)
 
-    server.open(data.port, onServerMessage)
+    server.open(data.port, data.isPublic, onServerMessage)
     console.info(`Opened local project Server '${data.identifier}' on port ${data.port}`)
 
     process.send!('done')

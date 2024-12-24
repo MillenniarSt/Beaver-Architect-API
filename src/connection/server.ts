@@ -1,6 +1,4 @@
 import { WebSocketServer, WebSocket } from "ws"
-import chalk from 'chalk'
-import { v4 } from "uuid"
 import { ArchitectSide, ClientSide, Side } from "./sides.js"
 
 export type WebSocketMessage = {
@@ -34,8 +32,8 @@ export class Server {
 
     private clients: ClientSide[] = []
 
-    open(port: number, onMessage: ServerOnMessage) {
-        this._wss = new WebSocketServer({ port })
+    open(port: number, isPublic: boolean, onMessage: ServerOnMessage) {
+        this._wss = new WebSocketServer({ port, host: isPublic ? '0.0.0.0' : undefined })
 
         console.log(`[ Socket ] |  OPEN  | WebSocketServer open on port ${port}`)
 
