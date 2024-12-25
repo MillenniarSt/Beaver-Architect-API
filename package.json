@@ -18,6 +18,7 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@types/localtunnel": "^2.0.4",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.5.13",
     "gulp": "^5.0.0",
@@ -26,6 +27,7 @@
   },
   "dependencies": {
     "appdata-path": "^1.0.0",
+    "localtunnel": "^2.0.2",
     "uuid": "^11.0.2",
     "ws": "^8.18.0"
   }

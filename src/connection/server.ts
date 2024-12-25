@@ -1,5 +1,7 @@
 import { WebSocketServer, WebSocket } from "ws"
 import { ArchitectSide, ClientSide, Side } from "./sides.js"
+import localtunnel from 'localtunnel'
+import * as http from 'http'
 
 export type WebSocketMessage = {
     path: string,
@@ -32,13 +34,18 @@ export class Server {
 
     private clients: ClientSide[] = []
 
-    open(port: number, isPublic: boolean, onMessage: ServerOnMessage) {
-        this._wss = new WebSocketServer({ port, host: isPublic ? '0.0.0.0' : undefined })
+    async open(port: number, isPublic: boolean, onMessage: ServerOnMessage): Promise<string | undefined> {
+        const server = http.createServer()
 
-        console.log(`[ Socket ] |  OPEN  | WebSocketServer open on port ${port}`)
+        this._wss = new WebSocketServer({ server })
 
-        this.wss.on('connection', (ws) => {
-            console.log(`[ Socket ] |  JOIN  | Client Connected on port ${port}`)
+        console.log(`[ Socket ] |  OPEN  | WebSocketServer opening on port ${port}...`)
+
+        server.on('upgrade', (req, socket, head) => {
+            console.log(`[ Socket ] | TUNNEL | Upgrade from: ${req.headers.host}`);
+        })
+        this._wss.on('connection', (ws, req) => {
+            console.info(`[ Socket ] |  JOIN  | Client ${req.socket.remoteAddress} Connected on port ${port}`)
 
             const client = new ClientSide(ws)
             this.clients.push(client)
@@ -67,6 +74,28 @@ export class Server {
                 } catch (error) {
                     console.error(`[ Socket ] |  GET   | Invalid Message`)
                     client.send('error', toSocketError(error))
+                }
+            })
+        })
+        this._wss.on('error', (err) => {
+            console.error('[ Socket ] |  ERR   |', err)
+        })
+
+        return await new Promise((resolve) => {
+            server.listen(port, async () => {
+                console.info(`[ Socket ] |  OPEN  | Server opened on port: ${port}`)
+                if (isPublic) {
+                    const tunnel = await localtunnel({ port })
+        
+                    console.info(`[ Socket ] | TUNNEL | Tunnel opened with url: ${tunnel.url}`)
+        
+                    tunnel.on('close', () => {
+                        console.warn('[ Socket ] | TUNNEL | Tunnel closed')
+                    })
+
+                    resolve(tunnel.url)
+                } else {
+                    resolve(undefined)
                 }
             })
         })

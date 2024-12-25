@@ -58,8 +58,6 @@ export class ClientSide extends Side {
         }
         this.history.push(update)
         this.historyIndex++
-
-        console.debug(this.historyIndex, '-', this.history.length)
     }
 
     async undo() {
@@ -67,8 +65,6 @@ export class ClientSide extends Side {
             this.historyIndex--
             await this.history[this.historyIndex].undo()
         }
-
-        console.debug(this.historyIndex, '-', this.history.length)
     }
 
     async redo() {
@@ -76,8 +72,6 @@ export class ClientSide extends Side {
             await this.history[this.historyIndex].redo()
             this.historyIndex++
         }
-
-        console.debug(this.historyIndex, '-', this.history.length)
     }
 }
 

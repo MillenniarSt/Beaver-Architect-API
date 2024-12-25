@@ -28,7 +28,7 @@ console.log = (...args) => {
 
 const info = console.info
 console.info = (...args) => {
-    info('[     Server     ] ', ...args)
+    info('[     Server     ]', ...args)
 }
 
 const warn = console.warn
@@ -67,8 +67,10 @@ process.on('message', async (message) => {
     registerStyleMessages(onServerMessage)
     registerSchematicMessages(onServerMessage)
 
-    server.open(data.port, data.isPublic, onServerMessage)
+    const url = await server.open(data.port, data.isPublic, onServerMessage)
     console.info(`Opened local project Server '${data.identifier}' on port ${data.port}`)
 
-    process.send!('done')
+    process.send!({
+        url: url
+    })
 })
