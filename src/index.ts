@@ -1,14 +1,12 @@
-//          _____
-//      ___/     \___
-//    |/  _.- _.-    \|
-//   ||\\=_  '    _=//||
-//   ||   \\\===///   ||
-//   ||       |       ||
-//   ||       |       ||
-//   ||\___   |   ___/||
-//         \__|__/
-//
-//      By Millenniar
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
 //
 
 import fs from 'fs'
@@ -17,7 +15,7 @@ import { Project, ProjectData, registerProjectMessages, setProject } from "./pro
 import { projectsDir } from './paths.js'
 import { loadArchitect } from './connection/architect.js'
 import { registerSchematicMessages } from './builder/data-pack/schematic.js'
-import { registerStyleMessages } from './builder/data-pack/style.js'
+import { registerStyleMessages } from './builder/data-pack/style/messages.js'
 import { OnMessage, server, ServerOnMessage } from './connection/server.js'
 import { registerDirectorMessages } from './connection/director.js'
 
@@ -68,7 +66,7 @@ process.on('message', async (message) => {
     registerSchematicMessages(onServerMessage)
 
     const url = await server.open(data.port, data.isPublic, onServerMessage)
-    console.info(`Opened local project Server '${data.identifier}' on port ${data.port}`)
+    console.info(`Opened Project Server '${data.identifier}' on port ${data.port}`)
 
     process.send!({
         url: url

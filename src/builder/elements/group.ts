@@ -1,3 +1,14 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+//
+
 import { v4 } from "uuid"
 import { FormDataInput, FormDataOutput, RelativeNumber, SizeLimitation } from "../../util.js"
 import { Dimension3D, Pos3D, Size3D } from "../../world/world3D.js"

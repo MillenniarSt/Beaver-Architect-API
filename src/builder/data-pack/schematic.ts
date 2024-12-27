@@ -1,14 +1,12 @@
-//          _____
-//      ___/     \___
-//    |/  _.- _.-    \|
-//   ||\\=_  '    _=//||
-//   ||   \\\===///   ||
-//   ||       |       ||
-//   ||       |       ||
-//   ||\___   |   ___/||
-//         \__|__/
-//
-//      By Millenniar
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
 //
 
 import { loadedProjects, project } from "../../project.js"
@@ -94,29 +92,51 @@ export function registerSchematicMessages(onMessage: ServerOnMessage) {
         client.respond(id, await schematic.getSelectionData(data.selection, data.form, data.editGraph))
     })
 
-    onMessage.set('data-pack/schematics/set-dimension', (data, client) => ClientDirector.execute(client, async (director) => {
+    onMessage.set('data-pack/schematics/set-dimension', (data, client) => {
         const schematic = new SchematicReference(data.ref).get()
-        await schematic.setDimension(director, Dimension3D.fromJson(data.dimension))
-    }))
-    onMessage.set('data-pack/schematics/update-form', (data, client) => ClientDirector.execute(client, async (director) => {
+        const dimension = schematic.dimension
+        ClientDirector.execute(client, 
+            (director) => schematic.setDimension(director, Dimension3D.fromJson(data.dimension)),
+            (director) => schematic.setDimension(director, dimension)
+        )
+    })
+    onMessage.set('data-pack/schematics/update-form', (data, client) => {
         const schematic = new SchematicReference(data.ref).get()
-        await schematic.updateForm(director, data.selection, data.updates)
-    }))
+        ClientDirector.execute(client, 
+            (director) => schematic.updateForm(director, data.selection, data.updates),
+            async (director) => undefined  // TODO
+        )
+    })
 
-    onMessage.set('data-pack/schematics/push-group-element', (data, client) => ClientDirector.execute(client, async (director) => {
+    onMessage.set('data-pack/schematics/push-group-element', (data, client) => {
         const schematic = new SchematicReference(data.ref).get()
-        await schematic.pushElements(director, [BuilderElementGroup.generate(data.label ?? 'Group', schematic.elements.getByIds(data.elements))], data.parent)
-    }))
-    onMessage.set('data-pack/schematics/push-architect-elements', (data, client) => ClientDirector.execute(client, async (director) => {
+        const group = BuilderElementGroup.generate(data.label ?? 'Group', schematic.elements.getByIds(data.elements))
+        ClientDirector.execute(client, 
+            (director) => schematic.pushElements(director, [group], data.parent),
+            (director) => schematic.deleteElements(director, [group.id])  // TODO
+        )
+    })
+    onMessage.set('data-pack/schematics/push-architect-elements', (data, client) => {
         const schematic = new SchematicReference(data.ref).get()
-        await schematic.pushElements(director, data.elements.map((element: any) => BuilderElementArchitect.fromJson(element)), data.parent)
-    }))
-    onMessage.set('data-pack/schematics/move-elements', (data, client) => ClientDirector.execute(client, async (director) => {
+        const elements: BuilderElementArchitect[] = data.elements.map((element: any) => BuilderElementArchitect.fromJson(element))
+        ClientDirector.execute(client, 
+            (director) => schematic.pushElements(director, elements, data.parent),
+            (director) => schematic.deleteElements(director, elements.map((element) => element.id))
+        )
+    })
+    onMessage.set('data-pack/schematics/move-elements', (data, client) => {
         const schematic = new SchematicReference(data.ref).get()
-        await schematic.moveElements(director, data.elements, data.parent)
-    }))
-    onMessage.set('data-pack/schematics/delete-elements', (data, client) => ClientDirector.execute(client, async (director) => {
+        ClientDirector.execute(client, 
+            (director) => schematic.moveElements(director, data.elements, data.parent),
+            async (director) => undefined  // TODO
+        )
+    })
+    onMessage.set('data-pack/schematics/delete-elements', (data, client) => {
         const schematic = new SchematicReference(data.ref).get()
-        await schematic.deleteElements(director, data.elements)
-    }))
+        const elements = schematic.elements.getByIds(data.elements)
+        ClientDirector.execute(client, 
+            (director) => schematic.deleteElements(director, data.elements),
+            (director) => schematic.pushElements(director, elements)
+        )
+    })
 }

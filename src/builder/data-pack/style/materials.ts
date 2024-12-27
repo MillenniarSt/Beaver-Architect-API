@@ -1,7 +1,18 @@
-import { CheckUpdate, ObjectUpdate, VarUpdate } from "../../connection/directives/update.js"
-import { project } from "../../project.js"
-import { FormDataOutput } from "../../util.js"
-import { Size3D } from "../../world/world3D.js"
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+//
+
+import { CheckUpdate, ObjectUpdate, VarUpdate } from "../../../connection/directives/update.js"
+import { project } from "../../../project.js"
+import { FormDataOutput } from "../../../util.js"
+import { Size3D } from "../../../world/world3D.js"
 
 export type PatternUpdate = {
     id?: string,

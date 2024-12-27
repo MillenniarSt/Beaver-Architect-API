@@ -1,3 +1,14 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+//
+
 import { Directive } from "./directives/directive.js";
 import { ServerOnMessage } from "./server.js";
 import { ClientSide, Side } from "./sides.js";
@@ -45,7 +56,7 @@ export class ClientDirector extends Director<ClientSide> {
         this.undo = undo
     }
 
-    public static async execute(side: ClientSide, exe: ClientDirectorExe, undo: ClientDirectorExe = async (f) => {}) {
+    public static async execute(side: ClientSide, exe: ClientDirectorExe, undo: ClientDirectorExe) {
         const director = new ClientDirector(side, exe, undo)
         await director.do()
         director.send()

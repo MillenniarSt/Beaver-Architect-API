@@ -1,20 +1,18 @@
-//          _____
-//      ___/     \___
-//    |/  _.- _.-    \|
-//   ||\\=_  '    _=//||
-//   ||   \\\===///   ||
-//   ||       |       ||
-//   ||       |       ||
-//   ||\___   |   ___/||
-//         \__|__/
-//
-//      By Millenniar
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
 //
 
 import { FileNode, project } from "../../project.js"
 import { AbstractBuilder, Builder, ReferenceData } from "../builder.js"
 import { Schematic, SchematicReference } from "./schematic.js"
-import { Style, StyleReference } from "./style.js"
+import { Style, StyleReference } from "./style/style.js"
 
 export const loadedDataPacks = new Map<string, DataPack>()
 
