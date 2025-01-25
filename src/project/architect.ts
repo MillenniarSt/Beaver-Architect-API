@@ -12,15 +12,16 @@
 import { ChildProcess, fork } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { architectsDir } from '../paths.js';
-import { OnMessage, toSocketError } from './server.js';
-import { ArchitectSide } from './sides.js';
+import { architectsDir } from '../util/paths.js';
 import { WebSocket } from 'ws';
-import { registerProjectMessages } from '../project.js';
+import { registerProjectMessages } from '../project/project.js';
+import { ArchitectSide } from '../connection/sides.js';
+import { OnMessage, toSocketError } from '../connection/server.js';
 
 export class Architect {
 
     readonly identifier: string
+    readonly version: string
     readonly name: string
 
     settings = new Map<string, any>()
@@ -34,6 +35,7 @@ export class Architect {
     ) {
         this.identifier = data.identifier
         this.name = data.name
+        this.version = data.version
         this.server = server
     }
 
@@ -52,8 +54,8 @@ export class Architect {
 }
 
 export interface ArchitectData {
-
     identifier: string,
+    version: string,
     name: string
 }
 

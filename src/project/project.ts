@@ -11,22 +11,11 @@
 
 import fs from "fs"
 import path from "path"
-import { projectsDir } from "./paths.js"
-import { Builder } from "./builder/builder.js"
-import { DataPack } from "./builder/data-pack/data-pack.js"
-import { Architect } from "./connection/architect.js"
-import { OnMessage, Server } from "./connection/server.js"
-
-export let project: Project
-
-export function setProject(pj: Project) {
-    project = pj
-    loadedProjects = Object.fromEntries([
-        [pj.identifier, pj]
-    ])
-}
-
-export let loadedProjects: Record<string, Project>
+import { projectsDir } from "../util/paths.js"
+import { OnMessage } from "./../connection/server.js"
+import { DataPack } from "./../engineer/data-pack/data-pack.js"
+import { StructureEngineer } from "./../engineer/structure/structure.js"
+import { getArchitect, getProject } from "../instance.js"
 
 /**
 * @param identifier should be no.space.with.dots
@@ -37,8 +26,6 @@ export type ProjectData = {
     name: string
     authors: string
     description: string
-
-    architect: string
 
     type: ProjectType
     builder: string | null
@@ -52,29 +39,22 @@ export class Project {
     authors: string
     description: string
 
-    readonly architect: Architect
-
     readonly type: ProjectType
-    builder: Builder | null
-    dataPack: DataPack
 
-    constructor(data: ProjectData, architect: Architect) {
+    dataPack: DataPack
+    structures: Map<string, StructureEngineer> = new Map()
+
+    constructor(data: ProjectData) {
         this.identifier = data.identifier
         this.name = data.name
         this.authors = data.authors
         this.description = data.description
-        this.architect = architect
         this.type = data.type
-        this.builder = null
         this.dataPack = new DataPack(this.identifier, data.name)
     }
 
     async init(on: (progress: number) => void) {
         await this.dataPack.initChanneled(on)
-    }
-
-    random(): number {
-        return Math.random()
     }
 
     read(relPath: string): any {
@@ -141,29 +121,30 @@ export enum ProjectType {
 
 export function registerProjectMessages(onMessage: OnMessage) {
     onMessage.set('get', (data, client, id) => {
+        const project = getProject(data.identifier)
         client.respond(id, {
             identifier: project.identifier,
             name: project.name,
             authors: project.authors,
             description: project.description,
-            architect: project.architect.clientData,
+            architect: getArchitect().clientData,
             type: project.type
         })
     })
 
     onMessage.set('init', async (data, client, id) => {
-        await project.init((progress) => client.respond(id, progress))
+        await getProject(data.identifier).init((progress: any) => client.respond(id, progress))
         client.respond(id, '$close')
     })
 
     // File Manager
 
-    onMessage.set('file/read-text', (data, client, id) => client.respond(id, project.readText(data.path)))
-    onMessage.set('file/read-json', (data, client, id) => client.respond(id, project.read(data.path)))
-    onMessage.set('file/write-text', (data) => project.writeText(data.path, data.data))
-    onMessage.set('file/write-json', (data) => project.write(data.path, data.data))
-    onMessage.set('file/exists', (data, client, id) => client.respond(id, project.exists(data.path)))
-    onMessage.set('file/mkdir', (data) => project.mkDir(data.path))
-    onMessage.set('file/read-dir', (data, client, id) => client.respond(id, project.readDir(data.path, data.recursive)))
-    onMessage.set('file/map-dir', (data, client, id) => client.respond(id, project.mapDir(data.path)))
+    onMessage.set('file/read-text', (data, client, id) => client.respond(id, getProject(data.identifier).readText(data.path)))
+    onMessage.set('file/read-json', (data, client, id) => client.respond(id, getProject(data.identifier).read(data.path)))
+    onMessage.set('file/write-text', (data) => getProject(data.identifier).writeText(data.path, data.data))
+    onMessage.set('file/write-json', (data) => getProject(data.identifier).write(data.path, data.data))
+    onMessage.set('file/exists', (data, client, id) => client.respond(id, getProject(data.identifier).exists(data.path)))
+    onMessage.set('file/mkdir', (data) => getProject(data.identifier).mkDir(data.path))
+    onMessage.set('file/read-dir', (data, client, id) => client.respond(id, getProject(data.identifier).readDir(data.path, data.recursive)))
+    onMessage.set('file/map-dir', (data, client, id) => client.respond(id, getProject(data.identifier).mapDir(data.path)))
 }

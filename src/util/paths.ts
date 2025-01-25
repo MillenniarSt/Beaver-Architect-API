@@ -9,13 +9,11 @@
 //      ##    \__|__/
 //
 
-import { BiGeo } from "./bigeo.js"
+import getAppDataPath from 'appdata-path'
+import path from 'path'
 
-export class RaisedBiGeo<G extends BiGeo> {
+export const dir: string = getAppDataPath.default('Beaver Architect')
 
-    constructor(readonly root: G) { }
-
-    static flat<G extends BiGeo>(root: G): RaisedBiGeo<G> {
-        return new RaisedBiGeo<G>(root)
-    }
-}
+export const projectsDir: string = path.join(dir, 'projects')
+export const architectsDir: string = path.join(dir, 'architects')
+export const librariesDir: string = path.join(dir, 'libraries')

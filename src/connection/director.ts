@@ -11,7 +11,7 @@
 
 import { Directive } from "./directives/directive.js";
 import { ServerOnMessage } from "./server.js";
-import { ClientSide, Side } from "./sides.js";
+import { ClientSide, HiddenSide, Side } from "./sides.js";
 
 export abstract class Director<S extends Side> {
 
@@ -75,6 +75,10 @@ export class ClientDirector extends Director<ClientSide> {
         })
         return this.exe(this)
     }
+}
+
+export class HiddenDirector extends Director<HiddenSide> {
+
 }
 
 export function registerDirectorMessages(onMessage: ServerOnMessage) {

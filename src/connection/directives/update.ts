@@ -9,7 +9,7 @@
 //      ##    \__|__/
 //
 
-import { ResourceReference } from "../../builder/builder.js";
+import { ResourceReference } from "../../engineer/engineer.js";
 import { server } from "../server.js";
 import { Directive } from "./directive.js";
 

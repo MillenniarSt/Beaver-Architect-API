@@ -1,129 +1,146 @@
-//             _____
-//         ___/     \___        |  |
-//      ##/  _.- _.-    \##  -  |  |                       -
-//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
-//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
-//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
-//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
-//      ##\___   |   ___/
-//      ##    \__|__/
-//
+import { v4 } from "uuid";
+import { getArchitect } from "../instance.js";
+import { FormData, FormOutput } from "../util/form.js";
+import { RandomList, Seed } from "../util/random.js";
+import { Plane2 } from "../world/bi-geo/plane.js";
+import { Line3 } from "../world/geo/line.js";
+import { Object3 } from "../world/geo/object.js";
+import { Plane3 } from "../world/geo/plane.js";
+import { NamedBuilder } from "./collective.js";
+import { MaterialReference, Style } from "../engineer/data-pack/style/style.js";
 
-import path from 'path'
-import { project } from '../project.js'
-import { displayName } from '../util.js'
-import { ClientDirector } from '../connection/director.js'
-import { SaveDirective } from '../connection/directives/save.js'
+export abstract class Builder<T extends { toJson: () => {} } = any> {
 
-export abstract class AbstractBuilder {
+    protected materials: RandomList<MaterialReference>
 
-    abstract get pack(): string
+    constructor(readonly json: any = {}) {
+        this.materials = json.materials ? new RandomList<MaterialReference>([]) : RandomList.fromJson(json.materials)
+        this.fromJsonData(json.data ?? {})
+    }
 
-    abstract get name(): string
+    abstract get children(): Builder[]
 
-    async init(): Promise<void> { }
+    // User Editing
+
+    abstract form(): FormData
+
+    abstract edit(output: FormOutput): void
+
+    // Building
+
+    protected abstract buildChildren(context: T, seed: Seed): BuilderResult[]
+
+    build(context: T, seed: Seed): BuilderResult<T> {
+        return new BuilderResult(context, this.materials.seeded(seed), this.buildChildren(context, seed))
+    }
+
+    // Json & Save
+
+    abstract fromJsonData(data: any): void
+
+    abstract toJsonData(): {}
+
+    toJson() {
+        return {
+            name: this.constructor.name,
+            materials: this.materials.toJson(),
+            data: this.toJsonData()
+        }
+    }
+
+    // Utils
+
+    /**
+     * Do NOT change, implement instead ChildrenManager
+     * @returns if Builder is an instance of ChildrenManager
+     */
+    canManageChildren(): boolean {
+        return false
+    }
 }
 
-export abstract class Builder extends AbstractBuilder {
+export abstract class LineBuilder<L extends Line3 = Line3> extends Builder<L> {
 
-    constructor(protected _reference: ResourceReference<Builder>) {
-        super()
-    }
-
-    get pack(): string {
-        return this.reference.pack
-    }
-
-    get name(): string {
-        return this.reference.name
-    }
-
-    get reference(): ResourceReference<Builder> {
-        return this._reference
-    }
-
-    setReference(director: ClientDirector, reference: ResourceReference<Builder>) {
-        this._reference = reference
-    }
-
-    save() {
-        project.write(this.reference.path, this.toJson())
-    }
-
-    abstract toJson(): {}
-
-    saveDirector(director: ClientDirector) {
-        director.addDirective(new SaveDirective([this.reference]))
-    }
-
-    abstract update(director: ClientDirector, update: {}): void
 }
 
-export type ReferenceData = { pack?: string, location: string } | string
+export abstract class PlaneBuilder<P extends Plane2 = Plane2> extends Builder<Plane3<P>> {
 
-export abstract class ResourceReference<B extends Builder> {
+}
 
-    readonly pack: string
-    readonly location: string
+export abstract class ObjectBuilder<O extends Object3 = Object3> extends Builder<O> {
 
-    constructor(ref: ReferenceData) {
-        if(typeof ref === 'string') {
-            if(ref.includes(':')) {
-                const unpack = ref.split(':')
-                this.pack = unpack[0]
-                this.location = unpack[1]
-            } else {
-                this.pack = project.identifier
-                this.location = ref
-            }
-        } else {
-            this.pack = ref.pack ?? project.identifier
-            this.location = ref.location
+}
+
+export type ExportToArchitectUpdate = {
+    isDone?: boolean
+    fail?: string
+}
+
+export class BuilderResult<T extends { toJson: () => {} } = any> {
+
+    constructor(
+        readonly object: T,
+        readonly material: MaterialReference | undefined = undefined,
+        readonly children: BuilderResult[] = [],
+    ) { }
+
+    exportToArchitect(style: Style, seed: Seed, onUpdate: (data: ExportToArchitectUpdate) => void): Promise<string | null> {
+        return new Promise(async (resolve) => {
+            const channel = `export:${v4()}`
+            await getArchitect().server.openChannel<ExportToArchitectUpdate>(`export:${channel}`, {
+                seed: seed.seed,
+                data: this.toArchitectData(style)
+            }, (data) => {
+                if(data.isDone) {
+                    resolve(null)
+                } else if(data.fail) {
+                    resolve(data.fail)
+                }
+                onUpdate(data)
+            })
+        })
+    }
+
+    toArchitectData(style: Style): {} {
+        return {
+            object: this.object.toJson(),
+            material: this.material?.getMaterial(style).toJson(),
+            children: this.children.map((child) => child.toArchitectData(style))
         }
     }
+}
 
-    abstract get folder(): string
+export abstract class ChildrenManager {
 
-    protected abstract _get(): B | undefined
-
-    get(): B {
-        const builder = this._get()
-        if(builder) {
-            return builder
-        } else {
-            throw new Error(`Can not access to Builder '${this.toString()}', it not exists or it is not registered`)
-        }
+    canManageChildren(): boolean {
+        return true
     }
 
-    get relativePack(): string | undefined {
-        return this.pack === project.identifier ? undefined : this.pack
+    abstract canAddChild(): boolean
+
+    abstract addChild(): void
+}
+
+@NamedBuilder()
+export class EmptyBuilder extends Builder<any> {
+
+    get children(): Builder[] {
+        return []
     }
 
-    get path(): string {
-        if(project.identifier === this.pack) {
-            return path.join(this.folder, `${this.location}.json`)
-        } else {
-            return path.join('dependencies', this.pack, this.folder, `${this.location}.json`)
-        }
+    form(): FormData {
+        return { inputs: [] }
     }
 
-    get name(): string {
-        return displayName(this.location)
+    edit(output: FormOutput): void {
+
     }
 
-    equals(resource: ResourceReference<B>): boolean {
-        return this.pack === resource.pack && this.location === resource.location
+    protected buildChildren(context: any, seed: Seed): BuilderResult[] {
+        return []
     }
 
-    toJson(): string {
-        if(project.identifier === this.pack) {
-            return this.location
-        } else {
-            return `${this.pack}:${this.location}`
-        }
-    }
+    fromJsonData(data: any): void { }
 
-    toString(): string {
-        return this.toJson()
-    }
+    toJsonData(): {} { return {} }
 }

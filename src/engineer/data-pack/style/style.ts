@@ -9,11 +9,11 @@
 //      ##    \__|__/
 //
 
-import { loadedProjects, project } from "../../../project.js";
-import { Builder, ResourceReference } from "../../builder.js";
-import { MaterialPattern, materialTypes, patternUpdate, PatternUpdate } from "./materials.js";
+import { Material, materialUpdate, MaterialUpdate } from "./material.js";
 import { BuilderDirective, ListUpdate, ObjectUpdate, VarUpdate } from "../../../connection/directives/update.js";
 import { ClientDirector } from "../../../connection/director.js";
+import { Engineer, ResourceReference } from "../../engineer.js";
+import { getProject } from "../../../instance.js";
 
 export type StyleUpdate = {
     isAbstract?: boolean
@@ -25,10 +25,10 @@ export type StyleUpdate = {
             location: string
         }
     }[]
-    patterns?: {
+    materials?: {
         id: string,
         mode?: 'push' | 'delete',
-        data?: PatternUpdate
+        data?: MaterialUpdate
     }[]
 }
 
@@ -38,7 +38,7 @@ export const styleUpdate = new ObjectUpdate<StyleUpdate>({
         pack?: string,
         location: string
     }>()),
-    patterns: new ListUpdate(patternUpdate)
+    materials: new ListUpdate(materialUpdate)
 })
 
 export class StyleReference extends ResourceReference<Style> {
@@ -48,30 +48,30 @@ export class StyleReference extends ResourceReference<Style> {
     }
 
     protected _get(): Style | undefined {
-        return loadedProjects[this.pack].dataPack.builders.styles.get(this.location)
+        return getProject(this.pack).dataPack.engineers.styles.get(this.location)
     }
 }
 
-export class Style extends Builder {
+export class Style extends Engineer {
 
     isAbstract: boolean
     implementations: ResourceReference<Style>[]
 
-    patterns: Map<string, MaterialPattern<any>>
+    materials: Map<string, Material>
 
-    constructor(ref: ResourceReference<Style>, isAbstract: boolean = false, implementations: ResourceReference<Style>[] = [], patterns: Map<string, MaterialPattern<any>> = new Map()) {
+    constructor(ref: ResourceReference<Style>, isAbstract: boolean = false, implementations: ResourceReference<Style>[] = [], materials: Map<string, Material> = new Map()) {
         super(ref)
-        this.patterns = patterns
+        this.materials = materials
         this.isAbstract = isAbstract
         this.implementations = implementations
     }
 
-    get completePatterns(): [string, MaterialPattern<any>][] {
-        let entries: [string, MaterialPattern<any>][] = []
+    get completeMaterials(): [string, Material][] {
+        let entries: [string, Material][] = []
         this.implementations.forEach((implementation) => {
-            entries.push(...implementation.get().completePatterns)
+            entries.push(...implementation.get().completeMaterials)
         })
-        entries.push(...Object.entries(this.patterns))
+        entries.push(...Object.entries(this.materials))
         return entries
     }
 
@@ -87,12 +87,12 @@ export class Style extends Builder {
         return false
     }
 
-    implementationsOfPattern(id: string, includeSelf: boolean = false): ResourceReference<Style>[] {
+    implementationsOfMaterial(id: string, includeSelf: boolean = false): ResourceReference<Style>[] {
         let implementations: ResourceReference<Style>[] = []
-        if (this.patterns.has(id) && includeSelf) {
+        if (this.materials.has(id) && includeSelf) {
             implementations.push(this.reference)
         }
-        this.implementations.forEach((implementation) => implementations.push(...implementation.get().implementationsOfPattern(id, true)))
+        this.implementations.forEach((implementation) => implementations.push(...implementation.get().implementationsOfMaterial(id, true)))
         return implementations
     }
 
@@ -117,9 +117,9 @@ export class Style extends Builder {
         } else if (implementation.get().containsImplementation(this.reference)) {
             console.warn(`Can not push implementation ${implementation}: it contains ${this.reference.toString()}`)
         } else {
-            implementation.get().patterns.forEach((pattern, id) => {
-                if (!this.patterns.has(id)) {
-                    this.pushPattern(director, id, pattern)
+            implementation.get().materials.forEach((material, id) => {
+                if (!this.materials.has(id)) {
+                    this.pushMaterial(director, id, material)
                 }
             })
             this.implementations.push(implementation)
@@ -139,15 +139,15 @@ export class Style extends Builder {
         const index = this.implementations.findIndex((imp) => imp.equals(implementation))
         if (index >= 0) {
             this.implementations.splice(index, 1)
-            implementation.get().patterns.forEach((pattern, id) => {
-                if (this.implementationsOfPattern(id).length === 1) {
-                    this.deletePattern(director, id)
+            implementation.get().materials.forEach((material, id) => {
+                if (this.implementationsOfMaterial(id).length === 1) {
+                    this.deleteMaterial(director, id)
                 } else {
                     this.update(director, {
-                        patterns: [{
+                        materials: [{
                             id: id,
                             data: {
-                                fromImplementations: this.implementationsOfPattern(id).map((ref) => ref.toString())
+                                fromImplementations: this.implementationsOfMaterial(id).map((ref) => ref.toString())
                             }
                         }]
                     })
@@ -166,26 +166,26 @@ export class Style extends Builder {
         }
     }
 
-    getPattern(id: string): MaterialPattern<any> {
-        const pattern = this.patterns.get(id)
-        if (!pattern) {
-            throw new Error(`Can not find pattern with id ${id}, it not exists in ${this.reference.toString()}`)
+    getMaterial(id: string): Material {
+        const material = this.materials.get(id)
+        if (!material) {
+            throw new Error(`Can not find material with id ${id}, it not exists in ${this.reference.toString()}`)
         }
-        return pattern
+        return material
     }
 
-    pushPattern(director: ClientDirector, id: string, pattern: MaterialPattern<any>) {
-        if (this.patterns.has(id)) {
-            console.warn(`Can not push pattern with id ${id}, it already exists in ${this.reference.toString()}`)
+    pushMaterial(director: ClientDirector, id: string, material: Material) {
+        if (this.materials.has(id)) {
+            console.warn(`Can not push material with id ${id}, it already exists in ${this.reference.toString()}`)
         } else {
-            this.patterns.set(id, pattern)
+            this.materials.set(id, material)
             this.update(director, {
-                patterns: [{
+                materials: [{
                     id: id,
                     mode: 'push',
                     data: {
-                        type: pattern.type,
-                        fromImplementations: this.implementationsOfPattern(id).map((ref) => ref.toString())
+                        type: material.type,
+                        fromImplementations: this.implementationsOfMaterial(id).map((ref) => ref.toString())
                     }
                 }]
             })
@@ -193,14 +193,14 @@ export class Style extends Builder {
         }
     }
 
-    editPattern(director: ClientDirector, id: string, changes: { id?: string }) {
-        const pattern = this.patterns.get(id)
-        if (pattern) {
+    editMaterial(director: ClientDirector, id: string, changes: { id?: string }) {
+        const material = this.materials.get(id)
+        if (material) {
             if (changes.id) {
-                this.patterns.delete(id)
-                this.patterns.set(changes.id, pattern)
+                this.materials.delete(id)
+                this.materials.set(changes.id, material)
                 this.update(director, {
-                    patterns: [{
+                    materials: [{
                         id: id,
                         data: {
                             id: changes.id
@@ -210,36 +210,36 @@ export class Style extends Builder {
             }
             this.saveDirector(director)
         } else {
-            console.warn(`Can not edit pattern with id ${id}, it not exists in ${this.reference.toString()}`)
+            console.warn(`Can not edit material with id ${id}, it not exists in ${this.reference.toString()}`)
         }
     }
 
-    deletePattern(director: ClientDirector, id: string) {
-        if (this.patterns.has(id)) {
-            this.patterns.delete(id)
+    deleteMaterial(director: ClientDirector, id: string) {
+        if (this.materials.has(id)) {
+            this.materials.delete(id)
             this.update(director, {
-                patterns: [{
+                materials: [{
                     id: id,
                     mode: 'delete'
                 }]
             })
             this.saveDirector(director)
         } else {
-            console.warn(`Can not delete pattern with id ${id}, it not exists in ${this.reference.toString()}`)
+            console.warn(`Can not delete material with id ${id}, it not exists in ${this.reference.toString()}`)
         }
     }
 
-    patternUndoChanges(id: string, changes: { id?: string }): { id?: string } {
+    materialUndoChanges(id: string, changes: { id?: string }): { id?: string } {
         const undoChanges: { id?: string } = {}
         if (changes.id) undoChanges.id = id
         return undoChanges
     }
 
-    updateMaterial(director: ClientDirector, pattern: string) {
+    updateMaterial(director: ClientDirector, material: string) {
         this.update(director, {
-            patterns: [{
-                id: pattern,
-                data: { materials: true }
+            materials: [{
+                id: material,
+                data: { paints: true }
             }]
         })
         this.saveDirector(director)
@@ -249,18 +249,18 @@ export class Style extends Builder {
         director.addDirective(BuilderDirective.update('data-pack/styles/update', this.reference, styleUpdate, update))
     }
 
-    mapPatterns(map: (pattern: MaterialPattern<any>, id: string) => any): any[] {
-        let patterns: any[] = []
-        this.patterns.forEach((pattern, id) => patterns.push(map(pattern, id)))
-        return patterns
+    mapMaterials(map: (material: Material, id: string) => any): any[] {
+        let materials: any[] = []
+        this.materials.forEach((material, id) => materials.push(map(material, id)))
+        return materials
     }
 
     static loadFromRef(ref: ResourceReference<Style>): Style {
-        const data = project.read(ref.path)
+        const data = getProject(ref.pack).read(ref.path)
         return new Style(ref,
             data.isAbstract,
             data.implementations.map((implementation: string) => new StyleReference(implementation)),
-            new Map(data.patterns.map((pattern: any) => [pattern.id, materialTypes[pattern.type](pattern.data)]))
+            new Map(data.materials.map((material: any) => [material.id, Material.fromJson(material.data)]))
         )
     }
 
@@ -268,11 +268,10 @@ export class Style extends Builder {
         return {
             isAbstract: this.isAbstract,
             implementations: this.implementations.map((implementation) => implementation.toJson()),
-            patterns: this.mapPatterns((pattern, id) => {
+            materials: this.mapMaterials((material, id) => {
                 return {
                     id: id,
-                    type: pattern.type,
-                    data: pattern.dataJson()
+                    data: material.toJson()
                 }
             })
         }
@@ -280,5 +279,60 @@ export class Style extends Builder {
 
     get reference(): ResourceReference<Style> {
         return this._reference as ResourceReference<Style>
+    }
+}
+
+export class MaterialReference {
+
+    protected constructor(
+        protected defined: Material | undefined,
+        protected ref: string | undefined,
+        public attributes: Record<string, string | number | boolean> = {}
+    ) { }
+
+    static defined(material: Material, attributes: Record<string, string | number | boolean> = {}): MaterialReference {
+        return new MaterialReference(material, undefined, attributes)
+    }
+
+    static ref(ref: string, attributes: Record<string, string | number | boolean> = {}): MaterialReference {
+        return new MaterialReference(undefined, ref, attributes)
+    }
+
+    static fromJson(json: any): MaterialReference {
+        return new MaterialReference(json.defined ? Material.fromJson(json.material) : undefined, json.ref, json.attributes)
+    }
+
+    isDefined(): boolean {
+        return this.defined !== undefined
+    }
+
+    setDefined(defined: Material) {
+        this.defined = defined
+        this.ref = undefined
+    }
+
+    setRef(ref: string) {
+        this.defined = undefined
+        this.ref = ref
+    }
+
+    getDefined(): Material | undefined {
+        return this.defined
+    }
+
+    getRef(): string | undefined {
+        return this.ref
+    }
+
+    getMaterial(style: Style): Material {
+        return this.defined ?? style.getMaterial(this.ref!)
+    }
+
+    toJson() {
+        return {
+            defined: this.defined?.toJson(),
+            ref: this.ref,
+            attributes: this.attributes
+        }
     }
 }
