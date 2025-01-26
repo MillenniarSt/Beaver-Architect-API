@@ -1,10 +1,12 @@
+import { MaterialReference } from "../../engineer/data-pack/style/style.js";
 import { FormData, FormOutput } from "../../util/form.js";
-import { RandomInteger, RandomVec2, RandomVec4, Seed } from "../../util/random.js";
+import { RandomInteger, RandomList, RandomVec2, RandomVec4, Seed } from "../../util/random.js";
 import { Rect2 } from "../../world/bi-geo/plane.js";
-import { Plane3 } from "../../world/geo/plane.js";
+import { Plane3 } from "../../world/geo/surface.js";
 import { Vec2 } from "../../world/vector.js";
-import { Builder, BuilderResult, ChildrenManager, PlaneBuilder, EmptyBuilder } from "../builder.js";
-import { builderFromJson } from "../collective.js";
+import { Builder, BuilderResult, ChildrenManager, SurfaceBuilder } from "../builder.js";
+import { NamedBuilder } from "../collective.js";
+import { EmptySurfaceBuilder } from "./empty.js";
 
 export enum GridAxisAlignment {
     START = 'start',
@@ -13,9 +15,10 @@ export enum GridAxisAlignment {
     FILL = 'fill'
 }
 
-export class GridRectBuilder extends PlaneBuilder<Rect2> implements ChildrenManager {
+@NamedBuilder(GridRectBuilder.fromJson)
+export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>> implements ChildrenManager {
 
-    protected _children: PlaneBuilder<Rect2>[] = []
+    protected _children: SurfaceBuilder<Plane3<Rect2>>[] = []
 
     protected alignment: [GridAxisAlignment, GridAxisAlignment] = [GridAxisAlignment.FILL, GridAxisAlignment.FILL]
     protected cell: RandomVec2 = RandomVec2.constant(1)
@@ -23,22 +26,34 @@ export class GridRectBuilder extends PlaneBuilder<Rect2> implements ChildrenMana
     protected padding: RandomVec4 = RandomVec4.constant(0)
     protected randomGetter: RandomInteger = RandomInteger.constant(0)
 
-    static create(properties: {
-        children: PlaneBuilder<Rect2>[]
-        alignment: [GridAxisAlignment, GridAxisAlignment]
-        cell: RandomVec2
-        gap: RandomVec2
-        padding: RandomVec4
-        randomGetter: RandomInteger
-    }): GridRectBuilder {
-        const builder = new GridRectBuilder()
-        builder._children = properties.children ?? []
-        builder.alignment = properties.alignment ?? [GridAxisAlignment.FILL, GridAxisAlignment.FILL]
-        builder.cell = properties.cell ?? RandomVec2.constant(1)
-        builder.gap = properties.gap ?? RandomVec2.constant(0)
-        builder.padding = properties.padding ?? RandomVec4.constant(0)
-        builder.randomGetter = properties.randomGetter ?? new RandomInteger(0, builder._children.length)
-        return builder
+    constructor(data: {
+        children?: SurfaceBuilder<Plane3<Rect2>>[]
+        alignment?: [GridAxisAlignment, GridAxisAlignment]
+        cell?: RandomVec2
+        gap?: RandomVec2
+        padding?: RandomVec4
+        randomGetter?: RandomInteger
+    } = {},
+        materials: RandomList<MaterialReference> = new RandomList()
+    ) {
+        super(materials)
+        this._children = data.children ?? []
+        this.alignment = data.alignment ?? [GridAxisAlignment.FILL, GridAxisAlignment.FILL]
+        this.cell = data.cell ?? RandomVec2.constant(1)
+        this.gap = data.gap ?? RandomVec2.constant(0)
+        this.padding = data.padding ?? RandomVec4.constant(0)
+        this.randomGetter = data.randomGetter ?? new RandomInteger(0, this._children.length)
+    }
+
+    static fromJson(json: any): GridRectBuilder {
+        const data = json.data
+        return new GridRectBuilder({
+            children: data.children.map((child: any) => Builder.fromJson(child)),
+            cell: RandomVec2.fromJson(data.cell),
+            gap: RandomVec2.fromJson(data.gap),
+            padding: RandomVec4.fromJson(data.padding),
+            randomGetter: RandomInteger.fromJson(data.randomGetter)
+        }, RandomList.fromJson(json.materials, MaterialReference.fromJson))
     }
 
     form(): FormData {
@@ -58,7 +73,7 @@ export class GridRectBuilder extends PlaneBuilder<Rect2> implements ChildrenMana
     }
 
     addChild(): void {
-        this._children.push(new EmptyBuilder())
+        this._children.push(new EmptySurfaceBuilder())
         this.randomGetter = new RandomInteger(0, this._children.length)
     }
 
@@ -69,8 +84,8 @@ export class GridRectBuilder extends PlaneBuilder<Rect2> implements ChildrenMana
 
         const size = context.plane.size.subtract(new Vec2(padding.b + padding.d, padding.a + padding.c))
 
-        if(context.plane.size.isLess(cell)) {
-            if(size.isLess(cell)) {
+        if (context.plane.size.isLess(cell)) {
+            if (size.isLess(cell)) {
                 console.warn('GridRectBuilder: size is less than a cell with padding')
                 return [this._children[this.randomGetter.seeded(seed)].build(context, seed)]
             } else {
@@ -81,29 +96,29 @@ export class GridRectBuilder extends PlaneBuilder<Rect2> implements ChildrenMana
         }
 
         const repetitions = new Vec2(Math.floor(size.x / (cell.x + gap.x)), Math.floor(size.y / (cell.y + gap.y)))
-        if(this.alignment[0] === GridAxisAlignment.FILL) {
+        if (this.alignment[0] === GridAxisAlignment.FILL) {
             cell = cell.add(new Vec2((size.x - (repetitions.x * (cell.x + gap.x))) / repetitions.x, 0))
         }
-        if(this.alignment[1] === GridAxisAlignment.FILL) {
+        if (this.alignment[1] === GridAxisAlignment.FILL) {
             cell = cell.add(new Vec2((size.y - (repetitions.y * (cell.y + gap.y))) / repetitions.y, 0))
         }
 
         let x = 0
         let y = 0
-        if(this.alignment[0] === GridAxisAlignment.CENTER) {
+        if (this.alignment[0] === GridAxisAlignment.CENTER) {
             x = (size.x - (repetitions.x * (cell.x + gap.x)) - gap.x) / 2
-        } else if(this.alignment[0] === GridAxisAlignment.END) {
+        } else if (this.alignment[0] === GridAxisAlignment.END) {
             x = size.x - (repetitions.x * (cell.x + gap.x)) - gap.x
         }
-        if(this.alignment[1] === GridAxisAlignment.CENTER) {
+        if (this.alignment[1] === GridAxisAlignment.CENTER) {
             y = (size.y - (repetitions.y * (cell.y + gap.y)) - gap.y) / 2
-        } else if(this.alignment[1] === GridAxisAlignment.END) {
+        } else if (this.alignment[1] === GridAxisAlignment.END) {
             x = size.y - (repetitions.y * (cell.y + gap.y)) - gap.y
         }
 
         const results: BuilderResult<Plane3<Rect2>>[] = []
-        for(let i = 0; i < repetitions.x; i++) {
-            for(let j = 0; j < repetitions.y; j++) {
+        for (let i = 0; i < repetitions.x; i++) {
+            for (let j = 0; j < repetitions.y; j++) {
                 const builder = this._children[this.randomGetter.seeded(seed)]
                 const rect = new Rect2(new Vec2(x + (i * (cell.x + gap.x)), y + (j * (cell.y + gap.y))), cell)
                 results.push(builder.build(context.withPlane(rect), seed))
@@ -115,14 +130,6 @@ export class GridRectBuilder extends PlaneBuilder<Rect2> implements ChildrenMana
 
     get children(): Builder<any>[] {
         return this._children
-    }
-
-    fromJsonData(data: any): void {
-        this._children = data.children.map((child: any) => builderFromJson(child))
-        this.cell = RandomVec2.fromJson(data.cell)
-        this.gap = RandomVec2.fromJson(data.gap)
-        this.padding = RandomVec4.fromJson(data.padding)
-        this.randomGetter = RandomInteger.fromJson(data.randomGetter)
     }
 
     toJsonData(): {} {

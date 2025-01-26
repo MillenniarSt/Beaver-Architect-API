@@ -1,10 +1,10 @@
 import { Builder } from "./builder.js"
 
-export const namedBuilders: Map<string, (json: any) => Builder> = new Map()
+const namedBuilders: Map<string, (json: any) => Builder> = new Map()
 
-export function NamedBuilder() {
-    return function (constructor: { new (data: any): Builder }) {
-        namedBuilders.set(constructor.name, (json: any) => new constructor(json))
+export function NamedBuilder(fromJson: (json: any) => Builder) {
+    return function (constructor: { new (...args: any): Builder }) {
+        namedBuilders.set(constructor.name, fromJson)
     }
 }
 

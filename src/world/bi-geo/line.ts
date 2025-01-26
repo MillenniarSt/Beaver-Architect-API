@@ -5,7 +5,11 @@ export class Line2 {
     constructor(readonly parts: Line2Part[]) { }
 
     static fromPoints(points: Vec2[]): Line2 {
-        return new Line2(points.map((point, index, points) => new Segment2(point, index === points.length -1 ? points[0] : points[index + 1])))
+        let segments: Segment2[] = []
+        for(let i = 0; i < points.length -2; i++) {
+            segments.push(new Segment2(points[i], points[i + 1]))
+        }
+        return new Line2(segments)
     }
 
     setPoint(index: number, vec: Vec2): Line2 {
@@ -40,6 +44,14 @@ export class Line2 {
 
 export class CloseLine2 extends Line2 {
 
+    static fromJson(json: number[][][]): CloseLine2 {
+        return new CloseLine2(json.map((part) => Line2Part.fromJson(part)))
+    }
+
+    static fromPoints(points: Vec2[]): CloseLine2 {
+        return new CloseLine2(points.map((point, index, points) => new Segment2(point, index === points.length -1 ? points[0] : points[index + 1])))
+    }
+
     setPoint(index: number, vec: Vec2): CloseLine2 {
         const parts = [...this.parts]
         if(index < parts.length) {
@@ -56,6 +68,27 @@ export class CloseLine2 extends Line2 {
             controls[controls.length -1] = vec
         }
         return new CloseLine2(parts)
+    }
+
+    getVertices(): Vec2[] {
+        const vertices: Vec2[] = [];
+        this.parts.forEach(part => {
+            const controls = part.getControls()
+            if (vertices.length === 0 || !vertices[vertices.length - 1].equals(controls[0])) {
+                vertices.push(controls[0])
+            }
+            vertices.push(controls[controls.length -1])
+        });
+        return vertices;
+    }
+
+    getTriangles(): number[][] {
+        const vertices = this.getVertices();
+        const triangles: number[][] = [];
+        for (let i = 1; i < vertices.length - 1; i++) {
+            triangles.push([0, i, i + 1]);
+        }
+        return triangles;
     }
 }
 

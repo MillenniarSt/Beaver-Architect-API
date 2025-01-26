@@ -13,18 +13,12 @@ import fs from 'fs'
 import path from 'path'
 import { Project, ProjectData, registerProjectMessages } from "./project/project.js"
 import { architectsDir, dir, librariesDir, projectsDir } from './util/paths.js'
-import { ArchitectData, loadArchitect } from './connection/architect.js'
 import { registerStyleMessages } from './engineer/data-pack/style/messages.js'
 import { OnMessage, server, ServerOnMessage } from './connection/server.js'
 import { registerDirectorMessages } from './connection/director.js'
 import { argv } from 'process'
 import { setArchitect, setProject } from './instance.js'
-import { Structure } from './project/structure.js'
-import { Prism } from './world/geo/object.js'
-import { Rect2 } from './world/bi-geo/plane.js'
-import { Vec2 } from './world/vector.js'
-import { StructureEngineer, StructureReference } from './engineer/structure/structure.js'
-import { FlexAlignment, FlexPrismBuilder, RepetitionMode } from './builder/object/prism.js'
+import { ArchitectData, loadArchitect } from './project/architect.js'
 
 const log = console.log
 console.log = (...args) => {
@@ -58,6 +52,8 @@ console.debug = (...args) => {
  * Import all Builders here
  * so you make sure they are registered
  */
+import './builder/surface/rect.js'
+import './builder/surface/to-prism.js'
 import './builder/object/prism.js'
 
 const identifier = argv[3]

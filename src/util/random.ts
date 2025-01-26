@@ -160,13 +160,13 @@ export class RandomList<T = any> {
     constructor(
         readonly list: T[] = [], 
         readonly getter: RandomInteger = new RandomInteger(0, list.length -1), 
-        readonly itemToJson: (item: T) => any = (item) => item
+        public itemToJson: (item: T) => any = (item) => item
     ) {
         this.getter.min = 0
         this.getter.max = this.list.length -1
     }
 
-    static fromJson<T>(json: any, itemToJson: (item: T) => any = (item) => item, itemFromJson: (json: any) => T = (json) => json): RandomList<T> {
+    static fromJson<T>(json: any, itemFromJson: (json: any) => T = (json) => json, itemToJson: (item: T) => any = (item) => item): RandomList<T> {
         return new RandomList(json.list.map((item: any) => itemFromJson(json)), RandomInteger.fromJson(json.getter), itemToJson)
     }
 

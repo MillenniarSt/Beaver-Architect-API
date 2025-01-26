@@ -14,7 +14,7 @@ export class StructureReference extends ResourceReference<StructureEngineer> {
         return getProject(this.pack).structures.get(this.location)
     }
 }
-export class StructureEngineer<T = any> extends Engineer {
+export class StructureEngineer<T extends { toJson: () => {} } = any> extends Engineer {
 
     builder: Builder<T>
 

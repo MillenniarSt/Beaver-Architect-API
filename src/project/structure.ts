@@ -2,7 +2,7 @@ import { BuilderResult } from "../builder/builder.js";
 import { StructureEngineer } from "../engineer/structure/structure.js";
 import { Seed } from "../util/random.js";
 
-export class Structure<T = any> {
+export class Structure<T extends { toJson: () => {} } = any> {
 
     constructor(
         protected base: T,
