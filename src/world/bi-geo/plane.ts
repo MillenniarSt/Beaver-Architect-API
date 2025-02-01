@@ -1,6 +1,14 @@
 import { Vec2 } from "../vector.js"
 import { CloseLine2 } from "./line.js"
 
+export const namedPlanes: Map<string, (json: any) => Plane2> = new Map()
+
+export function NamedPlane(fromJson: (json: any) => Plane2) {
+    return function (constructor: { new(...args: any): Plane2 }) {
+        namedPlanes.set(constructor.name, fromJson)
+    }
+}
+
 export abstract class Plane2 {
 
     abstract get edge(): CloseLine2
@@ -81,13 +89,5 @@ export class Rect2 extends Plane2 {
             pos: this.pos.toJson(),
             size: this.size.toJson()
         }
-    }
-}
-
-export const namedPlanes: Map<string, (json: any) => Plane2> = new Map()
-
-export function NamedPlane(fromJson: (json: any) => Plane2) {
-    return function (constructor: { new(...args: any): Plane2 }) {
-        namedPlanes.set(constructor.name, fromJson)
     }
 }

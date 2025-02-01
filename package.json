@@ -14,6 +14,7 @@
     "clean": "gulp clean",
     "compress": "gulp compress",
     "serve": "npx tsc & node ./dist/index.js -id",
+    "reserve": "node ./dist/index.js -id",
     "exe": "npx tsc & npx babel dist --out-dir common & pkg ./common/index.js --output server --targets node18.5.0-win-x64"
   },
   "author": "Millenniar",

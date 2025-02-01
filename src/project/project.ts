@@ -11,11 +11,12 @@
 
 import fs from "fs"
 import path from "path"
-import { projectsDir } from "../util/paths.js"
+import { librariesDir, projectsDir } from "../util/paths.js"
 import { OnMessage } from "./../connection/server.js"
 import { DataPack } from "./../engineer/data-pack/data-pack.js"
-import { StructureEngineer } from "./../engineer/structure/structure.js"
-import { getArchitect, getProject } from "../instance.js"
+import { getArchitect, getProject, getProjectOrNull, loadProject } from "../instance.js"
+import { Structure } from "./structure.js"
+import { StyleDependence } from "../engineer/data-pack/style/dependence.js"
 
 /**
 * @param identifier should be no.space.with.dots
@@ -27,34 +28,52 @@ export type ProjectData = {
     authors: string
     description: string
 
-    type: ProjectType
-    builder: string | null
+    dependencies: {
+        identifier: string,
+        version: string
+    }[]
 }
 
 export class Project {
 
-    readonly identifier: string
+    private constructor(
+        readonly dir: string,
+        readonly identifier: string,
+        public name: string,
+        public authors: string,
+        public description: string,
+        public dependencies: Project[],
+        public styleDependence: StyleDependence,
+        public dataPack: DataPack,
+        public structures: Structure[]
+    ) { }
 
-    name: string
-    authors: string
-    description: string
+    static async init(dir: string, data: ProjectData): Promise<Project> {
+        const loaded = getProjectOrNull(data.identifier)
+        if(loaded) {
+            return loaded
+        }
 
-    readonly type: ProjectType
-
-    dataPack: DataPack
-    structures: Map<string, StructureEngineer> = new Map()
-
-    constructor(data: ProjectData) {
-        this.identifier = data.identifier
-        this.name = data.name
-        this.authors = data.authors
-        this.description = data.description
-        this.type = data.type
-        this.dataPack = new DataPack(this.identifier, data.name)
-    }
-
-    async init(on: (progress: number) => void) {
-        await this.dataPack.initChanneled(on)
+        const dependencies: Project[] = []
+        for(let i = 0; i < data.dependencies.length; i++) {
+            const dir = path.join(librariesDir, `${data.dependencies[i].identifier}:${data.dependencies[i].version}`)
+            if(!fs.existsSync(dir)) {
+                throw new Error(`Invalid dependency: ${data.dependencies[i].identifier}:${data.dependencies[i].version} does not exists or it is not installed`)
+            }
+            dependencies.push(await Project.init(dir, JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf-8'))))
+        }
+        const dataPack = await DataPack.init(data.identifier)
+        
+        const project = new Project(
+            dir,
+            data.identifier, data.name, data.authors, data.description,
+            dependencies,
+            StyleDependence.join([...dependencies.map((dependency) => dependency.dataPack.styleDependence), dataPack.styleDependence]),
+            dataPack,
+            []  // TODO
+        )
+        loadProject(project)
+        return project
     }
 
     read(relPath: string): any {
@@ -127,14 +146,8 @@ export function registerProjectMessages(onMessage: OnMessage) {
             name: project.name,
             authors: project.authors,
             description: project.description,
-            architect: getArchitect().clientData,
-            type: project.type
+            architect: getArchitect().clientData
         })
-    })
-
-    onMessage.set('init', async (data, client, id) => {
-        await getProject(data.identifier).init((progress: any) => client.respond(id, progress))
-        client.respond(id, '$close')
     })
 
     // File Manager

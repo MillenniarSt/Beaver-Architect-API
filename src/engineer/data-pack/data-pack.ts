@@ -11,56 +11,56 @@
 
 import { getProject } from "../../instance.js"
 import { FileNode } from "../../project/project.js"
-import { AbstractEngineer, Engineer, ReferenceData } from "../engineer.js"
+import { Engineer, ReferenceData } from "../engineer.js"
+import { StructureEngineer, StructureReference } from "../structure/structure.js"
+import { StyleDependence } from "./style/dependence.js"
 import { Style, StyleReference } from "./style/style.js"
 
 export const loadedDataPacks = new Map<string, DataPack>()
 
-export class DataPack extends AbstractEngineer {
+export class DataPack {
 
-    constructor(readonly pack: string, public name: string) {
-        super()
-    }
-
-    engineers: {
-        styles: Map<string, Style>
-    } = {
-        styles: new Map()
-    }
-
-    async init() {
-        await this.initChanneled((i) => {})
-    }
-
-    async initChanneled(on: (progress: number) => void) {
-        this.engineers = {
-            styles: new Map()
+    constructor(
+        readonly styleDependence: StyleDependence,
+        readonly engineers: {
+            styles: Map<string, Style>
+            structures: Map<string, StructureEngineer>
         }
+    ) { }
 
-        this.engineers.styles = await this.loadEngineers<Style>(
-            getProject(this.pack).mapDir('data_pack\\styles'),
-            (ref) => Style.loadFromRef(new StyleReference(ref))
+    static async init(pack: string): Promise<DataPack> {
+        return new DataPack(
+            StyleDependence.fromJson(getProject(pack).read('data_pack\\style_dependence.json')),
+            {
+                styles: await this.loadEngineers<Style>(pack,
+                    getProject(pack).mapDir('data_pack\\styles'),
+                    (ref) => Style.loadFromRef(new StyleReference(ref))
+                ),
+                structures: await this.loadEngineers<StructureEngineer>(pack,
+                    getProject(pack).mapDir('data_pack\\structures'),
+                    (ref) => StructureEngineer.loadFromRef(new StructureReference(ref))
+                )
+            }
         )
-        on(1)
     }
 
-    protected async loadEngineers<E extends Engineer>(fileNodes: FileNode[], load: (ref: ReferenceData) => E): Promise<Map<string, E>> {
+    protected static async loadEngineers<E extends Engineer>(pack: string, fileNodes: FileNode[], load: (ref: ReferenceData) => E): Promise<Map<string, E>> {
         const map = new Map<string, E>()
         for(let i = 0; i < fileNodes.length; i++) {
-            await this.loadEngineer(map, fileNodes[i], load, fileNodes[i].name)
+            await this.loadEngineer(pack, map, fileNodes[i], load, fileNodes[i].name)
         }
         return map
     }
 
-    protected async loadEngineer<E extends Engineer>(map: Map<string, E>, node: FileNode, load: (ref: ReferenceData) => E, location: string) {
+    protected static async loadEngineer<E extends Engineer>(pack: string, map: Map<string, E>, node: FileNode, load: (ref: ReferenceData) => E, location: string) {
         if(node.children === undefined) {
             location = location.substring(0, location.lastIndexOf('.'))
-            const engineer = load({ pack: this.pack, location: location })
+            const engineer = load({ pack: pack, location: location })
             await engineer.init()
             map.set(location, engineer)
         } else {
             for(let i = 0; i < node.children.length; i++) {
-                await this.loadEngineer(map, node.children[i], load, `${location}/${node.children[i].name}`)
+                await this.loadEngineer(pack, map, node.children[i], load, `${location}/${node.children[i].name}`)
             }
         }
     }

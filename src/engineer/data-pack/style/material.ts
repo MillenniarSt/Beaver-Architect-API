@@ -12,6 +12,7 @@
 import { CheckUpdate, ObjectUpdate, VarUpdate } from "../../../connection/directives/update.js"
 import { FormOutput } from "../../../util/form.js"
 import { RandomList } from "../../../util/random.js"
+import { Style } from "./style.js"
 
 export type MaterialUpdate = {
     id?: string,
@@ -37,7 +38,7 @@ export class Material {
     constructor(
         public paints: RandomList<Paint>,
         public type: string,
-        public settings: {}
+        public settings: {} = {}
     ) { }
 
     static fromJson(json: any): Material {
@@ -79,5 +80,60 @@ export class Material {
 
     undefined(): Paint {
         return { id: '$undefined' }
+    }
+}
+
+export class MaterialReference {
+
+    protected constructor(
+        protected defined: Material | undefined,
+        protected ref: string | undefined,
+        public attributes: Record<string, string | number | boolean> = {}
+    ) { }
+
+    static defined(material: Material, attributes: Record<string, string | number | boolean> = {}): MaterialReference {
+        return new MaterialReference(material, undefined, attributes)
+    }
+
+    static ref(ref: string, attributes: Record<string, string | number | boolean> = {}): MaterialReference {
+        return new MaterialReference(undefined, ref, attributes)
+    }
+
+    static fromJson(json: any): MaterialReference {
+        return new MaterialReference(json.defined ? Material.fromJson(json.material) : undefined, json.ref, json.attributes)
+    }
+
+    isDefined(): boolean {
+        return this.defined !== undefined
+    }
+
+    setDefined(defined: Material) {
+        this.defined = defined
+        this.ref = undefined
+    }
+
+    setRef(ref: string) {
+        this.defined = undefined
+        this.ref = ref
+    }
+
+    getDefined(): Material | undefined {
+        return this.defined
+    }
+
+    getRef(): string | undefined {
+        return this.ref
+    }
+
+    getMaterial(style: Style): Material {
+        return this.defined ?? style.getMaterial(this.ref!)
+    }
+
+    toJson() {
+        return {
+            defined: this.defined?.toJson(),
+            ref: this.ref,
+            attributes: this.attributes
+        }
     }
 }

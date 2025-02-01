@@ -1,4 +1,4 @@
-import { MaterialReference } from "../../engineer/data-pack/style/style.js";
+import { MaterialReference } from "../../engineer/data-pack/style/material.js";
 import { FormData, FormOutput } from "../../util/form.js";
 import { RandomInteger, RandomList, RandomVec2, RandomVec4, Seed } from "../../util/random.js";
 import { Rect2 } from "../../world/bi-geo/plane.js";
@@ -42,7 +42,7 @@ export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>> implements Ch
         this.cell = data.cell ?? RandomVec2.constant(1)
         this.gap = data.gap ?? RandomVec2.constant(0)
         this.padding = data.padding ?? RandomVec4.constant(0)
-        this.randomGetter = data.randomGetter ?? new RandomInteger(0, this._children.length)
+        this.randomGetter = data.randomGetter ?? new RandomInteger(0, this._children.length -1)
     }
 
     static fromJson(json: any): GridRectBuilder {
@@ -74,7 +74,7 @@ export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>> implements Ch
 
     addChild(): void {
         this._children.push(new EmptySurfaceBuilder())
-        this.randomGetter = new RandomInteger(0, this._children.length)
+        this.randomGetter = new RandomInteger(0, this._children.length -1)
     }
 
     buildChildren(context: Plane3<Rect2>, seed: Seed): BuilderResult[] {
@@ -95,6 +95,7 @@ export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>> implements Ch
             }
         }
 
+        // TODO fix the repetitions algorithm -> cell.x + gap.x <-
         const repetitions = new Vec2(Math.floor(size.x / (cell.x + gap.x)), Math.floor(size.y / (cell.y + gap.y)))
         if (this.alignment[0] === GridAxisAlignment.FILL) {
             cell = cell.add(new Vec2((size.x - (repetitions.x * (cell.x + gap.x))) / repetitions.x, 0))

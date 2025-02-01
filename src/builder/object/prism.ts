@@ -1,11 +1,11 @@
-import { MaterialReference } from '../../engineer/data-pack/style/style.js';
+import { MaterialReference } from '../../engineer/data-pack/style/material.js';
 import { FormData, FormOutput } from '../../util/form.js';
 import { RandomList, RandomNumber, RandomVec2, Seed } from '../../util/random.js';
 import { Plane2 } from '../../world/bi-geo/plane.js';
 import { Prism } from '../../world/geo/object.js';
 import { Vec3 } from '../../world/vector.js';
 import { Builder, BuilderResult, ChildrenManager, ObjectBuilder } from '../builder.js';
-import { builderFromJson, NamedBuilder } from '../collective.js';
+import { NamedBuilder } from '../collective.js';
 import { EmptyObjectBuilder } from './empty.js';
 
 export enum FlexAlignment {

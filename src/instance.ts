@@ -39,3 +39,7 @@ export function loadProject(project: Project) {
 export function getProject(identifier?: string): Project {
     return identifier ? loadedProjects[identifier] : _project!
 }
+
+export function getProjectOrNull(identifier: string): Project | null {
+    return loadedProjects[identifier]
+}

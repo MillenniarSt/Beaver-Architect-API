@@ -1,4 +1,4 @@
-import { MaterialReference } from "../../engineer/data-pack/style/style.js";
+import { MaterialReference } from "../../engineer/data-pack/style/material.js";
 import { FormData, FormOutput } from "../../util/form.js";
 import { RandomList, RandomNumber, Seed } from "../../util/random.js";
 import { Plane2 } from "../../world/bi-geo/plane.js";
@@ -8,8 +8,8 @@ import { Builder, BuilderResult, ObjectBuilder, SurfaceBuilder } from "../builde
 import { NamedBuilder } from "../collective.js";
 import { EmptyObjectBuilder } from "../object/empty.js";
 
-@NamedBuilder(PlaneToPrismBuilder.fromJson)
-export class PlaneToPrismBuilder<P extends Plane2 = Plane2> extends SurfaceBuilder<Plane3<P>> {
+@NamedBuilder(SurfaceToPrismBuilder.fromJson)
+export class SurfaceToPrismBuilder<P extends Plane2 = Plane2> extends SurfaceBuilder<Plane3<P>> {
 
     protected child: ObjectBuilder<Prism<P>> = new EmptyObjectBuilder()
 
@@ -26,9 +26,9 @@ export class PlaneToPrismBuilder<P extends Plane2 = Plane2> extends SurfaceBuild
         this.height = data.height ?? RandomNumber.constant(1)
     }
 
-    static fromJson(json: any): PlaneToPrismBuilder {
+    static fromJson(json: any): SurfaceToPrismBuilder {
         const data = json.data
-        return new PlaneToPrismBuilder({
+        return new SurfaceToPrismBuilder({
             child: Builder.fromJson(data.child),
             height: RandomNumber.fromJson(data.height),
         }, RandomList.fromJson(json.materials, MaterialReference.fromJson))

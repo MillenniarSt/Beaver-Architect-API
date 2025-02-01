@@ -24,7 +24,7 @@ export class StructureEngineer<T extends { toJson: () => {} } = any> extends Eng
     }
 
     update(director: ClientDirector, update: {}): void {
-        throw new Error("Method not implemented.");
+        throw new Error("Method not implemented.")
     }
 
     static loadFromRef(ref: ResourceReference<StructureEngineer>): StructureEngineer {

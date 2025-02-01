@@ -48,11 +48,11 @@ export class RandomNumber {
 export class RandomInteger extends RandomNumber {
 
     random(): number {
-        return Math.floor(Math.random() * (this.max - this.min + 1)) + this.min
+        return Math.floor(Math.random() * (this.max - this.min)) + this.min
     }
 
     seeded(seed: Seed): number {
-        return Math.floor(seed.next() * (this.max - this.min + 1)) + this.min
+        return Math.floor(seed.next() * (this.max - this.min)) + this.min
     }
 }
 
@@ -167,7 +167,7 @@ export class RandomList<T = any> {
     }
 
     static fromJson<T>(json: any, itemFromJson: (json: any) => T = (json) => json, itemToJson: (item: T) => any = (item) => item): RandomList<T> {
-        return new RandomList(json.list.map((item: any) => itemFromJson(json)), RandomInteger.fromJson(json.getter), itemToJson)
+        return new RandomList(json.list.map((item: any) => itemFromJson(item)), RandomInteger.fromJson(json.getter), itemToJson)
     }
 
     push(item: T) {

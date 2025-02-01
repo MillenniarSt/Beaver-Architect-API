@@ -1,4 +1,4 @@
-import { MaterialReference } from "../../engineer/data-pack/style/style.js";
+import { MaterialReference } from "../../engineer/data-pack/style/material.js";
 import { FormData, FormOutput } from "../../util/form.js";
 import { RandomList, Seed } from "../../util/random.js";
 import { Object3 } from "../../world/geo/object.js";

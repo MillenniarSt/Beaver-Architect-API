@@ -282,57 +282,16 @@ export class Style extends Engineer {
     }
 }
 
-export class MaterialReference {
+export class GenerationStyle {
 
-    protected constructor(
-        protected defined: Material | undefined,
-        protected ref: string | undefined,
-        public attributes: Record<string, string | number | boolean> = {}
+    constructor(
+        
     ) { }
+}
 
-    static defined(material: Material, attributes: Record<string, string | number | boolean> = {}): MaterialReference {
-        return new MaterialReference(material, undefined, attributes)
-    }
+export class PostGenerationStyle {
 
-    static ref(ref: string, attributes: Record<string, string | number | boolean> = {}): MaterialReference {
-        return new MaterialReference(undefined, ref, attributes)
-    }
-
-    static fromJson(json: any): MaterialReference {
-        return new MaterialReference(json.defined ? Material.fromJson(json.material) : undefined, json.ref, json.attributes)
-    }
-
-    isDefined(): boolean {
-        return this.defined !== undefined
-    }
-
-    setDefined(defined: Material) {
-        this.defined = defined
-        this.ref = undefined
-    }
-
-    setRef(ref: string) {
-        this.defined = undefined
-        this.ref = ref
-    }
-
-    getDefined(): Material | undefined {
-        return this.defined
-    }
-
-    getRef(): string | undefined {
-        return this.ref
-    }
-
-    getMaterial(style: Style): Material {
-        return this.defined ?? style.getMaterial(this.ref!)
-    }
-
-    toJson() {
-        return {
-            defined: this.defined?.toJson(),
-            ref: this.ref,
-            attributes: this.attributes
-        }
-    }
+    constructor(
+        readonly materials: Record<string, Material>
+    ) { }
 }

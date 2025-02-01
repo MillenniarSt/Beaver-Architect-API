@@ -4,20 +4,9 @@ import { SaveDirective } from '../connection/directives/save.js'
 import { idToLabel } from '../util/form.js'
 import { getProject } from '../instance.js'
 
-export abstract class AbstractEngineer {
+export abstract class Engineer {
 
-    abstract get pack(): string
-
-    abstract get name(): string
-
-    async init(): Promise<void> { }
-}
-
-export abstract class Engineer extends AbstractEngineer {
-
-    constructor(protected _reference: ResourceReference<Engineer>) {
-        super()
-    }
+    constructor(protected _reference: ResourceReference<Engineer>) { }
 
     get pack(): string {
         return this.reference.pack
@@ -38,6 +27,8 @@ export abstract class Engineer extends AbstractEngineer {
     save() {
         getProject(this.reference.pack).write(this.reference.path, this.toJson())
     }
+
+    async init(): Promise<void> { }
 
     abstract toJson(): {}
 

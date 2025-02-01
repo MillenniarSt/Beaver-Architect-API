@@ -55,6 +55,18 @@ console.debug = (...args) => {
 import './builder/surface/rect.js'
 import './builder/surface/to-prism.js'
 import './builder/object/prism.js'
+import { MaterialReference, Style, StyleReference } from './engineer/data-pack/style/style.js'
+import { Material } from './engineer/data-pack/style/material.js'
+import { RandomList, RandomNumber, RandomVec2, Seed } from './util/random.js'
+import { GridAxisAlignment, GridRectBuilder } from './builder/surface/rect.js'
+import { SurfaceToPrismBuilder } from './builder/surface/to-prism.js'
+import { StructureEngineer, StructureReference } from './engineer/structure/structure.js'
+import { EmptyObjectBuilder } from './builder/object/empty.js'
+import { Structure } from './project/structure.js'
+import { Rect2 } from './world/bi-geo/plane.js'
+import { Vec2 } from './world/vector.js'
+import { Plane3 } from './world/geo/surface.js'
+import { Exporter } from './project/exporter.js'
 
 const identifier = argv[3]
 const port = argv[4] ? Number(argv[4]) : 8224
@@ -89,3 +101,36 @@ registerStyleMessages(onServerMessage)
 
 const url = await server.open(port, isPublic, onServerMessage)
 console.info(`Opened Project Server '${identifier}' on ${url ?? `port ${port}`}`)
+
+
+// Builder + Exporter Testing
+
+// Style
+
+const style = new Style(new StyleReference('style-test'), false, [], new Map([
+    ['material', new Material(new RandomList([{ id: 'minecraft:stone' }]), 'BaseMaterial')]
+]))
+
+// Structure
+
+const builder = new GridRectBuilder({
+    gap: RandomVec2.constant(1),
+    alignment: [GridAxisAlignment.START, GridAxisAlignment.START],
+    children: [new SurfaceToPrismBuilder({
+        child: new EmptyObjectBuilder(new RandomList([MaterialReference.ref('material')])),
+        height: new RandomNumber(2, 6)
+    })]
+})
+
+const engineer = new StructureEngineer(new StructureReference('structure-test'), builder)
+
+const structure = new Structure(new Plane3(new Rect2(Vec2.ZERO, new Vec2(11, 7)), 0), engineer)
+
+// Export
+
+const seed = new Seed()
+
+const result = structure.build(seed)
+
+const exporter = new Exporter(seed, result, style)
+exporter.exportToArchitect((data) => console.debug('Update', data))

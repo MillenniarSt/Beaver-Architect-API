@@ -2,6 +2,14 @@ import { Plane2, Rect2 } from "../bi-geo/plane.js";
 import { Quaternion } from "../quaternion.js";
 import { Vec2, Vec3 } from "../vector.js";
 
+export const namedObjects: Map<string, (json: any) => Object3> = new Map()
+
+export function NamedObject(fromJson: (json: any) => Object3) {
+    return function (constructor: { new(...args: any): Object3 }) {
+        namedObjects.set(constructor.name, fromJson)
+    }
+}
+
 export abstract class Object3 {
 
     constructor(
@@ -141,13 +149,5 @@ export class Rect3 extends Prism<Rect2> {
             rotation: this.rotation,
             scale: this.scale
         }
-    }
-}
-
-export const namedObjects: Map<string, (json: any) => Object3> = new Map()
-
-export function NamedObject(fromJson: (json: any) => Object3) {
-    return function (constructor: { new(...args: any): Object3 }) {
-        namedObjects.set(constructor.name, fromJson)
     }
 }

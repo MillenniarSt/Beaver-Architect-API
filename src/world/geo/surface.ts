@@ -2,6 +2,14 @@ import { Plane2 } from "../bi-geo/plane.js";
 import { Quaternion } from "../quaternion.js";
 import { Vec3 } from "../vector.js";
 
+export const namedSurfaces: Map<string, (json: any) => Surface> = new Map()
+
+export function NamedSurface(fromJson: (json: any) => Surface) {
+    return function (constructor: { new(...args: any): Surface }) {
+        namedSurfaces.set(constructor.name, fromJson)
+    }
+}
+
 export abstract class Surface {
 
     abstract get vertices(): Vec3[]
@@ -99,13 +107,5 @@ export class Plane3<P extends Plane2 = Plane2> extends Surface {
 
     get triangles(): number[][] {
         return this.plane.edge.getTriangles()
-    }
-}
-
-export const namedSurfaces: Map<string, (json: any) => Surface> = new Map()
-
-export function NamedSurface(fromJson: (json: any) => Surface) {
-    return function (constructor: { new(...args: any): Surface }) {
-        namedSurfaces.set(constructor.name, fromJson)
     }
 }

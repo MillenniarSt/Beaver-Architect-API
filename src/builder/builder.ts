@@ -1,12 +1,10 @@
-import { v4 } from "uuid";
-import { getArchitect } from "../instance.js";
 import { FormData, FormOutput } from "../util/form.js";
 import { RandomList, Seed } from "../util/random.js";
 import { Line3 } from "../world/geo/line.js";
 import { Object3 } from "../world/geo/object.js";
 import { Surface } from "../world/geo/surface.js";
 import { builderFromJson } from "./collective.js";
-import { MaterialReference, Style } from "../engineer/data-pack/style/style.js";
+import { MaterialReference } from "../engineer/data-pack/style/material.js";
 
 export abstract class Builder<T extends { toJson: () => {} } = any> {
 
@@ -78,11 +76,6 @@ export abstract class ObjectBuilder<O extends Object3 = Object3> extends Builder
     }
 }
 
-export type ExportToArchitectUpdate = {
-    isDone?: boolean
-    fail?: string
-}
-
 export class BuilderResult<T extends { toJson: () => {} } = any> {
 
     constructor(
@@ -101,32 +94,6 @@ export class BuilderResult<T extends { toJson: () => {} } = any> {
             default: throw new Error(`BuilderResult: invalid type while parsing json: ${json.type}`)
         }
         return new BuilderResult(json.type, object, json.material ? MaterialReference.fromJson(json.material) : undefined, json.children.map((child: any) => BuilderResult.fromJson(child)))
-    }
-
-    exportToArchitect(style: Style, seed: Seed, onUpdate: (data: ExportToArchitectUpdate) => void): Promise<string | null> {
-        return new Promise(async (resolve) => {
-            const channel = `export:${v4()}`
-            await getArchitect().server.openChannel<ExportToArchitectUpdate>(`export:${channel}`, {
-                seed: seed.seed,
-                data: this.toArchitectData(style)
-            }, (data) => {
-                if(data.isDone) {
-                    resolve(null)
-                } else if(data.fail) {
-                    resolve(data.fail)
-                }
-                onUpdate(data)
-            })
-        })
-    }
-
-    toArchitectData(style: Style): {} {
-        return {
-            type: this.type,
-            object: this.object.toJson(),
-            material: this.material?.getMaterial(style).toJson(),
-            children: this.children.map((child) => child.toArchitectData(style))
-        }
     }
 
     toJson(): {} {
