@@ -50,7 +50,6 @@ export class SurfaceToPrismBuilder<P extends Plane2 = Plane2> extends SurfaceBui
 
     protected buildChildren(context: Plane3<P>, style: GenerationStyle, seed: Seed): BuilderResult[] {
         const prism = new Prism(context, this.options.height.get(style, seed))
-        console.debug(prism.base)
         return [this.child.build(prism, style, seed)]
     }
 

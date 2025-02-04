@@ -7,8 +7,9 @@ import { builderFromJson } from "./collective.js";
 import { MaterialReference } from "../engineer/data-pack/style/material.js";
 import { Option } from "../util/option.js";
 import { GenerationStyle } from "../engineer/data-pack/style/style.js";
+import { Geo3 } from "../world/geo.js";
 
-export abstract class Builder<G extends { toJson: () => {} } = any, O extends Record<string, Option> = Record<string, Option>> {
+export abstract class Builder<G extends Geo3 = any, O extends Record<string, Option> = Record<string, Option>> {
 
     constructor(
         readonly options: O,
@@ -59,10 +60,10 @@ export abstract class Builder<G extends { toJson: () => {} } = any, O extends Re
     }
 }
 
-export abstract class GenericBuilder<T extends BuilderType = any, G extends { toJson: () => {} } = any, O extends Record<string, Option> = Record<string, Option>> extends Builder<G, O> {
+export abstract class GenericBuilder<G extends Geo3 = any, O extends Record<string, Option> = Record<string, Option>> extends Builder<G, O> {
 
     constructor(
-        readonly type: T,
+        readonly type: BuilderType,
         readonly options: O,
         protected materials: RandomList<MaterialReference>
     ) {
@@ -97,7 +98,7 @@ export abstract class ObjectBuilder<O extends Object3 = Object3, Opt extends Rec
 
 export type BuilderType = 'line' | 'surface' | 'object'
 
-export class BuilderResult<T extends { toJson: () => {} } = any> {
+export class BuilderResult<T extends Geo3 = any> {
 
     constructor(
         readonly type: BuilderType,

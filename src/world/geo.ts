@@ -1,11 +1,10 @@
-import { Quaternion } from "./quaternion.js"
 import { Vec2, Vec3 } from "./vector.js"
 
 export interface Geo2 {
 
     move(vec: Vec2): Geo2
 
-    // rotate(rotation: Quaternion, vec: Vec2): Geo2
+    // rotate(rotation: number, vec: Vec2): Geo2
 
     // scale(vec: Vec2): Geo2
 

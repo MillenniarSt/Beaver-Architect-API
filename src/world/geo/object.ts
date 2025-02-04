@@ -22,12 +22,6 @@ export abstract class Object3 implements Geo3 {
 
     abstract toNamedJson(): {}
 
-    getFaces(): Plane3[] {
-        const vertices = this.vertices
-        // TODO
-        return []
-    }
-
     static fromJson(json: any): Object3 {
         const factory = namedObjects.get(json.name)
         if (!factory) {
@@ -48,8 +42,8 @@ export abstract class Object3 implements Geo3 {
 export class GeneralObject3 extends Object3 {
 
     constructor(
-        public vertices: Vec3[],
-        public triangles: [number, number, number][]
+        readonly vertices: Vec3[],
+        readonly triangles: [number, number, number][]
     ) {
         super()
     }
@@ -75,8 +69,8 @@ export class GeneralObject3 extends Object3 {
 export class Prism<P extends Plane2 = Plane2> extends Object3 {
 
     constructor(
-        public base: Plane3<P>,
-        public height: number
+        readonly base: Plane3<P>,
+        readonly height: number
     ) {
         super()
     }
@@ -91,7 +85,7 @@ export class Prism<P extends Plane2 = Plane2> extends Object3 {
 
     get vertices(): Vec3[] {
         const baseVertices = this.base.vertices
-        const topVertices = baseVertices.map(v => v.add(new Vec3(0, this.height, 0)))
+        const topVertices = baseVertices.map(v => v.add(new Vec3(0, 0, this.height)))
         return [...baseVertices, ...topVertices]
     }
 
@@ -126,9 +120,9 @@ export class Prism<P extends Plane2 = Plane2> extends Object3 {
 export class Rect3 extends Prism<Rect2> {
 
     constructor(
-        public pos: Vec3,
-        public size: Vec3,
-        public rotation: Quaternion = Quaternion.NORTH
+        readonly pos: Vec3,
+        readonly size: Vec3,
+        readonly rotation: Quaternion = Quaternion.NORTH
     ) {
         super(new Plane3(new Rect2(new Vec2(pos.x, pos.y), new Vec2(size.x, size.y)), pos.z, rotation), size.z)
     }
