@@ -1,6 +1,7 @@
+import { Geo2 } from "../geo.js"
 import { Vec2 } from "../vector.js"
 
-export class Line2 {
+export class Line2 implements Geo2 {
 
     constructor(readonly parts: Line2Part[]) { }
 
@@ -31,6 +32,22 @@ export class Line2 {
             }
         }
         return false
+    }
+
+    move(vec: Vec2): Line2 {
+        return new Line2(this.parts.map((part) => part.move(vec)))
+    }
+
+    get vertices(): Vec2[] {
+        const vertices: Vec2[] = []
+        this.parts.forEach(part => {
+            const controls = part.getControls()
+            if (vertices.length === 0 || !vertices[vertices.length - 1].equals(controls[0])) {
+                vertices.push(controls[0])
+            }
+            vertices.push(controls[controls.length -1])
+        })
+        return vertices
     }
 
     static fromJson(json: number[][][]): Line2 {
@@ -70,25 +87,8 @@ export class CloseLine2 extends Line2 {
         return new CloseLine2(parts)
     }
 
-    getVertices(): Vec2[] {
-        const vertices: Vec2[] = [];
-        this.parts.forEach(part => {
-            const controls = part.getControls()
-            if (vertices.length === 0 || !vertices[vertices.length - 1].equals(controls[0])) {
-                vertices.push(controls[0])
-            }
-            vertices.push(controls[controls.length -1])
-        });
-        return vertices;
-    }
-
-    getTriangles(): number[][] {
-        const vertices = this.getVertices();
-        const triangles: number[][] = [];
-        for (let i = 1; i < vertices.length - 1; i++) {
-            triangles.push([0, i, i + 1]);
-        }
-        return triangles;
+    move(vec: Vec2): CloseLine2 {
+        return new CloseLine2(this.parts.map((part) => part.move(vec)))
     }
 }
 
@@ -101,6 +101,8 @@ export abstract class Line2Part {
             return new BezierCurve2(json.map((v) => Vec2.fromJson(v)))
         }
     }
+
+    abstract move(vec: Vec2): Line2Part
 
     abstract containsPoint(point: Vec2): boolean
 
@@ -121,6 +123,10 @@ export class Segment2 extends Line2Part {
 
     constructor(public start: Vec2, public end: Vec2) {
         super()
+    }
+
+    move(vec: Vec2): Segment2 {
+        return new Segment2(this.start.add(vec), this.end.add(vec))
     }
 
     containsPoint(point: Vec2): boolean {
@@ -159,6 +165,10 @@ export class BezierCurve2 extends Line2Part {
         if (controls.length < 2) {
             throw new Error("A Bezier curve must have at least two control points")
         }
+    }
+
+    move(vec: Vec2): BezierCurve2 {
+        return new BezierCurve2(this.controls.map((control) => control.add(vec)), this.precision)
     }
 
     containsPoint(point: Vec2): boolean {

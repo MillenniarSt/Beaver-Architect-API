@@ -14,6 +14,8 @@ import { BuilderDirective, ListUpdate, ObjectUpdate, VarUpdate } from "../../../
 import { ClientDirector } from "../../../connection/director.js";
 import { Engineer, ResourceReference } from "../../engineer.js";
 import { getProject } from "../../../instance.js";
+import { Random } from "../../../util/random.js";
+import { Option } from "../../../util/option.js";
 
 export type StyleUpdate = {
     isAbstract?: boolean
@@ -58,12 +60,27 @@ export class Style extends Engineer {
     implementations: ResourceReference<Style>[]
 
     materials: Map<string, Material>
+    options: Map<string, Option>
 
-    constructor(ref: ResourceReference<Style>, isAbstract: boolean = false, implementations: ResourceReference<Style>[] = [], materials: Map<string, Material> = new Map()) {
+    constructor(
+        ref: ResourceReference<Style>, 
+        isAbstract: boolean = false, implementations: ResourceReference<Style>[] = [], 
+        materials: Map<string, Material> = new Map(), 
+        options: Map<string, Option> = new Map()
+    ) {
         super(ref)
         this.materials = materials
+        this.options = options
         this.isAbstract = isAbstract
         this.implementations = implementations
+    }
+
+    toGenerationStyle(): GenerationStyle {
+        return new GenerationStyle(Array.from(this.options).reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {}))
+    }
+
+    toPostGenerationStyle(): PostGenerationStyle {
+        return new PostGenerationStyle(Array.from(this.materials).reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {}))
     }
 
     get completeMaterials(): [string, Material][] {
@@ -285,7 +302,7 @@ export class Style extends Engineer {
 export class GenerationStyle {
 
     constructor(
-        
+        readonly options: Record<string, Random>
     ) { }
 }
 

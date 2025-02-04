@@ -1,6 +1,8 @@
 import { Plane2, Rect2 } from "../bi-geo/plane.js";
+import { Geo3 } from "../geo.js";
 import { Quaternion } from "../quaternion.js";
 import { Vec2, Vec3 } from "../vector.js";
+import { Plane3, Surface } from "./surface.js";
 
 export const namedObjects: Map<string, (json: any) => Object3> = new Map()
 
@@ -10,19 +12,21 @@ export function NamedObject(fromJson: (json: any) => Object3) {
     }
 }
 
-export abstract class Object3 {
-
-    constructor(
-        public pos: Vec3,
-        public rotation: Quaternion = Quaternion.NORTH,
-        public scale: Vec3 = Vec3.UNIT
-    ) { }
+export abstract class Object3 implements Geo3 {
 
     abstract get vertices(): Vec3[]
 
-    abstract get triangles(): number[][]
+    abstract get triangles(): [number, number, number][]
+
+    abstract move(vec: Vec3): Object3
 
     abstract toNamedJson(): {}
+
+    getFaces(): Plane3[] {
+        const vertices = this.vertices
+        // TODO
+        return []
+    }
 
     static fromJson(json: any): Object3 {
         const factory = namedObjects.get(json.name)
@@ -35,10 +39,7 @@ export abstract class Object3 {
     toJson() {
         return {
             vertices: this.vertices.map(v => v.toJson()),
-            triangles: this.triangles,
-            pos: this.pos,
-            rotation: this.rotation,
-            scale: this.scale
+            triangles: this.triangles
         }
     }
 }
@@ -48,26 +49,24 @@ export class GeneralObject3 extends Object3 {
 
     constructor(
         public vertices: Vec3[],
-        public triangles: number[][],
-        pos: Vec3,
-        rotation: Quaternion = Quaternion.NORTH,
-        scale: Vec3 = Vec3.UNIT
+        public triangles: [number, number, number][]
     ) {
-        super(pos, rotation, scale)
+        super()
     }
 
     static fromJson(json: any): GeneralObject3 {
-        return new GeneralObject3(json.vertices.map(Vec3.fromJson), json.triangles, Vec3.fromJson(json.position), Quaternion.fromJson(json.rotation), Vec3.fromJson(json.scale))
+        return new GeneralObject3(json.vertices.map(Vec3.fromJson), json.triangles)
+    }
+
+    move(vec: Vec3): Object3 {
+        return new GeneralObject3(this.vertices.map((v) => v.add(vec)), this.triangles)
     }
 
     toNamedJson(): {} {
         return {
             name: this.constructor.name,
             vertices: this.vertices.map(v => v.toJson()),
-            triangles: this.triangles,
-            pos: this.pos,
-            rotation: this.rotation,
-            scale: this.scale
+            triangles: this.triangles
         }
     }
 }
@@ -76,33 +75,34 @@ export class GeneralObject3 extends Object3 {
 export class Prism<P extends Plane2 = Plane2> extends Object3 {
 
     constructor(
-        public plane: P,
-        public height: number,
-        pos: Vec3,
-        rotation: Quaternion = Quaternion.NORTH,
-        scale: Vec3 = Vec3.UNIT
+        public base: Plane3<P>,
+        public height: number
     ) {
-        super(pos, rotation, scale)
+        super()
     }
 
     static fromJson(json: any): Prism {
-        return new Prism(Plane2.fromJson(json.plane), json.height, Vec3.fromJson(json.position), Quaternion.fromJson(json.rotation), Vec3.fromJson(json.scale))
+        return new Prism(Surface.fromJson(json.base) as Plane3, json.height)
+    }
+
+    move(vec: Vec3): Prism<P> {
+        return new Prism(this.base.move(vec), this.height)
     }
 
     get vertices(): Vec3[] {
-        const baseVertices = this.plane.edge.getVertices().map(v => new Vec3(v.x, this.pos.y, v.y))
+        const baseVertices = this.base.vertices
         const topVertices = baseVertices.map(v => v.add(new Vec3(0, this.height, 0)))
         return [...baseVertices, ...topVertices]
     }
 
-    get triangles(): number[][] {
-        const baseCount = this.plane.edge.getVertices().length
-        const triangles: number[][] = []
-        for (const triangle of this.plane.edge.getTriangles()) {
+    get triangles(): [number, number, number][] {
+        const baseCount = this.base.vertices.length
+        const triangles: [number, number, number][] = []
+        for (const triangle of this.base.triangles) {
             triangles.push(triangle)
         }
-        for (const triangle of this.plane.edge.getTriangles()) {
-            triangles.push(triangle.map(i => i + baseCount))
+        for (const triangle of this.base.triangles) {
+            triangles.push([triangle[0] + baseCount, triangle[1] + baseCount, triangle[2] + baseCount])
         }
         for (let i = 0; i < baseCount; i++) {
             const next = (i + 1) % baseCount
@@ -116,11 +116,8 @@ export class Prism<P extends Plane2 = Plane2> extends Object3 {
     toNamedJson(): {} {
         return {
             name: this.constructor.name,
-            plane: this.plane.toNamedJson(),
-            height: this.height,
-            pos: this.pos,
-            rotation: this.rotation,
-            scale: this.scale
+            base: this.base.toNamedJson(),
+            height: this.height
         }
     }
 }
@@ -129,25 +126,27 @@ export class Prism<P extends Plane2 = Plane2> extends Object3 {
 export class Rect3 extends Prism<Rect2> {
 
     constructor(
+        public pos: Vec3,
         public size: Vec3,
-        pos: Vec3,
-        rotation: Quaternion = Quaternion.NORTH,
-        scale: Vec3 = Vec3.UNIT
+        public rotation: Quaternion = Quaternion.NORTH
     ) {
-        super(new Rect2(Vec2.ZERO, new Vec2(size.x, size.y)), size.z, pos, rotation, scale)
+        super(new Plane3(new Rect2(new Vec2(pos.x, pos.y), new Vec2(size.x, size.y)), pos.z, rotation), size.z)
     }
 
     static fromJson(json: any): Rect3 {
-        return new Rect3(Vec3.fromJson(json.size), Vec3.fromJson(json.position), Quaternion.fromJson(json.rotation), Vec3.fromJson(json.scale))
+        return new Rect3(Vec3.fromJson(json.pos), Vec3.fromJson(json.size), Quaternion.fromJson(json.rotation))
+    }
+
+    move(vec: Vec3): Rect3 {
+        return new Rect3(this.pos.add(vec), this.size, this.rotation)
     }
 
     toNamedJson(): {} {
         return {
             name: this.constructor.name,
+            pos: this.pos.toJson(),
             size: this.size.toJson(),
-            pos: this.pos,
-            rotation: this.rotation,
-            scale: this.scale
+            rotation: this.rotation.toJson()
         }
     }
 }

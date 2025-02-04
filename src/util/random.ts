@@ -17,7 +17,16 @@ export class Seed {
     }
 }
 
-export class RandomNumber {
+export interface Random<T = any> {
+
+    random(): T
+
+    seeded(seed: Seed): T
+
+    toJson(): {}
+}
+
+export class RandomNumber implements Random<number> {
     
     constructor(public min: number, public max: number) { }
 
@@ -56,7 +65,7 @@ export class RandomInteger extends RandomNumber {
     }
 }
 
-export class RandomVec2 {
+export class RandomVec2 implements Random<Vec2> {
     
     constructor(public x: RandomNumber, public y: RandomNumber) { }
 
@@ -88,7 +97,7 @@ export class RandomVec2 {
     }
 }
 
-export class RandomVec3 {
+export class RandomVec3 implements Random<Vec3> {
     
     constructor(public x: RandomNumber, public y: RandomNumber, public z: RandomNumber) { }
 
@@ -121,7 +130,7 @@ export class RandomVec3 {
     }
 }
 
-export class RandomVec4 {
+export class RandomVec4 implements Random<Vec4> {
     
     constructor(public a: RandomNumber, public b: RandomNumber, public c: RandomNumber, public d: RandomNumber) { }
 
@@ -155,7 +164,7 @@ export class RandomVec4 {
     }
 }
 
-export class RandomList<T = any> {
+export class RandomList<T = any> implements Random<T | undefined> {
 
     constructor(
         readonly list: T[] = [], 
@@ -164,6 +173,10 @@ export class RandomList<T = any> {
     ) {
         this.getter.min = 0
         this.getter.max = this.list.length -1
+    }
+
+    static constant<T>(item: T, itemToJson?: (item: T) => any): RandomList<T> {
+        return new RandomList([item], RandomInteger.constant(0), itemToJson)
     }
 
     static fromJson<T>(json: any, itemFromJson: (json: any) => T = (json) => json, itemToJson: (item: T) => any = (item) => item): RandomList<T> {
@@ -198,9 +211,9 @@ export class RandomList<T = any> {
         return this.list[this.getter.seeded(seed)]
     }
 
-    toJson(): {} {
+    toJson(itemToJson: (item: T) => any = this.itemToJson): {} {
         return {
-            list: this.list.map((item: any) => this.itemToJson(item)),
+            list: this.list.map((item: any) => itemToJson(item)),
             getter: this.getter.toJson()
         }
     }

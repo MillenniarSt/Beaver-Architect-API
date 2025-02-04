@@ -28,16 +28,25 @@ export function labelToFile(label: string, extension: string = 'json', dir?: str
 
 // Form
 
+export class Form {
+
+    constructor(
+        public inputs: Record<string, FormDataInput>
+    ) { }
+
+    update(id: string, value: any) {
+        this.inputs[id].update(value, true)
+    }
+
+    toJson() {
+        return {
+            inputs: Object.entries(this.inputs).map(([key, input]) => Object.defineProperty(input, 'id', { value: key }))
+        }
+    }
+}
+
 export type FormData = {
-    inputs: (
-        | CheckboxInputData
-        | TextInputData
-        | ColorPickerInputData
-        | ListboxInputData
-        | NumberInputData
-        | SelectInputData
-        | NumberLimitationInputData
-    )[]
+    inputs: FormDataInputRegistered[]
 }
 
 export type FormOutput<V = any> = {
@@ -54,14 +63,25 @@ export function formEdit(output: FormOutput, id: string, edit: (value: any) => v
 
 // Form Inputs
 
+export type FormDataInputRegistered = (
+    | CheckboxInputData
+    | TextInputData
+    | ColorPickerInputData
+    | ListboxInputData
+    | NumberInputData
+    | SelectInputData
+    | NumberLimitationInputData
+)
+
 export type FormDataInput<T extends string = string, V extends {} | null = any, O extends {} | undefined = any, D extends {} = any, S extends {} = RequiredValidator> = {
     type: T,
-    id: string,
     value?: V,
     options?: O,
     display?: D,
     validators?: S,
-    disabled?: boolean
+    disabled?: boolean,
+
+    update(value: V, isValid: boolean): V | undefined
 }
 
 export type CheckboxInputData = FormDataInput<'checkbox', boolean, undefined, {

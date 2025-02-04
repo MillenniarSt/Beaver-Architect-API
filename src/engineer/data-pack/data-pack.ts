@@ -13,7 +13,7 @@ import { getProject } from "../../instance.js"
 import { FileNode } from "../../project/project.js"
 import { Engineer, ReferenceData } from "../engineer.js"
 import { StructureEngineer, StructureReference } from "../structure/structure.js"
-import { StyleDependence } from "./style/dependence.js"
+import { StyleDependency } from "./style/dependency.js"
 import { Style, StyleReference } from "./style/style.js"
 
 export const loadedDataPacks = new Map<string, DataPack>()
@@ -21,16 +21,16 @@ export const loadedDataPacks = new Map<string, DataPack>()
 export class DataPack {
 
     constructor(
-        readonly styleDependence: StyleDependence,
+        readonly styleDependence: StyleDependency,
         readonly engineers: {
             styles: Map<string, Style>
             structures: Map<string, StructureEngineer>
         }
     ) { }
 
-    static async init(pack: string): Promise<DataPack> {
+    static async create(pack: string): Promise<DataPack> {
         return new DataPack(
-            StyleDependence.fromJson(getProject(pack).read('data_pack\\style_dependence.json')),
+            StyleDependency.fromJson(getProject(pack).read('data_pack\\style_dependence.json')),
             {
                 styles: await this.loadEngineers<Style>(pack,
                     getProject(pack).mapDir('data_pack\\styles'),

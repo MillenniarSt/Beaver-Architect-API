@@ -5,10 +5,13 @@ import { Object3 } from "../world/geo/object.js";
 import { Surface } from "../world/geo/surface.js";
 import { builderFromJson } from "./collective.js";
 import { MaterialReference } from "../engineer/data-pack/style/material.js";
+import { Option } from "../util/option.js";
+import { GenerationStyle } from "../engineer/data-pack/style/style.js";
 
-export abstract class Builder<T extends { toJson: () => {} } = any> {
+export abstract class Builder<G extends { toJson: () => {} } = any, O extends Record<string, Option> = Record<string, Option>> {
 
     constructor(
+        readonly options: O,
         protected materials: RandomList<MaterialReference>
     ) {
         materials.itemToJson = (ref) => ref.toJson()
@@ -24,9 +27,9 @@ export abstract class Builder<T extends { toJson: () => {} } = any> {
 
     // Building
 
-    protected abstract buildChildren(context: T, seed: Seed): BuilderResult[]
+    protected abstract buildChildren(context: G, style: GenerationStyle, seed: Seed): BuilderResult[]
 
-    abstract build(context: T, seed: Seed): BuilderResult<T>
+    abstract build(context: G, style: GenerationStyle, seed: Seed): BuilderResult<G>
 
     // Json & Save
 
@@ -40,6 +43,7 @@ export abstract class Builder<T extends { toJson: () => {} } = any> {
         return {
             name: this.constructor.name,
             materials: this.materials.toJson(),
+            options: Object.fromEntries(Object.entries(this.options).map(([key, option]) => [key, option.toJson()])),
             data: this.toJsonData()
         }
     }
@@ -55,31 +59,48 @@ export abstract class Builder<T extends { toJson: () => {} } = any> {
     }
 }
 
-export abstract class LineBuilder<L extends Line3 = Line3> extends Builder<L> {
+export abstract class GenericBuilder<T extends BuilderType = any, G extends { toJson: () => {} } = any, O extends Record<string, Option> = Record<string, Option>> extends Builder<G, O> {
 
-    build(context: L, seed: Seed): BuilderResult<L> {
-        return new BuilderResult('line', context, this.materials.seeded(seed), this.buildChildren(context, seed))
+    constructor(
+        readonly type: T,
+        readonly options: O,
+        protected materials: RandomList<MaterialReference>
+    ) {
+        super(options, materials)
+    }
+
+    build(context: G, style: GenerationStyle, seed: Seed): BuilderResult<G> {
+        return new BuilderResult(this.type, context, this.materials.seeded(seed), this.buildChildren(context, style, seed))
     }
 }
 
-export abstract class SurfaceBuilder<S extends Surface = Surface> extends Builder<S> {
+export abstract class LineBuilder<L extends Line3 = Line3, O extends Record<string, Option> = Record<string, Option>> extends Builder<L, O> {
 
-    build(context: S, seed: Seed): BuilderResult<S> {
-        return new BuilderResult('surface', context, this.materials.seeded(seed), this.buildChildren(context, seed))
+    build(context: L, style: GenerationStyle, seed: Seed): BuilderResult<L> {
+        return new BuilderResult('line', context, this.materials.seeded(seed), this.buildChildren(context, style, seed))
     }
 }
 
-export abstract class ObjectBuilder<O extends Object3 = Object3> extends Builder<O> {
+export abstract class SurfaceBuilder<S extends Surface = Surface, O extends Record<string, Option> = Record<string, Option>> extends Builder<S, O> {
 
-    build(context: O, seed: Seed): BuilderResult<O> {
-        return new BuilderResult('object', context, this.materials.seeded(seed), this.buildChildren(context, seed))
+    build(context: S, style: GenerationStyle, seed: Seed): BuilderResult<S> {
+        return new BuilderResult('surface', context, this.materials.seeded(seed), this.buildChildren(context, style, seed))
     }
 }
+
+export abstract class ObjectBuilder<O extends Object3 = Object3, Opt extends Record<string, Option> = Record<string, Option>> extends Builder<O, Opt> {
+
+    build(context: O, style: GenerationStyle, seed: Seed): BuilderResult<O> {
+        return new BuilderResult('object', context, this.materials.seeded(seed), this.buildChildren(context, style, seed))
+    }
+}
+
+export type BuilderType = 'line' | 'surface' | 'object'
 
 export class BuilderResult<T extends { toJson: () => {} } = any> {
 
     constructor(
-        readonly type: 'line' | 'surface' | 'object',
+        readonly type: BuilderType,
         readonly object: T,
         readonly material: MaterialReference | undefined = undefined,
         readonly children: BuilderResult[] = [],

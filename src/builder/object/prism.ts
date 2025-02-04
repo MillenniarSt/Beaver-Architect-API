@@ -1,12 +1,14 @@
 import { MaterialReference } from '../../engineer/data-pack/style/material.js';
+import { GenerationStyle } from '../../engineer/data-pack/style/style.js';
 import { FormData, FormOutput } from '../../util/form.js';
+import { NumberOption, ObjectOption, Vec2Option } from '../../util/option.js';
 import { RandomList, RandomNumber, RandomVec2, Seed } from '../../util/random.js';
 import { Plane2 } from '../../world/bi-geo/plane.js';
 import { Prism } from '../../world/geo/object.js';
 import { Vec3 } from '../../world/vector.js';
 import { Builder, BuilderResult, ChildrenManager, ObjectBuilder } from '../builder.js';
 import { NamedBuilder } from '../collective.js';
-import { EmptyObjectBuilder } from './empty.js';
+import { EmptyBuilder } from '../generic/empty.js';
 
 export enum FlexAlignment {
     START = 'start',
@@ -22,53 +24,51 @@ export enum RepetitionMode {
 }
 
 @NamedBuilder(FlexPrismBuilder.fromJson)
-export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<Prism<P>> implements ChildrenManager {
-
-    protected _children: {
-        builder: ObjectBuilder<Prism<P>>,
-        height: RandomNumber
-    }[] = []
-
-    protected alignment: FlexAlignment = FlexAlignment.START
-    protected repeat: RepetitionMode = RepetitionMode.NONE
-    protected gap: RandomNumber = RandomNumber.constant(0)
-    protected padding: RandomVec2 = RandomVec2.constant(0)
+export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<Prism<P>, {
+    alignment: ObjectOption<FlexAlignment>
+    repeat: ObjectOption<RepetitionMode>
+    gap: NumberOption
+    padding: Vec2Option
+}> implements ChildrenManager {
 
     constructor(
-        data: {
-            children?: {
-                builder: ObjectBuilder<Prism<P>>,
-                height: RandomNumber
-            }[]
-            alignment?: FlexAlignment
-            repeat?: RepetitionMode
-            gap?: RandomNumber
-            padding?: RandomVec2
+        protected _children: {
+            builder: ObjectBuilder<Prism<P>>,
+            height: RandomNumber
+        }[],
+        options: {
+            alignment?: ObjectOption<FlexAlignment>
+            repeat?: ObjectOption<RepetitionMode>
+            gap?: NumberOption
+            padding?: Vec2Option
         } = {},
         materials: RandomList<MaterialReference> = new RandomList()
     ) {
-        super(materials)
-        this._children = data.children ?? []
-        this.alignment = data.alignment ?? FlexAlignment.START
-        this.repeat = data.repeat ?? RepetitionMode.NONE
-        this.gap = data.gap ?? RandomNumber.constant(0)
-        this.padding = data.padding ?? RandomVec2.constant(0)
+        super({
+            alignment: options.alignment ?? new ObjectOption(FlexAlignment.START),
+            repeat: options.repeat ?? new ObjectOption(RepetitionMode.NONE),
+            gap: options.gap ?? new NumberOption(RandomNumber.constant(0)),
+            padding: options.padding ?? new Vec2Option(RandomVec2.constant(0))
+        }, materials)
     }
 
     static fromJson(json: any): FlexPrismBuilder {
         const data = json.data
-        return new FlexPrismBuilder({
-            children: data.children ? data.children.map((child: any) => {
+        return new FlexPrismBuilder(
+            json.data.children.map((child: any) => {
                 return {
                     builder: Builder.fromJson(child.builder),
                     height: RandomNumber.fromJson(child.height)
                 }
-            }) : [],
-            alignment: data.alignment ?? FlexAlignment.START,
-            repeat: data.repeat ?? RepetitionMode.NONE,
-            gap: data.gap ? RandomNumber.fromJson(data.gap) : RandomNumber.constant(0),
-            padding: data.padding ? RandomVec2.fromJson(data.padding) : RandomVec2.constant(0),
-        }, RandomList.fromJson(json.materials, MaterialReference.fromJson))
+            }),
+            {
+                alignment: ObjectOption.fromJson(json.options.alignment),
+                repeat: ObjectOption.fromJson(json.options.repeat),
+                gap: NumberOption.fromJson(json.options.gap),
+                padding: Vec2Option.fromJson(json.options.padding)
+            },
+            RandomList.fromJson(json.materials, MaterialReference.fromJson)
+        )
     }
 
     form(): FormData {
@@ -89,16 +89,18 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
 
     addChild(): void {
         this._children.push({
-            builder: new EmptyObjectBuilder(),
+            builder: new EmptyBuilder('object'),
             height: RandomNumber.constant(1)
         })
     }
 
-    protected buildChildren(context: Prism<P>, seed: Seed): BuilderResult[] {
-        const padding = this.padding.seeded(seed)
-        const gap = this.gap.seeded(seed)
+    protected buildChildren(context: Prism<P>, style: GenerationStyle, seed: Seed): BuilderResult[] {
+        const padding = this.options.padding.get(style, seed)
+        const gap = this.options.gap.get(style, seed)
+        const repeat = this.options.repeat.get(style, seed)
+        const alignment = this.options.alignment.get(style, seed)
         const size = context.height - padding.x - padding.y
-        const base = context.pos.z + padding.x
+        const base = context.base.z + padding.x
 
         if (size <= 0) {
             console.warn('FlexPrismBuilder: size is less than 0')
@@ -116,11 +118,11 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
         }
 
         let repetitions = this.children.length
-        if (this.repeat === RepetitionMode.BLOCK || this.repeat === RepetitionMode.BUILDER) {
+        if (repeat === RepetitionMode.BLOCK || repeat === RepetitionMode.BUILDER) {
             repetitions = Math.floor(size / childrenHeight) * this.children.length
             childrenHeight = childrenHeight * (repetitions / this.children.length) + gap * (repetitions - 1)
         }
-        if (this.repeat === RepetitionMode.BUILDER) {
+        if (repeat === RepetitionMode.BUILDER) {
             for (let i = 0; i < this.children.length; i++) {
                 if (childrenHeight + childrenHeights[i] <= size) {
                     repetitions++
@@ -131,21 +133,21 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
             }
         }
 
-        if (this.alignment === FlexAlignment.FILL) {
+        if (alignment === FlexAlignment.FILL) {
             const stretch = (size - childrenHeight) / repetitions
 
             let results: BuilderResult[] = []
             let z = base
             for (let i = 0; i < repetitions; i++) {
                 const height = childrenHeights[i % this.children.length] + stretch
-                const prism = new Prism<P>(context.plane, height, context.pos.add(new Vec3(0, 0, z)))
+                const prism = new Prism(context.base.move(new Vec3(0, 0, z)), height)
                 z += height + gap
-                results.push(this.children[i % this.children.length].build(prism, seed))
+                results.push(this.children[i % this.children.length].build(prism, style, seed))
             }
             return results
         } else {
             let z: number = 0
-            switch (this.alignment) {
+            switch (alignment) {
                 case FlexAlignment.START:
                     z = base; break
                 case FlexAlignment.END:
@@ -157,9 +159,9 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
             let results: BuilderResult[] = []
             for (let i = 0; i < repetitions; i++) {
                 const height = childrenHeights[i % this.children.length]
-                const prism = new Prism<P>(context.plane, height, context.pos.add(new Vec3(0, 0, z)))
+                const prism = new Prism(context.base.move(new Vec3(0, 0, z)), height)
                 z += height + gap
-                results.push(this.children[i % this.children.length].build(prism, seed))
+                results.push(this.children[i % this.children.length].build(prism, style, seed))
             }
             return results
         }
@@ -176,11 +178,7 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
                     builder: child.builder.toJson(),
                     height: child.height.toJson()
                 }
-            }),
-            alignment: this.alignment,
-            repeat: this.repeat,
-            gap: this.gap.toJson(),
-            padding: this.padding.toJson()
+            })
         }
     }
 }

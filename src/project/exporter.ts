@@ -1,6 +1,6 @@
 import { v4 } from "uuid";
 import { BuilderResult } from "../builder/builder.js";
-import { Style } from "../engineer/data-pack/style/style.js";
+import { PostGenerationStyle } from "../engineer/data-pack/style/style.js";
 import { getArchitect } from "../instance.js";
 import { Seed } from "../util/random.js";
 
@@ -14,7 +14,7 @@ export class Exporter {
     constructor(
         readonly seed: Seed,
         readonly builderResult: BuilderResult,
-        readonly style: Style
+        readonly style: PostGenerationStyle
     ) { }
 
     exportToArchitect(onUpdate: (data: ExportToArchitectUpdate) => void): Promise<string | null> {
@@ -22,7 +22,7 @@ export class Exporter {
             const channel = `export:${v4()}`
             await getArchitect().server.openChannel<ExportToArchitectUpdate>(`export:${channel}`, {
                 seed: this.seed.seed,
-                materials: this.style.mapMaterials((material, id) => {
+                materials: Object.entries(this.style.materials).map(([id, material]) => {
                     return {
                         id: id,
                         data: material.toJson()

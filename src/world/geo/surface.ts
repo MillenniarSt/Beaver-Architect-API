@@ -1,4 +1,5 @@
 import { Plane2 } from "../bi-geo/plane.js";
+import { Geo3 } from "../geo.js";
 import { Quaternion } from "../quaternion.js";
 import { Vec3 } from "../vector.js";
 
@@ -10,11 +11,13 @@ export function NamedSurface(fromJson: (json: any) => Surface) {
     }
 }
 
-export abstract class Surface {
+export abstract class Surface implements Geo3 {
 
     abstract get vertices(): Vec3[]
 
-    abstract get triangles(): number[][]
+    abstract get triangles(): [number, number, number][]
+
+    abstract move(vec: Vec3): Surface
 
     abstract toNamedJson(): {}
 
@@ -38,8 +41,8 @@ export abstract class Surface {
 export class GeneralSurface extends Surface {
 
     constructor(
-        public vertices: Vec3[] = [],
-        public triangles: number[][] = []
+        readonly vertices: Vec3[] = [],
+        readonly triangles: [number, number, number][] = []
     ) {
         super()
     }
@@ -48,12 +51,8 @@ export class GeneralSurface extends Surface {
         return new GeneralSurface(json.vertices.map((v: any) => Vec3.fromJson(v)), json.triangles)
     }
 
-    addVertex(vertex: Vec3) {
-        this.vertices.push(vertex)
-    }
-
-    addTriangle(v1: number, v2: number, v3: number) {
-        this.triangles.push([v1, v2, v3])
+    move(vec: Vec3): GeneralSurface {
+        return new GeneralSurface(this.vertices.map((v) => v.add(vec)))
     }
 
     toNamedJson(): {} {
@@ -69,9 +68,9 @@ export class GeneralSurface extends Surface {
 export class Plane3<P extends Plane2 = Plane2> extends Surface {
 
     constructor(
-        public plane: P,
-        public z: number,
-        public rotation: Quaternion = Quaternion.NORTH
+        readonly plane: P,
+        readonly z: number,
+        readonly rotation: Quaternion = Quaternion.NORTH
     ) {
         super()
     }
@@ -84,6 +83,10 @@ export class Plane3<P extends Plane2 = Plane2> extends Surface {
         return new Plane3(plane, this.z, this.rotation)
     }
 
+    move(vec: Vec3): Plane3<P> {
+        return new Plane3(this.plane.move(vec.toVec2()) as P, this.z + vec.z, this.rotation)
+    }
+
     toNamedJson() {
         return {
             name: this.constructor.name,
@@ -93,19 +96,11 @@ export class Plane3<P extends Plane2 = Plane2> extends Surface {
         }
     }
 
-    get pos(): Vec3 {
-        // TODO
-        return new Vec3(0, 0, this.z)
-    }
-
     get vertices(): Vec3[] {
-        return this.plane.edge.getVertices().map(vertex2D => {
-            const vertex3D = new Vec3(vertex2D.x, vertex2D.y, this.z)
-            return this.rotation.rotateVector(vertex3D)
-        });
+        return this.plane.vertices.map(vertex2D => this.rotation.rotateVec(new Vec3(vertex2D.x, vertex2D.y, this.z)))
     }
 
-    get triangles(): number[][] {
-        return this.plane.edge.getTriangles()
+    get triangles(): [number, number, number][] {
+        return this.plane.triangles
     }
 }

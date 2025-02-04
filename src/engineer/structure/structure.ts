@@ -11,7 +11,7 @@ export class StructureReference extends ResourceReference<StructureEngineer> {
     }
 
     protected _get(): StructureEngineer | undefined {
-        return getProject(this.pack).structures.get(this.location)
+        return getProject(this.pack).dataPack.engineers.structures.get(this.location)
     }
 }
 export class StructureEngineer<T extends { toJson: () => {} } = any> extends Engineer {

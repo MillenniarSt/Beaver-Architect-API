@@ -17,7 +17,7 @@ import { registerStyleMessages } from './engineer/data-pack/style/messages.js'
 import { OnMessage, server, ServerOnMessage } from './connection/server.js'
 import { registerDirectorMessages } from './connection/director.js'
 import { argv } from 'process'
-import { setArchitect, setProject } from './instance.js'
+import { setArchitect, setMainProject } from './instance.js'
 import { ArchitectData, loadArchitect } from './project/architect.js'
 
 const log = console.log
@@ -55,24 +55,25 @@ console.debug = (...args) => {
 import './builder/surface/rect.js'
 import './builder/surface/to-prism.js'
 import './builder/object/prism.js'
-import { MaterialReference, Style, StyleReference } from './engineer/data-pack/style/style.js'
-import { Material } from './engineer/data-pack/style/material.js'
+import { Style, StyleReference } from './engineer/data-pack/style/style.js'
+import { Material, MaterialReference } from './engineer/data-pack/style/material.js'
 import { RandomList, RandomNumber, RandomVec2, Seed } from './util/random.js'
 import { GridAxisAlignment, GridRectBuilder } from './builder/surface/rect.js'
 import { SurfaceToPrismBuilder } from './builder/surface/to-prism.js'
 import { StructureEngineer, StructureReference } from './engineer/structure/structure.js'
-import { EmptyObjectBuilder } from './builder/object/empty.js'
 import { Structure } from './project/structure.js'
 import { Rect2 } from './world/bi-geo/plane.js'
 import { Vec2 } from './world/vector.js'
 import { Plane3 } from './world/geo/surface.js'
 import { Exporter } from './project/exporter.js'
+import { NumberOption, ObjectOption, Vec2Option } from './util/option.js'
+import { EmptyBuilder } from './builder/generic/empty.js'
 
 const identifier = argv[3]
 const port = argv[4] ? Number(argv[4]) : 8224
 const isPublic = argv[3] === 'true'
 
-if(!fs.existsSync(dir)) {
+if (!fs.existsSync(dir)) {
     console.info('Generating server resources for the first launch...')
     fs.mkdirSync(dir)
     fs.mkdirSync(projectsDir)
@@ -84,7 +85,7 @@ console.info(`Starting local project Server '${identifier}' on port ${port} ${is
 
 const projectData: ProjectData = JSON.parse(fs.readFileSync(path.join(projectsDir, identifier, 'project.json'), 'utf8'))
 
-setProject(new Project(projectData))
+await Project.create(path.join(projectsDir, identifier), projectData)
 
 const architectData: ArchitectData = JSON.parse(fs.readFileSync(path.join(projectsDir, identifier, 'architect.json'), 'utf8'))
 
@@ -108,19 +109,23 @@ console.info(`Opened Project Server '${identifier}' on ${url ?? `port ${port}`}`
 // Style
 
 const style = new Style(new StyleReference('style-test'), false, [], new Map([
-    ['material', new Material(new RandomList([{ id: 'minecraft:stone' }]), 'BaseMaterial')]
+    ['base', new Material(new RandomList([{ id: 'minecraft:stone' }]), 'BaseMaterial')]
 ]))
 
 // Structure
 
-const builder = new GridRectBuilder({
-    gap: RandomVec2.constant(1),
-    alignment: [GridAxisAlignment.START, GridAxisAlignment.START],
-    children: [new SurfaceToPrismBuilder({
-        child: new EmptyObjectBuilder(new RandomList([MaterialReference.ref('material')])),
-        height: new RandomNumber(2, 6)
-    })]
-})
+const builder = new GridRectBuilder(
+    [new SurfaceToPrismBuilder(
+        new EmptyBuilder('object', new RandomList([MaterialReference.ref('base')])),
+        {
+            height: new NumberOption(new RandomNumber(2, 6))
+        }
+    )],
+    {
+        gap: new Vec2Option(RandomVec2.constant(1)),
+        alignment: new ObjectOption(RandomList.constant([GridAxisAlignment.START, GridAxisAlignment.START]))
+    }
+)
 
 const engineer = new StructureEngineer(new StructureReference('structure-test'), builder)
 
@@ -128,9 +133,9 @@ const structure = new Structure(new Plane3(new Rect2(Vec2.ZERO, new Vec2(11, 7))
 
 // Export
 
-const seed = new Seed()
+const seed = new Seed(25)
 
-const result = structure.build(seed)
+const result = structure.build(style.toGenerationStyle(), seed)
 
-const exporter = new Exporter(seed, result, style)
+const exporter = new Exporter(seed, result, style.toPostGenerationStyle())
 exporter.exportToArchitect((data) => console.debug('Update', data))

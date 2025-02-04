@@ -1,8 +1,13 @@
+import { Geo3 } from "../geo.js"
 import { Vec3 } from "../vector.js"
 
-export class Line3 {
+export class Line3 implements Geo3 {
 
     constructor(readonly parts: Line3Part[]) { }
+
+    move(vec: Vec3): Line3 {
+        return new Line3(this.parts.map((part) => part.move(vec)))
+    }
 
     setPoint(index: number, vec: Vec3): Line3 {
         const parts = [...this.parts]
@@ -36,6 +41,10 @@ export class Line3 {
 
 export class CloseLine3 extends Line3 {
 
+    move(vec: Vec3): CloseLine3 {
+        return new CloseLine3(this.parts.map((part) => part.move(vec)))
+    }
+
     setPoint(index: number, vec: Vec3): CloseLine3 {
         const parts = [...this.parts]
         if(index < parts.length) {
@@ -65,6 +74,8 @@ export abstract class Line3Part {
         }
     }
 
+    abstract move(vec: Vec3): Line3Part
+
     abstract containsPoint(point: Vec3): boolean
 
     abstract intersectsRay(origin: Vec3, direction: Vec3): boolean
@@ -80,6 +91,10 @@ export class Segment3 extends Line3Part {
 
     constructor(readonly start: Vec3, readonly end: Vec3) {
         super()
+    }
+
+    move(vec: Vec3): Segment3 {
+        return new Segment3(this.start.add(vec), this.end.add(vec))
     }
 
     containsPoint(point: Vec3): boolean {
@@ -119,6 +134,10 @@ export class BezierCurve3 extends Line3Part {
         if (controls.length < 2) {
             throw new Error("A Bezier curve must have at least two control points")
         }
+    }
+
+    move(vec: Vec3): Line3Part {
+        return new BezierCurve3(this.controls.map((control) => control.add(vec)), this.precision)
     }
 
     containsPoint(point: Vec3): boolean {

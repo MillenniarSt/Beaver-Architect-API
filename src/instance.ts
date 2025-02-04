@@ -21,7 +21,7 @@ export function getArchitect(): Architect {
 
 let _project: Project | undefined
 
-export function setProject(project: Project) {
+export function setMainProject(project: Project) {
     if(_project === undefined) {
         _project = project
         loadProject(project)

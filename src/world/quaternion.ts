@@ -62,7 +62,7 @@ export class Quaternion {
         return new Quaternion(Math.cos(angle / 2) + this.w, this.x, this.y, this.z)
     }
 
-    rotateVector(v: Vec3): Vec3 {
+    rotateVec(v: Vec3): Vec3 {
         const qv = new Quaternion(0, v.x, v.y, v.z)
         const qConjugate = new Quaternion(this.w, -this.x, -this.y, -this.z)
         const qResult = this.multiply(qv).multiply(qConjugate)

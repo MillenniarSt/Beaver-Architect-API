@@ -137,6 +137,10 @@ export class Vec3 {
         return new Vec3(this.x / length, this.y / length, this.z / length)
     }
 
+    toVec2(): Vec2 {
+        return new Vec2(this.x, this.y)
+    }
+
     min(vec: Vec3): Vec3 {
         return new Vec3(Math.min(this.x, vec.x), Math.min(this.y, vec.y), Math.min(this.z, vec.z))
     }

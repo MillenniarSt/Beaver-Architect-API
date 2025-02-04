@@ -14,9 +14,9 @@ import path from "path"
 import { librariesDir, projectsDir } from "../util/paths.js"
 import { OnMessage } from "./../connection/server.js"
 import { DataPack } from "./../engineer/data-pack/data-pack.js"
-import { getArchitect, getProject, getProjectOrNull, loadProject } from "../instance.js"
+import { getArchitect, getProject, getProjectOrNull, loadProject, setMainProject } from "../instance.js"
 import { Structure } from "./structure.js"
-import { StyleDependence } from "../engineer/data-pack/style/dependence.js"
+import { StyleDependency } from "../engineer/data-pack/style/dependency.js"
 
 /**
 * @param identifier should be no.space.with.dots
@@ -28,27 +28,43 @@ export type ProjectData = {
     authors: string
     description: string
 
+    version: string,
     dependencies: {
         identifier: string,
         version: string
     }[]
 }
 
+export class Version {
+
+    readonly v: number[]
+
+    constructor(data: string) {
+        this.v = data.split('.').map((v) => Number(v))
+    }
+
+    toJson(): string {
+        return this.v.join('.')
+    }
+}
+
 export class Project {
+
+    protected _dataPack?: DataPack
+    public structures!: Structure[]
 
     private constructor(
         readonly dir: string,
+        readonly version: Version,
         readonly identifier: string,
         public name: string,
         public authors: string,
         public description: string,
         public dependencies: Project[],
-        public styleDependence: StyleDependence,
-        public dataPack: DataPack,
-        public structures: Structure[]
+        protected _styleDependence: StyleDependency
     ) { }
 
-    static async init(dir: string, data: ProjectData): Promise<Project> {
+    static async create(dir: string, data: ProjectData, isMain: boolean = true): Promise<Project> {
         const loaded = getProjectOrNull(data.identifier)
         if(loaded) {
             return loaded
@@ -56,24 +72,41 @@ export class Project {
 
         const dependencies: Project[] = []
         for(let i = 0; i < data.dependencies.length; i++) {
-            const dir = path.join(librariesDir, `${data.dependencies[i].identifier}:${data.dependencies[i].version}`)
+            const identifier = data.dependencies[i].identifier
+            const version = new Version(data.dependencies[i].version)
+            const dir = path.join(librariesDir, `${identifier}:${version.toJson()}`)
             if(!fs.existsSync(dir)) {
-                throw new Error(`Invalid dependency: ${data.dependencies[i].identifier}:${data.dependencies[i].version} does not exists or it is not installed`)
+                throw new Error(`Invalid dependency: ${identifier}:${version.toJson()} does not exists or it is not installed`)
             }
-            dependencies.push(await Project.init(dir, JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf-8'))))
+            dependencies.push(await Project.create(dir, JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf-8')), false))
         }
-        const dataPack = await DataPack.init(data.identifier)
         
         const project = new Project(
             dir,
+            new Version(data.version),
             data.identifier, data.name, data.authors, data.description,
             dependencies,
-            StyleDependence.join([...dependencies.map((dependency) => dependency.dataPack.styleDependence), dataPack.styleDependence]),
-            dataPack,
-            []  // TODO
+            StyleDependency.join(dependencies.map((dependency) => dependency.dataPack.styleDependence))
         )
         loadProject(project)
+        if(isMain) {
+            setMainProject(project)
+        }
+        await project.init()
         return project
+    }
+
+    private async init() {
+        this._dataPack = await DataPack.create(this.identifier)
+        this._styleDependence = StyleDependency.join([this.styleDependence, this.dataPack.styleDependence])
+    }
+
+    get dataPack(): DataPack {
+        return this._dataPack!
+    }
+
+    get styleDependence(): StyleDependency {
+        return this._styleDependence
     }
 
     read(relPath: string): any {
