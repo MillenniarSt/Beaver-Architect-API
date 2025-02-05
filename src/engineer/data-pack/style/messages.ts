@@ -7,7 +7,6 @@
 //      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
 //      ##\___   |   ___/
 //      ##    \__|__/
-//
 
 import { ClientDirector } from "../../../connection/director.js"
 import { ServerOnMessage } from "../../../connection/server.js"

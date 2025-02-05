@@ -7,7 +7,6 @@
 //      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
 //      ##\___   |   ___/
 //      ##    \__|__/
-//
 
 import fs from 'fs'
 import path from 'path'
@@ -17,7 +16,7 @@ import { registerStyleMessages } from './engineer/data-pack/style/messages.js'
 import { OnMessage, server, ServerOnMessage } from './connection/server.js'
 import { registerDirectorMessages } from './connection/director.js'
 import { argv } from 'process'
-import { setArchitect, setMainProject } from './instance.js'
+import { setArchitect } from './instance.js'
 import { ArchitectData, loadArchitect } from './project/architect.js'
 
 const log = console.log
@@ -54,7 +53,8 @@ console.debug = (...args) => {
  */
 import './builder/surface/rect.js'
 import './builder/surface/to-prism.js'
-import './builder/object/prism.js'
+import './builder/object/prism/stack.js'
+import './builder/object/prism/flex.js'
 import { Style, StyleReference } from './engineer/data-pack/style/style.js'
 import { Material, MaterialReference } from './engineer/data-pack/style/material.js'
 import { RandomList, RandomNumber, RandomVec2, Seed } from './util/random.js'
@@ -115,12 +115,12 @@ const style = new Style(new StyleReference('style-test'), false, [], new Map([
 // Structure
 
 const builder = new GridRectBuilder(
-    [new SurfaceToPrismBuilder(
-        new EmptyBuilder('object', new RandomList([MaterialReference.ref('base')])),
+    new SurfaceToPrismBuilder(
+        new EmptyBuilder(new RandomList([MaterialReference.ref('base')])),
         {
             height: new NumberOption(new RandomNumber(2, 6))
         }
-    )],
+    ),
     {
         gap: new Vec2Option(RandomVec2.constant(1)),
         alignment: new ObjectOption(RandomList.constant([GridAxisAlignment.START, GridAxisAlignment.START]))
@@ -133,7 +133,7 @@ const structure = new Structure(new Plane3(new Rect2(Vec2.ZERO, new Vec2(11, 7))
 
 // Export
 
-const seed = new Seed(25)
+const seed = new Seed()
 
 const result = structure.build(style.toGenerationStyle(), seed)
 

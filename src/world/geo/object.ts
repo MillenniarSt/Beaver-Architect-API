@@ -1,5 +1,15 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { Plane2, Rect2 } from "../bi-geo/plane.js";
-import { Geo3 } from "../geo.js";
+import { Geo3, Geo3Type } from "../geo.js";
 import { Quaternion } from "../quaternion.js";
 import { Vec2, Vec3 } from "../vector.js";
 import { Plane3, Surface } from "./surface.js";
@@ -13,6 +23,10 @@ export function NamedObject(fromJson: (json: any) => Object3) {
 }
 
 export abstract class Object3 implements Geo3 {
+
+    get type(): Geo3Type {
+        return Geo3Type.OBJECT
+    }
 
     abstract get vertices(): Vec3[]
 

@@ -1,41 +1,36 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { MaterialReference } from "../../engineer/data-pack/style/material.js";
 import { GenerationStyle } from "../../engineer/data-pack/style/style.js";
-import { FormData, FormOutput } from "../../util/form.js";
 import { RandomList, Seed } from "../../util/random.js";
 import { Geo3 } from "../../world/geo.js";
-import { Builder, BuilderResult, BuilderType, GenericBuilder } from "../builder.js";
-import { NamedBuilder } from "../collective.js";
+import { Builder, BuilderResult } from "../builder.js";
+import { JsonBuilder } from "../collective.js";
 
-@NamedBuilder(EmptyBuilder.fromJson)
-export class EmptyBuilder<G extends Geo3 = any> extends GenericBuilder<G, {}> {
+@JsonBuilder(EmptyBuilder.fromJson)
+export class EmptyBuilder<G extends Geo3 = any> extends Builder<G, {}, {}> {
 
-    constructor(type: BuilderType, materials: RandomList<MaterialReference> = new RandomList()) {
-        super(type, {}, materials)
+    constructor(materials: RandomList<MaterialReference> = new RandomList()) {
+        super({}, materials)
     }
 
     static fromJson(json: any): EmptyBuilder {
-        return new EmptyBuilder(json.data.type, RandomList.fromJson(json.materials, MaterialReference.fromJson))
+        return new EmptyBuilder(RandomList.fromJson(json.materials, MaterialReference.fromJson))
     }
 
-    get children(): Builder[] {
+    get children(): [] {
         return []
-    }
-
-    form(): FormData {
-        return { inputs: [] }
-    }
-
-    edit(output: FormOutput): void {
-
     }
 
     protected buildChildren(context: any, style: GenerationStyle, seed: Seed): BuilderResult[] {
         return []
-    }
-
-    toJsonData(): {} {
-        return {
-            type: this.type
-        }
     }
 }

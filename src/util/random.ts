@@ -1,3 +1,13 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { Vec2, Vec3, Vec4 } from "../world/vector.js"
 
 export class Seed {
@@ -161,6 +171,31 @@ export class RandomVec4 implements Random<Vec4> {
             c: this.c.toJson(),
             d: this.d.toJson(),
         }
+    }
+}
+
+export class RandomBoolean implements Random<boolean> {
+
+    constructor(public probability: number) { }
+
+    static constant(value: boolean): RandomBoolean {
+        return new RandomBoolean(value ? 1 : 0)
+    }
+
+    static fromJson(json: any): RandomBoolean {
+        return new RandomBoolean(json)
+    }
+
+    random(): boolean {
+        return this.probability < Math.random()
+    }
+
+    seeded(seed: Seed): boolean {
+        return this.probability < seed.next()
+    }
+
+    toJson(): {} {
+        return this.probability
     }
 }
 

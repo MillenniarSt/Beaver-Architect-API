@@ -7,7 +7,6 @@
 //      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
 //      ##\___   |   ___/
 //      ##    \__|__/
-//
 
 import { ResourceReference } from "../../engineer/engineer.js";
 import { Directive } from "./directive.js";

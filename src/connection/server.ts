@@ -7,7 +7,6 @@
 //      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
 //      ##\___   |   ___/
 //      ##    \__|__/
-//
 
 import { WebSocketServer, WebSocket } from "ws"
 import { ArchitectSide, ClientSide, Side } from "./sides.js"

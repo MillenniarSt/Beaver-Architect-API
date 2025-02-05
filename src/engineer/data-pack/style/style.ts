@@ -7,7 +7,6 @@
 //      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
 //      ##\___   |   ___/
 //      ##    \__|__/
-//
 
 import { Material, materialUpdate, MaterialUpdate } from "./material.js";
 import { BuilderDirective, ListUpdate, ObjectUpdate, VarUpdate } from "../../../connection/directives/update.js";

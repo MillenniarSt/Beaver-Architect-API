@@ -1,6 +1,16 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { GenerationStyle } from "../engineer/data-pack/style/style.js";
 import { Vec2, Vec3, Vec4 } from "../world/vector.js";
-import { Random, RandomList, RandomNumber, RandomVec2, RandomVec3, RandomVec4, Seed } from "./random.js";
+import { Random, RandomBoolean, RandomList, RandomNumber, RandomVec2, RandomVec3, RandomVec4, Seed } from "./random.js";
 
 export abstract class Option<T = any> {
 
@@ -48,6 +58,13 @@ export abstract class Option<T = any> {
             random: this.random?.toJson(),
             ref: this.ref
         }
+    }
+}
+
+export class BooleanOption extends Option<boolean> {
+
+    static fromJson(json: any): BooleanOption {
+        return new BooleanOption(json.random ? RandomBoolean.fromJson(json.random) : json.ref)
     }
 }
 

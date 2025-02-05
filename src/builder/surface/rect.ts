@@ -1,14 +1,22 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { MaterialReference } from "../../engineer/data-pack/style/material.js";
 import { GenerationStyle } from "../../engineer/data-pack/style/style.js";
-import { FormData, FormOutput } from "../../util/form.js";
 import { ObjectOption, Vec2Option, Vec4Option } from "../../util/option.js";
-import { RandomInteger, RandomList, RandomVec2, RandomVec4, Seed } from "../../util/random.js";
+import { RandomList, RandomVec2, RandomVec4, Seed } from "../../util/random.js";
 import { Rect2 } from "../../world/bi-geo/plane.js";
 import { Plane3 } from "../../world/geo/surface.js";
 import { Vec2 } from "../../world/vector.js";
-import { Builder, BuilderResult, ChildrenManager, SurfaceBuilder } from "../builder.js";
-import { NamedBuilder } from "../collective.js";
-import { EmptyBuilder } from "../generic/empty.js";
+import { Builder, BuilderResult, SurfaceBuilder } from "../builder.js";
+import { SingleChildBuilder } from "../collective.js";
 
 export enum GridAxisAlignment {
     START = 'start',
@@ -17,26 +25,30 @@ export enum GridAxisAlignment {
     FILL = 'fill'
 }
 
-@NamedBuilder(GridRectBuilder.fromJson)
+@SingleChildBuilder((json) => {
+    return {
+        alignment: ObjectOption.fromJson(json.alignment),
+        cell: Vec2Option.fromJson(json.cell),
+        gap: Vec2Option.fromJson(json.gap),
+        padding: Vec4Option.fromJson(json.padding)
+    }
+})
 export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>, {
     alignment: ObjectOption<[GridAxisAlignment, GridAxisAlignment]>
     cell: Vec2Option
     gap: Vec2Option
     padding: Vec4Option
-}> implements ChildrenManager {
-
-    protected randomGetter: RandomInteger
+}, {}> {
 
     constructor(
-        protected _children: SurfaceBuilder<Plane3<Rect2>>[],
+        protected child: SurfaceBuilder<Plane3<Rect2>>,
         options: {
             alignment?: ObjectOption<[GridAxisAlignment, GridAxisAlignment]>
             cell?: Vec2Option
             gap?: Vec2Option
             padding?: Vec4Option
         } = {},
-        materials: RandomList<MaterialReference> = new RandomList(),
-        randomGetter?: RandomInteger
+        materials: RandomList<MaterialReference> = new RandomList()
     ) {
         super({
             alignment: options.alignment ?? new ObjectOption(RandomList.constant([GridAxisAlignment.FILL, GridAxisAlignment.FILL])),
@@ -44,42 +56,6 @@ export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>, {
             gap: options.gap ?? new Vec2Option(RandomVec2.constant(0)),
             padding: options.padding ?? new Vec4Option(RandomVec4.constant(0))
         }, materials)
-        this.randomGetter = randomGetter ?? new RandomInteger(0, this._children.length - 1)
-    }
-
-    static fromJson(json: any): GridRectBuilder {
-        return new GridRectBuilder(
-            json.data.children.map((child: any) => Builder.fromJson(child)),
-            {
-                alignment: ObjectOption.fromJson(json.options.alignment),
-                cell: Vec2Option.fromJson(json.options.cell),
-                gap: Vec2Option.fromJson(json.options.gap),
-                padding: Vec4Option.fromJson(json.options.padding)
-            },
-            RandomList.fromJson(json.materials, MaterialReference.fromJson),
-            RandomInteger.fromJson(json.data.randomGetter)
-        )
-    }
-
-    form(): FormData {
-        return {
-            inputs: [
-                // TODO
-            ]
-        }
-    }
-
-    edit(output: FormOutput): void {
-        // TODO
-    }
-
-    canAddChild(): boolean {
-        return true
-    }
-
-    addChild(): void {
-        this._children.push(new EmptyBuilder('surface'))
-        this.randomGetter = new RandomInteger(0, this._children.length - 1)
     }
 
     buildChildren(context: Plane3<Rect2>, style: GenerationStyle, seed: Seed): BuilderResult[] {
@@ -93,11 +69,11 @@ export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>, {
         if (context.plane.size.isLess(cell)) {
             if (size.isLess(cell)) {
                 console.warn('GridRectBuilder: size is less than a cell with padding')
-                return [this._children[this.randomGetter.seeded(seed)].build(context, style, seed)]
+                return [this.child.build(context, style, seed)]
             } else {
                 console.warn('GridRectBuilder: size is less than a cell')
                 const rect = new Rect2(context.plane.pos.add(new Vec2(padding.d, padding.c)), size)
-                return [this._children[this.randomGetter.seeded(seed)].build(context.withPlane(rect), style, seed)]
+                return [this.child.build(context.withPlane(rect), style, seed)]
             }
         }
 
@@ -126,23 +102,21 @@ export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>, {
         const results: BuilderResult<Plane3<Rect2>>[] = []
         for (let i = 0; i < repetitions.x; i++) {
             for (let j = 0; j < repetitions.y; j++) {
-                const builder = this._children[this.randomGetter.seeded(seed)]
                 const rect = new Rect2(new Vec2(x + (i * (cell.x + gap.x)), y + (j * (cell.y + gap.y))), cell)
-                results.push(builder.build(context.withPlane(rect), style, seed))
+                results.push(this.child.build(context.withPlane(rect), style, seed))
             }
         }
 
         return results
     }
 
-    get children(): Builder<any>[] {
-        return this._children
-    }
-
-    toJsonData(): {} {
-        return {
-            children: this._children.map((child) => child.toJson()),
-            randomGetter: this.randomGetter.toJson()
-        }
+    get children(): [{
+        builder: SurfaceBuilder<Plane3<Rect2>>,
+        options: {}
+    }] {
+        return [{
+            builder: this.child,
+            options: {}
+        }]
     }
 }

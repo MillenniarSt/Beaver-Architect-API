@@ -1,3 +1,13 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { Geo2 } from "../geo.js"
 import { Vec2 } from "../vector.js"
 import { CloseLine2 } from "./line.js"
@@ -17,22 +27,6 @@ export abstract class Plane2 implements Geo2 {
     abstract move(vec: Vec2): Plane2
 
     abstract toNamedJson(): {}
-
-    containsPoint(point: Vec2): boolean {
-        return this.edge.containsPoint(point) || this.rayCastingAlgorithm(point)
-    }
-
-    private rayCastingAlgorithm(point: Vec2): boolean {
-        let crossings = 0
-
-        this.edge.parts.forEach((part) => {
-            if (part.intersectsRay(point)) {
-                crossings++
-            }
-        })
-
-        return crossings % 2 !== 0
-    }
 
     get vertices(): Vec2[] {
         return this.edge.vertices
@@ -99,7 +93,7 @@ export class Rect2 extends Plane2 {
     }
 
     get edge(): CloseLine2 {
-        return CloseLine2.fromPoints([
+        return new CloseLine2([
             this.pos,
             new Vec2(this.pos.x, this.pos.y + this.size.y),
             this.pos.add(this.size),

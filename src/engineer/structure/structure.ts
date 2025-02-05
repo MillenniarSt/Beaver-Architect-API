@@ -1,7 +1,18 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { Builder } from "../../builder/builder.js";
 import { builderFromJson } from "../../builder/collective.js";
 import { ClientDirector } from "../../connection/director.js";
 import { getProject } from "../../instance.js";
+import { Geo3 } from "../../world/geo.js";
 import { Engineer, ResourceReference } from "../engineer.js";
 
 export class StructureReference extends ResourceReference<StructureEngineer> {
@@ -14,11 +25,11 @@ export class StructureReference extends ResourceReference<StructureEngineer> {
         return getProject(this.pack).dataPack.engineers.structures.get(this.location)
     }
 }
-export class StructureEngineer<T extends { toJson: () => {} } = any> extends Engineer {
+export class StructureEngineer<G extends Geo3 = Geo3> extends Engineer {
 
-    builder: Builder<T>
+    builder: Builder<G>
 
-    constructor(ref: ResourceReference<StructureEngineer>, builder: Builder<T>) {
+    constructor(ref: ResourceReference<StructureEngineer>, builder: Builder<G>) {
         super(ref)
         this.builder = builder
     }

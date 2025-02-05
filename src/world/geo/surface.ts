@@ -1,5 +1,15 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { Plane2 } from "../bi-geo/plane.js";
-import { Geo3 } from "../geo.js";
+import { Geo3, Geo3Type } from "../geo.js";
 import { Quaternion } from "../quaternion.js";
 import { Vec3 } from "../vector.js";
 
@@ -12,6 +22,10 @@ export function NamedSurface(fromJson: (json: any) => Surface) {
 }
 
 export abstract class Surface implements Geo3 {
+
+    get type(): Geo3Type {
+        return Geo3Type.SURFACE
+    }
 
     abstract get vertices(): Vec3[]
 
@@ -97,7 +111,7 @@ export class Plane3<P extends Plane2 = Plane2> extends Surface {
     }
 
     get vertices(): Vec3[] {
-        return this.plane.vertices.map(vertex2D => this.rotation.rotateVec(new Vec3(vertex2D.x, vertex2D.y, this.z)))
+        return this.plane.vertices.map((vertex2D) => this.rotation.rotateVec(new Vec3(vertex2D.x, vertex2D.y, this.z)))
     }
 
     get triangles(): [number, number, number][] {

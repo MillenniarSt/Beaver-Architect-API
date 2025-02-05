@@ -1,4 +1,13 @@
-import { FormData, FormOutput } from "../util/form.js";
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { RandomList, Seed } from "../util/random.js";
 import { Line3 } from "../world/geo/line.js";
 import { Object3 } from "../world/geo/object.js";
@@ -9,7 +18,12 @@ import { Option } from "../util/option.js";
 import { GenerationStyle } from "../engineer/data-pack/style/style.js";
 import { Geo3 } from "../world/geo.js";
 
-export abstract class Builder<G extends Geo3 = any, O extends Record<string, Option> = Record<string, Option>> {
+export type BuilderChild<B extends Builder, O extends Record<string, Option>> = {
+    builder: B
+    options: O
+}
+
+export abstract class Builder<G extends Geo3 = any, O extends Record<string, Option> = Record<string, Option>, C extends Record<string, Option> = Record<string, Option>> {
 
     constructor(
         readonly options: O,
@@ -18,19 +32,15 @@ export abstract class Builder<G extends Geo3 = any, O extends Record<string, Opt
         materials.itemToJson = (ref) => ref.toJson()
     }
 
-    abstract get children(): Builder[]
-
-    // User Editing
-
-    abstract form(): FormData
-
-    abstract edit(output: FormOutput): void
+    abstract get children(): BuilderChild<Builder, C>[]
 
     // Building
 
     protected abstract buildChildren(context: G, style: GenerationStyle, seed: Seed): BuilderResult[]
 
-    abstract build(context: G, style: GenerationStyle, seed: Seed): BuilderResult<G>
+    build(context: G, style: GenerationStyle, seed: Seed): BuilderResult<G> {
+        return new BuilderResult(context, this.materials.seeded(seed), this.buildChildren(context, style, seed))
+    }
 
     // Json & Save
 
@@ -38,14 +48,15 @@ export abstract class Builder<G extends Geo3 = any, O extends Record<string, Opt
         return builderFromJson(json)
     }
 
-    abstract toJsonData(): {}
-
     toJson() {
         return {
             name: this.constructor.name,
             materials: this.materials.toJson(),
             options: Object.fromEntries(Object.entries(this.options).map(([key, option]) => [key, option.toJson()])),
-            data: this.toJsonData()
+            children: this.children.map((child: any) => { return {
+                builder: child.builder.toJson(),
+                options: Object.fromEntries(Object.entries(child.options).map(([key, option]: [string, any]) => [key, option.toJson()]))
+            } })
         }
     }
 
@@ -60,48 +71,15 @@ export abstract class Builder<G extends Geo3 = any, O extends Record<string, Opt
     }
 }
 
-export abstract class GenericBuilder<G extends Geo3 = any, O extends Record<string, Option> = Record<string, Option>> extends Builder<G, O> {
+export abstract class LineBuilder<L extends Line3 = Line3, O extends Record<string, Option> = Record<string, Option>, C extends Record<string, Option> = Record<string, Option>> extends Builder<L, O, C> { }
 
-    constructor(
-        readonly type: BuilderType,
-        readonly options: O,
-        protected materials: RandomList<MaterialReference>
-    ) {
-        super(options, materials)
-    }
+export abstract class SurfaceBuilder<S extends Surface = Surface, O extends Record<string, Option> = Record<string, Option>, C extends Record<string, Option> = Record<string, Option>> extends Builder<S, O, C> { }
 
-    build(context: G, style: GenerationStyle, seed: Seed): BuilderResult<G> {
-        return new BuilderResult(this.type, context, this.materials.seeded(seed), this.buildChildren(context, style, seed))
-    }
-}
-
-export abstract class LineBuilder<L extends Line3 = Line3, O extends Record<string, Option> = Record<string, Option>> extends Builder<L, O> {
-
-    build(context: L, style: GenerationStyle, seed: Seed): BuilderResult<L> {
-        return new BuilderResult('line', context, this.materials.seeded(seed), this.buildChildren(context, style, seed))
-    }
-}
-
-export abstract class SurfaceBuilder<S extends Surface = Surface, O extends Record<string, Option> = Record<string, Option>> extends Builder<S, O> {
-
-    build(context: S, style: GenerationStyle, seed: Seed): BuilderResult<S> {
-        return new BuilderResult('surface', context, this.materials.seeded(seed), this.buildChildren(context, style, seed))
-    }
-}
-
-export abstract class ObjectBuilder<O extends Object3 = Object3, Opt extends Record<string, Option> = Record<string, Option>> extends Builder<O, Opt> {
-
-    build(context: O, style: GenerationStyle, seed: Seed): BuilderResult<O> {
-        return new BuilderResult('object', context, this.materials.seeded(seed), this.buildChildren(context, style, seed))
-    }
-}
-
-export type BuilderType = 'line' | 'surface' | 'object'
+export abstract class ObjectBuilder<O extends Object3 = Object3, Opt extends Record<string, Option> = Record<string, Option>, C extends Record<string, Option> = Record<string, Option>> extends Builder<O, Opt, C> { }
 
 export class BuilderResult<T extends Geo3 = any> {
 
     constructor(
-        readonly type: BuilderType,
         readonly object: T,
         readonly material: MaterialReference | undefined = undefined,
         readonly children: BuilderResult[] = [],
@@ -115,12 +93,12 @@ export class BuilderResult<T extends Geo3 = any> {
             case 'object': object = Object3.fromJson(json.object); break
             default: throw new Error(`BuilderResult: invalid type while parsing json: ${json.type}`)
         }
-        return new BuilderResult(json.type, object, json.material ? MaterialReference.fromJson(json.material) : undefined, json.children.map((child: any) => BuilderResult.fromJson(child)))
+        return new BuilderResult(object, json.material ? MaterialReference.fromJson(json.material) : undefined, json.children.map((child: any) => BuilderResult.fromJson(child)))
     }
 
     toJson(): {} {
         return {
-            type: this.type,
+            type: this.object.type,
             object: this.object.toJson(),
             material: this.material?.toJson(),
             children: this.children.map((child) => child.toJson())

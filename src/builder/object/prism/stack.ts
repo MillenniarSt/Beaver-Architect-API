@@ -1,16 +1,25 @@
-import { MaterialReference } from '../../engineer/data-pack/style/material.js';
-import { GenerationStyle } from '../../engineer/data-pack/style/style.js';
-import { FormData, FormOutput } from '../../util/form.js';
-import { NumberOption, ObjectOption, Vec2Option } from '../../util/option.js';
-import { RandomList, RandomNumber, RandomVec2, Seed } from '../../util/random.js';
-import { Plane2 } from '../../world/bi-geo/plane.js';
-import { Prism } from '../../world/geo/object.js';
-import { Vec3 } from '../../world/vector.js';
-import { Builder, BuilderResult, ChildrenManager, ObjectBuilder } from '../builder.js';
-import { NamedBuilder } from '../collective.js';
-import { EmptyBuilder } from '../generic/empty.js';
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
 
-export enum FlexAlignment {
+import { MaterialReference } from '../../../engineer/data-pack/style/material.js';
+import { GenerationStyle } from '../../../engineer/data-pack/style/style.js';
+import { NumberOption, ObjectOption, Vec2Option } from '../../../util/option.js';
+import { RandomList, RandomNumber, RandomVec2, Seed } from '../../../util/random.js';
+import { Plane2 } from '../../../world/bi-geo/plane.js';
+import { Prism } from '../../../world/geo/object.js';
+import { Vec3 } from '../../../world/vector.js';
+import { BuilderChild, BuilderResult, ChildrenManager, ObjectBuilder } from '../../builder.js';
+import { MultiChildOptionBuilder } from '../../collective.js';
+import { EmptyBuilder } from '../../generic/empty.js';
+
+export enum StackAlignment {
     START = 'start',
     CENTER = 'center',
     END = 'end',
@@ -23,21 +32,33 @@ export enum RepetitionMode {
     BUILDER = 'builder'
 }
 
-@NamedBuilder(FlexPrismBuilder.fromJson)
-export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<Prism<P>, {
-    alignment: ObjectOption<FlexAlignment>
+@MultiChildOptionBuilder((json) => {
+    return {
+        alignment: ObjectOption.fromJson(json.alignment),
+        repeat: ObjectOption.fromJson(json.repeat),
+        gap: NumberOption.fromJson(json.gap),
+        padding: Vec2Option.fromJson(json.padding)
+    }
+}, (json) => {
+    return {
+        height: NumberOption.fromJson(json.height)
+    }
+})
+export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<Prism<P>, {
+    alignment: ObjectOption<StackAlignment>
     repeat: ObjectOption<RepetitionMode>
     gap: NumberOption
     padding: Vec2Option
+}, {
+    height: NumberOption
 }> implements ChildrenManager {
 
     constructor(
-        protected _children: {
-            builder: ObjectBuilder<Prism<P>>,
-            height: RandomNumber
-        }[],
+        public children: BuilderChild<ObjectBuilder<Prism<P>>, {
+            height: NumberOption
+        }>[],
         options: {
-            alignment?: ObjectOption<FlexAlignment>
+            alignment?: ObjectOption<StackAlignment>
             repeat?: ObjectOption<RepetitionMode>
             gap?: NumberOption
             padding?: Vec2Option
@@ -45,42 +66,11 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
         materials: RandomList<MaterialReference> = new RandomList()
     ) {
         super({
-            alignment: options.alignment ?? new ObjectOption(FlexAlignment.START),
+            alignment: options.alignment ?? new ObjectOption(StackAlignment.START),
             repeat: options.repeat ?? new ObjectOption(RepetitionMode.NONE),
             gap: options.gap ?? new NumberOption(RandomNumber.constant(0)),
             padding: options.padding ?? new Vec2Option(RandomVec2.constant(0))
         }, materials)
-    }
-
-    static fromJson(json: any): FlexPrismBuilder {
-        const data = json.data
-        return new FlexPrismBuilder(
-            json.data.children.map((child: any) => {
-                return {
-                    builder: Builder.fromJson(child.builder),
-                    height: RandomNumber.fromJson(child.height)
-                }
-            }),
-            {
-                alignment: ObjectOption.fromJson(json.options.alignment),
-                repeat: ObjectOption.fromJson(json.options.repeat),
-                gap: NumberOption.fromJson(json.options.gap),
-                padding: Vec2Option.fromJson(json.options.padding)
-            },
-            RandomList.fromJson(json.materials, MaterialReference.fromJson)
-        )
-    }
-
-    form(): FormData {
-        return {
-            inputs: [
-                // TODO
-            ]
-        }
-    }
-
-    edit(output: FormOutput): void {
-        // TODO
     }
 
     canAddChild(): boolean {
@@ -88,9 +78,11 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
     }
 
     addChild(): void {
-        this._children.push({
-            builder: new EmptyBuilder('object'),
-            height: RandomNumber.constant(1)
+        this.children.push({
+            builder: new EmptyBuilder(),
+            options: {
+                height: new NumberOption(RandomNumber.constant(1))
+            }
         })
     }
 
@@ -103,18 +95,18 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
         const base = context.base.z + padding.x
 
         if (size <= 0) {
-            console.warn('FlexPrismBuilder: size is less than 0')
+            console.warn('StackPrismBuilder: size is less than 0')
             return []
         }
 
-        let childrenHeights = this._children.map((child) => child.height.seeded(seed))
+        let childrenHeights = this.children.map((child) => child.options.height.get(style, seed))
         let childrenHeight = -gap
         childrenHeights.forEach((height) => {
             childrenHeight += height + gap
         })
 
         if (childrenHeight > size) {
-            console.warn('FlexPrismBuilder: children height is greater than size')
+            console.warn('StackPrismBuilder: children height is greater than size')
         }
 
         let repetitions = this.children.length
@@ -133,7 +125,7 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
             }
         }
 
-        if (alignment === FlexAlignment.FILL) {
+        if (alignment === StackAlignment.FILL) {
             const stretch = (size - childrenHeight) / repetitions
 
             let results: BuilderResult[] = []
@@ -142,17 +134,17 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
                 const height = childrenHeights[i % this.children.length] + stretch
                 const prism = new Prism(context.base.move(new Vec3(0, 0, z)), height)
                 z += height + gap
-                results.push(this.children[i % this.children.length].build(prism, style, seed))
+                results.push(this.children[i % this.children.length].builder.build(prism, style, seed))
             }
             return results
         } else {
             let z: number = 0
             switch (alignment) {
-                case FlexAlignment.START:
+                case StackAlignment.START:
                     z = base; break
-                case FlexAlignment.END:
+                case StackAlignment.END:
                     z = base + size - childrenHeight; break
-                case FlexAlignment.CENTER:
+                case StackAlignment.CENTER:
                     z = base + (size - childrenHeight) / 2; break
             }
 
@@ -161,24 +153,9 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
                 const height = childrenHeights[i % this.children.length]
                 const prism = new Prism(context.base.move(new Vec3(0, 0, z)), height)
                 z += height + gap
-                results.push(this.children[i % this.children.length].build(prism, style, seed))
+                results.push(this.children[i % this.children.length].builder.build(prism, style, seed))
             }
             return results
-        }
-    }
-
-    get children(): ObjectBuilder<Prism<P>>[] {
-        return this._children.map((child) => child.builder)
-    }
-
-    toJsonData(): {} {
-        return {
-            children: this._children.map((child) => {
-                return {
-                    builder: child.builder.toJson(),
-                    height: child.height.toJson()
-                }
-            })
         }
     }
 }
