@@ -8,7 +8,7 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { Vec3 } from "./vector.js"
+import { Vec2, Vec3 } from "./vector.js"
 
 export const AXIS_X = new Vec3(1, 0, 0)
 export const AXIS_Y = new Vec3(0, 1, 0)
@@ -42,7 +42,7 @@ export class Quaternion {
         return new Quaternion(this.w / magnitude, this.x / magnitude, this.y / magnitude, this.z / magnitude)
     }
 
-    multiply(q: Quaternion): Quaternion {
+    add(q: Quaternion): Quaternion {
         const w = this.w * q.w - this.x * q.x - this.y * q.y - this.z * q.z
         const x = this.w * q.x + this.x * q.w + this.y * q.z - this.z * q.y
         const y = this.w * q.y - this.x * q.z + this.y * q.w + this.z * q.x
@@ -72,21 +72,16 @@ export class Quaternion {
         return new Quaternion(Math.cos(angle / 2) + this.w, this.x, this.y, this.z)
     }
 
+    withW(w: number): Quaternion {
+        return new Quaternion(w, this.x, this.y, this.z)
+    }
+
     rotateVec(v: Vec3): Vec3 {
         const qv = new Quaternion(0, v.x, v.y, v.z)
         const qConjugate = new Quaternion(this.w, -this.x, -this.y, -this.z)
-        const qResult = this.multiply(qv).multiply(qConjugate)
+        const qResult = this.add(qv).add(qConjugate)
 
         return new Vec3(qResult.x, qResult.y, qResult.z)
-    }
-
-    add(q: Quaternion): Quaternion {
-        const x = this.w * q.x + this.x * q.w + this.y * q.z - this.z * q.y
-        const y = this.w * q.y - this.x * q.z + this.y * q.w + this.z * q.x
-        const z = this.w * q.z + this.x * q.y - this.y * q.x + this.z * q.w
-        const w = this.w * q.w - this.x * q.x - this.y * q.y - this.z * q.z
-
-        return new Quaternion(x, y, z, w).normalize();
     }
 
     conjugate(): Quaternion {
@@ -120,4 +115,74 @@ export function toRadiants(angle: number) {
 
 export function toGrades(angle: number) {
     return angle * 180 / Math.PI
+}
+
+export class Rotation2 {
+
+    constructor(
+        readonly angle: number,
+        readonly pivot: Vec2 = Vec2.ZERO
+    ) { }
+
+    static fromPoints(center: Vec2, vec1: Vec2, vec2: Vec2, pivot: Vec2 = center): Rotation2 {
+        return new Rotation2(Math.acos((center.distance(vec1) ** 2 + center.distance(vec2) ** 2 - vec1.distance(vec2) ** 2) / (2 * center.distance(vec1) * center.distance(vec2))), pivot)
+    }
+
+    static fromJson(json: any): Rotation2 {
+        return new Rotation2(json.angle, Vec2.fromJson(json.pivot))
+    }
+
+    add(rotation: Rotation2): Rotation2 {
+        return new Rotation2(this.angle + rotation.angle, this.pivot)
+    }
+
+    getVec(vec: Vec2): Vec2 {
+        const relativeVec = vec.subtract(this.pivot)
+        const cosT = Math.cos(this.angle)
+        const sinT = Math.sin(this.angle)
+
+        return new Vec2(
+            relativeVec.x * cosT - relativeVec.y * sinT,
+            relativeVec.x * sinT + relativeVec.y * cosT
+        ).add(this.pivot)
+    }
+
+    toJson() {
+        return {
+            angle: this.angle,
+            pivot: this.pivot.toJson()
+        }
+    }
+}
+
+export class Rotation3 {
+
+    constructor(
+        readonly quaternion: Quaternion,
+        readonly pivot: Vec3 = Vec3.ZERO
+    ) { }
+
+    static fromJson(json: any): Rotation3 {
+        return new Rotation3(Quaternion.fromJson(json.quaternion), Vec3.fromJson(json.pivot))
+    }
+
+    add(rotation: Rotation3): Rotation3 {
+        // TODO Fix for different Pivot
+        return new Rotation3(this.quaternion.add(rotation.quaternion), this.pivot)
+    }
+
+    addQ(quaternion: Quaternion): Rotation3 {
+        return new Rotation3(this.quaternion.add(quaternion), this.pivot)
+    }
+
+    getVec(vec: Vec3): Vec3 {
+        return this.quaternion.rotateVec(vec.subtract(this.pivot)).add(this.pivot)
+    }
+
+    toJson() {
+        return {
+            angle: this.quaternion.toJson(),
+            pivot: this.pivot.toJson()
+        }
+    }
 }

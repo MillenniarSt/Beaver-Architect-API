@@ -10,7 +10,7 @@
 
 import { Plane2, Rect2 } from "../bi-geo/plane.js";
 import { Geo3, Geo3Type } from "../geo.js";
-import { Quaternion } from "../quaternion.js";
+import { Quaternion, Rotation3 } from "../quaternion.js";
 import { Vec2, Vec3 } from "../vector.js";
 import { Plane3, Surface } from "./surface.js";
 
@@ -33,6 +33,8 @@ export abstract class Object3 implements Geo3 {
     abstract get triangles(): [number, number, number][]
 
     abstract move(vec: Vec3): Object3
+
+    abstract rotate(rotation: Rotation3): Object3
 
     abstract toNamedJson(): {}
 
@@ -70,6 +72,10 @@ export class GeneralObject3 extends Object3 {
         return new GeneralObject3(this.vertices.map((v) => v.add(vec)), this.triangles)
     }
 
+    rotate(rotation: Rotation3): GeneralObject3 {
+        return new GeneralObject3(this.vertices.map((v) => rotation.getVec(v)), this.triangles)
+    }
+
     toNamedJson(): {} {
         return {
             name: this.constructor.name,
@@ -97,10 +103,15 @@ export class Prism<P extends Plane2 = Plane2> extends Object3 {
         return new Prism(this.base.move(vec), this.height)
     }
 
+    rotate(rotation: Rotation3): Prism<P> {
+        return new Prism(this.base.rotate(rotation), this.height)
+    }
+
     get vertices(): Vec3[] {
-        const baseVertices = this.base.vertices
-        const topVertices = baseVertices.map(v => v.add(new Vec3(0, 0, this.height)))
-        return [...baseVertices, ...topVertices]
+        return [
+            ...this.base.vertices, 
+            ...this.base.plane.vertices.map(v => this.base.rotation.getVec(v.toVec3(this.height)))
+        ]
     }
 
     get triangles(): [number, number, number][] {
@@ -136,17 +147,21 @@ export class Rect3 extends Prism<Rect2> {
     constructor(
         readonly pos: Vec3,
         readonly size: Vec3,
-        readonly rotation: Quaternion = Quaternion.NORTH
+        readonly rotation: Rotation3 = new Rotation3(Quaternion.NORTH, pos)
     ) {
         super(new Plane3(new Rect2(new Vec2(pos.x, pos.y), new Vec2(size.x, size.y)), pos.z, rotation), size.z)
     }
 
     static fromJson(json: any): Rect3 {
-        return new Rect3(Vec3.fromJson(json.pos), Vec3.fromJson(json.size), Quaternion.fromJson(json.rotation))
+        return new Rect3(Vec3.fromJson(json.pos), Vec3.fromJson(json.size), Rotation3.fromJson(json.rotation))
     }
 
     move(vec: Vec3): Rect3 {
         return new Rect3(this.pos.add(vec), this.size, this.rotation)
+    }
+
+    rotate(rotation: Rotation3): Rect3 {
+        return new Rect3(this.pos, this.size, this.rotation.add(rotation))
     }
 
     toNamedJson(): {} {

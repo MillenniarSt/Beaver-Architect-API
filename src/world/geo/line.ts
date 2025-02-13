@@ -9,6 +9,7 @@
 //      ##    \__|__/
 
 import { Geo3, Geo3Type } from "../geo.js"
+import { Rotation3 } from "../quaternion.js"
 import { Vec3 } from "../vector.js"
 
 export class Line3 implements Geo3 {
@@ -29,6 +30,10 @@ export class Line3 implements Geo3 {
         return new Line3(this.vertices.map((vertex) => vertex.add(vec)))
     }
 
+    rotate(rotation: Rotation3): Line3 {
+        return new Line3(this.vertices.map((v) => rotation.getVec(v)))
+    }
+
     toJson(): {} {
         return this.vertices.map((vertex) => vertex.toJson())
     }
@@ -42,5 +47,9 @@ export class CloseLine3 extends Line3 {
 
     move(vec: Vec3): CloseLine3 {
         return new CloseLine3(this.vertices.map((vertex) => vertex.add(vec)))
+    }
+
+    rotate(rotation: Rotation3): CloseLine3 {
+        return new CloseLine3(this.vertices.map((v) => rotation.getVec(v)))
     }
 }

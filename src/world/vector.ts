@@ -19,7 +19,7 @@ export class Vec2 {
         return Math.sqrt(this.x ** 2 + this.y ** 2)
     }
 
-    distanceTo(vec: Vec2): number {
+    distance(vec: Vec2): number {
         return Math.sqrt(Math.pow(this.x - vec.x, 2) + Math.pow(this.y - vec.y, 2))
     }
 
@@ -46,6 +46,10 @@ export class Vec2 {
     normalize(): Vec2 {
         const length = Math.sqrt(this.x ** 2 + this.y ** 2)
         return new Vec2(this.x / length, this.y / length)
+    }
+
+    toVec3(z: number = 0): Vec3 {
+        return new Vec3(this.x, this.y, z)
     }
 
     min(vec: Vec2): Vec2 {

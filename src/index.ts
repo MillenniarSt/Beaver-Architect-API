@@ -55,19 +55,7 @@ import './builder/surface/rect.js'
 import './builder/surface/to-prism.js'
 import './builder/object/prism/stack.js'
 import './builder/object/prism/flex.js'
-import { Style, StyleReference } from './engineer/data-pack/style/style.js'
-import { Material, MaterialReference } from './engineer/data-pack/style/material.js'
-import { RandomList, RandomNumber, RandomVec2, Seed } from './util/random.js'
-import { GridAxisAlignment, GridRectBuilder } from './builder/surface/rect.js'
-import { SurfaceToPrismBuilder } from './builder/surface/to-prism.js'
-import { StructureEngineer, StructureReference } from './engineer/structure/structure.js'
-import { Structure } from './project/structure.js'
-import { Rect2 } from './world/bi-geo/plane.js'
-import { Vec2 } from './world/vector.js'
-import { Plane3 } from './world/geo/surface.js'
-import { Exporter } from './project/exporter.js'
-import { NumberOption, ObjectOption, Vec2Option } from './util/option.js'
-import { EmptyBuilder } from './builder/generic/empty.js'
+import { registerEnStructureMessages } from './engineer/structure/messages.js'
 
 const identifier = argv[3]
 const port = argv[4] ? Number(argv[4]) : 8224
@@ -99,43 +87,27 @@ const onServerMessage: ServerOnMessage = new Map()
 registerProjectMessages(onServerMessage as OnMessage)
 registerDirectorMessages(onServerMessage)
 registerStyleMessages(onServerMessage)
+registerEnStructureMessages(onServerMessage)
 
 const url = await server.open(port, isPublic, onServerMessage)
 console.info(`Opened Project Server '${identifier}' on ${url ?? `port ${port}`}`)
 
+/*
+// Testing
 
-// Builder + Exporter Testing
+import { Rect2 } from './world/bi-geo/plane.js'
+import { Vec2 } from './world/vector.js'
+import { Plane3 } from './world/geo/surface.js'
+import { templateBuilderExport } from './template/exporter.js'
+import { Quaternion, Rotation3 } from './world/quaternion.js'
+import { templateTestBuilders } from './template/builders/testing.js'
+import { templateTestStyles } from './template/styles/testing.js'
+import { RandomVec2 } from './util/random.js'
 
-// Style
+const base = new Plane3(new Rect2(Vec2.ZERO, new Vec2(40, 3)), 0, new Rotation3(Quaternion.UP))
+templateBuilderExport(templateTestBuilders.gridPrisms(RandomVec2.constant(2, 1), RandomVec2.constant(1, 0)), base, templateTestStyles.simple())
 
-const style = new Style(new StyleReference('style-test'), false, [], new Map([
-    ['base', new Material(new RandomList([{ id: 'minecraft:stone' }]), 'BaseMaterial')]
-]))
 
-// Structure
-
-const builder = new GridRectBuilder(
-    new SurfaceToPrismBuilder(
-        new EmptyBuilder(new RandomList([MaterialReference.ref('base')])),
-        {
-            height: new NumberOption(new RandomNumber(2, 6))
-        }
-    ),
-    {
-        gap: new Vec2Option(RandomVec2.constant(1)),
-        alignment: new ObjectOption(RandomList.constant([GridAxisAlignment.START, GridAxisAlignment.START]))
-    }
-)
-
-const engineer = new StructureEngineer(new StructureReference('structure-test'), builder)
-
-const structure = new Structure(new Plane3(new Rect2(Vec2.ZERO, new Vec2(11, 7)), 0), engineer)
-
-// Export
-
-const seed = new Seed()
-
-const result = structure.build(style.toGenerationStyle(), seed)
-
-const exporter = new Exporter(seed, result, style.toPostGenerationStyle())
-exporter.exportToArchitect((data) => console.debug('Update', data))
+const base2 = new Plane3(new Rect2(Vec2.ZERO, new Vec2(8, 5)), 0)
+templateBuilderExport(templateTestBuilders.borderPrism(), base2, templateTestStyles.simple())
+*/

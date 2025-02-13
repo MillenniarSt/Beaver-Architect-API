@@ -9,6 +9,7 @@
 //      ##    \__|__/
 
 import { Geo2 } from "../geo.js"
+import { Rotation2 } from "../quaternion.js"
 import { Vec2 } from "../vector.js"
 import { CloseLine2 } from "./line.js"
 
@@ -25,6 +26,8 @@ export abstract class Plane2 implements Geo2 {
     abstract get edge(): CloseLine2
 
     abstract move(vec: Vec2): Plane2
+
+    abstract rotate(rotation: Rotation2): Plane2
 
     abstract toNamedJson(): {}
 
@@ -69,6 +72,10 @@ export class GeneralPlane2 extends Plane2 {
         return new GeneralPlane2(this.edge.move(vec))
     }
 
+    rotate(rotation: Rotation2): GeneralPlane2 {
+        return new GeneralPlane2(this.edge.rotate(rotation))
+    }
+
     toNamedJson(): {} {
         return {
             name: this.constructor.name,
@@ -80,16 +87,24 @@ export class GeneralPlane2 extends Plane2 {
 @NamedPlane(Rect2.fromJson)
 export class Rect2 extends Plane2 {
 
-    constructor(readonly pos: Vec2, readonly size: Vec2) {
+    constructor(
+        readonly pos: Vec2, 
+        readonly size: Vec2,
+        readonly rotation: Rotation2 = new Rotation2(0, Vec2.ZERO)
+    ) {
         super()
     }
 
     static fromJson(json: any): Rect2 {
-        return new Rect2(Vec2.fromJson(json.pos), Vec2.fromJson(json.size))
+        return new Rect2(Vec2.fromJson(json.pos), Vec2.fromJson(json.size), Rotation2.fromJson(json.rotation))
     }
 
     move(vec: Vec2): Rect2 {
         return new Rect2(this.pos.add(vec), this.size)
+    }
+
+    rotate(rotation: Rotation2): Rect2 {
+        return new Rect2(this.pos, this.size, this.rotation.add(rotation))
     }
 
     get edge(): CloseLine2 {
@@ -98,14 +113,15 @@ export class Rect2 extends Plane2 {
             new Vec2(this.pos.x, this.pos.y + this.size.y),
             this.pos.add(this.size),
             new Vec2(this.pos.x + this.size.y, this.pos.y)
-        ])
+        ]).rotate(this.rotation)
     }
 
     toNamedJson() {
         return {
             name: this.constructor.name,
             pos: this.pos.toJson(),
-            size: this.size.toJson()
+            size: this.size.toJson(),
+            rotation: this.rotation.toJson()
         }
     }
 }
