@@ -15,7 +15,7 @@ import { RandomList, RandomVec2, RandomVec4, Seed } from "../../util/random.js";
 import { Rect2 } from "../../world/bi-geo/plane.js";
 import { Plane3 } from "../../world/geo/surface.js";
 import { Vec2 } from "../../world/vector.js";
-import { Builder, BuilderResult, SurfaceBuilder } from "../builder.js";
+import { BuilderResult, SurfaceBuilder } from "../builder.js";
 import { SingleChildBuilder } from "../collective.js";
 
 export enum GridAxisAlignment {

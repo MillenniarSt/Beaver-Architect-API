@@ -62,12 +62,8 @@ export abstract class Builder<G extends Geo3 = any, O extends Record<string, Opt
 
     // Utils
 
-    /**
-     * Do NOT change, implement instead ChildrenManager
-     * @returns if Builder is an instance of ChildrenManager
-     */
-    canManageChildren(): boolean {
-        return false
+    get type(): string {
+        return this.constructor.name
     }
 }
 
@@ -107,10 +103,6 @@ export class BuilderResult<T extends Geo3 = any> {
 }
 
 export abstract class ChildrenManager {
-
-    canManageChildren(): boolean {
-        return true
-    }
 
     abstract canAddChild(): boolean
 

@@ -51,7 +51,7 @@ export abstract class Engineer {
 
 export type ReferenceData = { pack?: string, location: string } | string
 
-export abstract class ResourceReference<E extends Engineer> {
+export abstract class ResourceReference<E extends Engineer = Engineer> {
 
     readonly pack: string
     readonly location: string
@@ -99,6 +99,14 @@ export abstract class ResourceReference<E extends Engineer> {
 
     get name(): string {
         return idToLabel(this.location)
+    }
+
+    getEditorPath(extension: string) {
+        if(getProject().identifier === this.pack) {
+            return path.join(this.folder, `${this.location}.${extension}.json`)
+        } else {
+            return path.join('dependencies', this.pack, this.folder, `${this.location}.${extension}.json`)
+        }
     }
 
     equals(resource: ResourceReference<E>): boolean {

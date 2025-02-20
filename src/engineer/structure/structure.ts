@@ -10,15 +10,19 @@
 
 import { Builder } from "../../builder/builder.js";
 import { builderFromJson } from "../../builder/collective.js";
-import { BuilderDirective, ObjectUpdate } from "../../connection/directives/update.js";
+import { BuilderDirective, CheckUpdate, ObjectUpdate } from "../../connection/directives/update.js";
 import { ClientDirector } from "../../connection/director.js";
 import { getProject } from "../../instance.js";
 import { Geo3 } from "../../world/geo.js";
 import { Engineer, ResourceReference } from "../engineer.js";
 
-export type EnStructureUpdate = {}
+export type EnStructureUpdate = {
+    refreshBuilders: boolean
+}
 
-export const enStructureUpdate = new ObjectUpdate<EnStructureUpdate>({})
+export const enStructureUpdate = new ObjectUpdate<EnStructureUpdate>({
+    refreshBuilders: new CheckUpdate()
+})
 
 export class StructureReference extends ResourceReference<StructureEngineer> {
 
@@ -39,7 +43,7 @@ export class StructureEngineer<G extends Geo3 = Geo3> extends Engineer {
         this.builder = builder
     }
 
-    update(director: ClientDirector, update: {}): void {
+    update(director: ClientDirector, update: EnStructureUpdate): void {
         director.addDirective(BuilderDirective.update('data-pack/structures/update', this.reference, enStructureUpdate, update))
     }
 

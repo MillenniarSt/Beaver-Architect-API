@@ -12,17 +12,33 @@ import { GenerationStyle } from "../engineer/data-pack/style/style.js";
 import { Vec2, Vec3, Vec4 } from "../world/vector.js";
 import { Random, RandomBoolean, RandomList, RandomNumber, RandomVec2, RandomVec3, RandomVec4, Seed } from "./random.js";
 
+export const namedOptions: Map<string, (json: any) => Option> = new Map()
+
+export function NamedOption(fromJson: (json: any) => Option) {
+    return function (constructor: { new(...args: any): Option }) {
+        namedOptions.set(constructor.name, fromJson)
+    }
+}
+
 export abstract class Option<T = any> {
 
     protected random: Random<T> | undefined
     protected ref: string | undefined
 
     constructor(data: Random<T> | string) {
-        if(typeof data === 'string') {
+        if (typeof data === 'string') {
             this.ref = data
         } else {
             this.random = data
         }
+    }
+
+    static fromJson(json: any): Option {
+        const factory = namedOptions.get(json.name)
+        if (!factory) {
+            throw Error(`No Option registered for name: ${json.name}`)
+        }
+        return factory(json)
     }
 
     // TODO add Form
@@ -59,8 +75,17 @@ export abstract class Option<T = any> {
             ref: this.ref
         }
     }
+
+    toNamedJson() {
+        return {
+            name: this.constructor.name,
+            random: this.random?.toJson(),
+            ref: this.ref
+        }
+    }
 }
 
+@NamedOption(BooleanOption.fromJson)
 export class BooleanOption extends Option<boolean> {
 
     static fromJson(json: any): BooleanOption {
@@ -68,6 +93,7 @@ export class BooleanOption extends Option<boolean> {
     }
 }
 
+@NamedOption(NumberOption.fromJson)
 export class NumberOption extends Option<number> {
 
     static fromJson(json: any): NumberOption {
@@ -75,6 +101,7 @@ export class NumberOption extends Option<number> {
     }
 }
 
+@NamedOption(Vec2Option.fromJson)
 export class Vec2Option extends Option<Vec2> {
 
     static fromJson(json: any): Vec2Option {
@@ -82,6 +109,7 @@ export class Vec2Option extends Option<Vec2> {
     }
 }
 
+@NamedOption(Vec3Option.fromJson)
 export class Vec3Option extends Option<Vec3> {
 
     static fromJson(json: any): Vec3Option {
@@ -89,6 +117,7 @@ export class Vec3Option extends Option<Vec3> {
     }
 }
 
+@NamedOption(Vec4Option.fromJson)
 export class Vec4Option extends Option<Vec4> {
 
     static fromJson(json: any): Vec4Option {
@@ -96,6 +125,7 @@ export class Vec4Option extends Option<Vec4> {
     }
 }
 
+@NamedOption(ObjectOption.fromJson)
 export class ObjectOption<T = any> extends Option<T | undefined> {
 
     static fromJson<T>(json: any, itemFromJson?: (json: any) => T, itemToJson?: (item: T) => any): ObjectOption<T> {

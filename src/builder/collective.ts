@@ -13,6 +13,8 @@ import { Option } from "../util/option.js"
 import { RandomList } from "../util/random.js"
 import { Builder, BuilderChild } from "./builder.js"
 
+// Json Utils
+
 const namedBuilders: Map<string, (json: any) => Builder> = new Map()
 
 export function JsonBuilder(fromJson: (json: any) => Builder) {
