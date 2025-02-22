@@ -5,7 +5,7 @@ import { Option } from '../../../../../util/option.js'
 export class OptionReteNode extends ReteNode {
 
     constructor(
-        protected option: Option,
+        public option: Option,
         pos: Vec2,
         id?: string,
     ) {

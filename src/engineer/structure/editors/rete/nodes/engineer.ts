@@ -4,7 +4,7 @@ import { ReteNode } from "../../../../editors/rete.js"
 export class StructureEngineerReteNode extends ReteNode {
 
     constructor(
-        protected builder: string | null,
+        public builder: string | null,
         pos: Vec2,
         id?: string,
     ) {

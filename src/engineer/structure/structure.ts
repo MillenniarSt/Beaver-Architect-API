@@ -17,7 +17,7 @@ import { Geo3 } from "../../world/geo.js";
 import { Engineer, ResourceReference } from "../engineer.js";
 
 export type EnStructureUpdate = {
-    refreshBuilders: boolean
+    refreshBuilders?: boolean
 }
 
 export const enStructureUpdate = new ObjectUpdate<EnStructureUpdate>({
@@ -34,13 +34,18 @@ export class StructureReference extends ResourceReference<StructureEngineer> {
         return getProject(this.pack).dataPack.engineers.structures.get(this.location)
     }
 }
-export class StructureEngineer<G extends Geo3 = Geo3> extends Engineer {
+export class StructureEngineer extends Engineer {
 
-    builder: Builder<G>
+    builder: Builder
 
-    constructor(ref: ResourceReference<StructureEngineer>, builder: Builder<G>) {
+    constructor(ref: ResourceReference<StructureEngineer>, builder: Builder) {
         super(ref)
         this.builder = builder
+    }
+
+    setBuilder(director: ClientDirector, builder: Builder) {
+        this.builder = builder
+        this.update(director, { refreshBuilders: true })
     }
 
     update(director: ClientDirector, update: EnStructureUpdate): void {

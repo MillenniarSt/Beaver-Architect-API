@@ -134,6 +134,18 @@ export class ClientSide extends SocketSide {
             this.historyIndex++
         }
     }
+
+    info(message: string) {
+        this.send('message', { severity: 'info', summary: 'Info', detail: message })
+    }
+
+    warn(message: string) {
+        this.send('message', { severity: 'warn', summary: 'Warn', detail: message })
+    }
+
+    error(message: string) {
+        this.send('message', { severity: 'error', summary: 'Error', detail: message })
+    }
 }
 
 export class ArchitectSide extends SocketSide {

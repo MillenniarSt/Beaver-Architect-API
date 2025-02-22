@@ -9,6 +9,7 @@ import { v4 } from "uuid";
 import { Vec2 } from "../../../../world/vector.js";
 import { ResourceReference } from "../../../engineer.js";
 import { getProject } from "../../../../instance.js";
+import { ClientSide } from "../../../../connection/sides.js";
 
 export class StructureReteEditor extends ReteEditor<StructureEngineer> {
 
@@ -67,8 +68,19 @@ export class StructureReteEditor extends ReteEditor<StructureEngineer> {
         
     }
 
-    apply(director: ClientDirector): void {
-        
+    apply(client: ClientSide): void {
+        if(this.base.builder === null) {
+            client.warn('Connect a Builder to the Engineer')
+        } else {
+            const oldBuilder = this.engineer.builder
+            ClientDirector.execute(client, 
+                async (director) => this.engineer.setBuilder(director, this.getBuilder(this.base.builder!).get(
+                    (id) => this.getBuilder(id),
+                    (id) => this.getOption(id)
+                )),
+                async (director) => this.engineer.setBuilder(director, oldBuilder)
+            )
+        }
     }
 
     getBuilder(id: string): BuilderReteNode {

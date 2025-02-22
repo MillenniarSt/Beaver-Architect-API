@@ -5,17 +5,21 @@ import { RandomList } from "../../../../../util/random.js"
 import { Vec2 } from "../../../../../world/vector.js"
 import { MaterialReference } from "../../../../data-pack/style/material.js"
 import { ReteNode } from "../../../../editors/rete.js"
+import { OptionReteNode } from "./option.js"
 
-const typedBuilders: Map<string, NodeBuilderType> = new Map()
+const typedBuilders: Map<string, NodeBuilderType<any>> = new Map()
 
-export function NodeTypedBuilder(type: {
+/**
+ * Use this as an @Annotation on a Builder to register it
+ */
+export function NodeTypedBuilder<B extends Builder = Builder>(type: {
     label?: string,
     object?: string,
     options?: BuilderTypeOption[],
-    outputs?: BuilderTypeOutput[],
-    get: (getChildren: (output: string) => Builder[], getOption: (id: string) => Option, materials: RandomList<MaterialReference>) => Builder
+    outputs?: BuilderTypeOutput<B>[],
+    get: NodeBuilderGetter<B>
 }) {
-    return function (constructor: { new (...args: any): Builder }) {
+    return function (constructor: { new (...args: any): B }) {
         typedBuilders.set(constructor.name, new NodeBuilderType(constructor.name, type.label ?? idToLabel(type.label!), type.object ?? null, type.options ?? [], type.outputs ?? [], type.get))
     }
 }
@@ -37,6 +41,8 @@ export type BuilderTypeOutput<B extends Builder = Builder> = {
     getChildren: (builder: B) => Builder[]
 }
 
+export type NodeBuilderGetter<B extends Builder = Builder> = (getChildren: (output: string) => Builder[], getOption: (id: string) => Option | null, materials: RandomList<MaterialReference>) => B
+
 export class NodeBuilderType<B extends Builder = Builder> {
 
     constructor(
@@ -45,7 +51,7 @@ export class NodeBuilderType<B extends Builder = Builder> {
         readonly object: string | null,
         readonly options: BuilderTypeOption[],
         readonly outputs: BuilderTypeOutput<B>[],
-        readonly get: (getChildren: (output: string) => Builder[], getOption: (id: string) => Option, materials: RandomList<MaterialReference>) => B
+        readonly get: NodeBuilderGetter<B>
     ) { }
 
     toJson() {
@@ -62,10 +68,10 @@ export class NodeBuilderType<B extends Builder = Builder> {
 export class BuilderReteNode<B extends Builder = Builder> extends ReteNode {
 
     constructor(
-        protected type: NodeBuilderType<B>,
-        protected parent: string | null,
-        protected options: Record<string, string | null>,
-        protected children: Record<string, string[]>,
+        public type: NodeBuilderType<B>,
+        public parent: string | null,
+        public options: Record<string, string | null>,
+        public children: Record<string, string[]>,
         pos: Vec2,
         id?: string,
     ) {
@@ -76,11 +82,19 @@ export class BuilderReteNode<B extends Builder = Builder> extends ReteNode {
         return new BuilderReteNode(json.type, json.parent, json.options, json.children, Vec2.fromJson(json.pos), json.id)
     }
 
+    get(getBuilder: (id: string) => BuilderReteNode, getOption: (id: string) => OptionReteNode): B {
+        return this.type.get(
+            (output) => this.children[output].map((child) => getBuilder(child).get(getBuilder, getOption)),
+            (option) => this.options[option] ? getOption(this.options[option]).option : null,
+            new RandomList()
+        )
+    }
+
     toJson(): {} {
         return {
             id: this.id,
             pos: this.pos.toJson(),
-            type: this.type,
+            type: this.type.id,
             parent: this.parent,
             options: this.options,
             children: this.children
