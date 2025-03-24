@@ -27,7 +27,7 @@ export abstract class Builder<G extends Geo3 = any, O extends Record<string, Opt
 
     constructor(
         readonly options: O,
-        protected materials: RandomList<MaterialReference>
+        public materials: RandomList<MaterialReference>
     ) {
         materials.itemToJson = (ref) => ref.toJson()
     }

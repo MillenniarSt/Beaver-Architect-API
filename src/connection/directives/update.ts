@@ -8,22 +8,35 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
+import { Editor } from "../../engineer/editor.js";
 import { ResourceReference } from "../../engineer/engineer.js";
 import { server } from "../server.js";
 import { Directive } from "./directive.js";
 
-export class UpdateDirective<T> extends Directive {
+export abstract class AbstractUpdateDirective<T> extends Directive {
 
     constructor(
         readonly path: string,
-        readonly update: Update<T>,
-        protected data?: T
+        readonly update: Update<T>
     ) {
         super()
     }
 
     send() {
         server.sendAll(this.path, this.data)
+    }
+
+    protected abstract get data(): any
+}
+
+export class UpdateDirective<T> extends AbstractUpdateDirective<T> {
+
+    constructor(
+        path: string,
+        update: Update<T>,
+        protected data: T | undefined = undefined
+    ) {
+        super(path, update)
     }
 
     async override(directive: UpdateDirective<T>): Promise<void> {
@@ -36,22 +49,18 @@ export type BuilderDirectiveValue<T> = {
     update?: T
 }
 
-export class BuilderDirective<T> extends Directive {
+export class BuilderDirective<T> extends AbstractUpdateDirective<T> {
 
     constructor(
-        readonly path: string,
-        readonly update: Update<T>,
+        path: string,
+        update: Update<T>,
         readonly builders: BuilderDirectiveValue<T>[]
     ) {
-        super()
+        super(path, update)
     }
 
     static update<T>(path: string, ref: ResourceReference<any>, update: Update<T>, data?: T): BuilderDirective<T> {
         return new BuilderDirective(path, update, [{ ref: ref, update: data }])
-    }
-
-    send() {
-        server.sendAll(this.path, this.toJson())
     }
 
     async override(directive: BuilderDirective<T>): Promise<void> {
@@ -59,14 +68,14 @@ export class BuilderDirective<T> extends Directive {
             const builder = directive.builders[i]
             const existing = this.builders.find((b) => b.ref.equals(builder.ref))
             if (existing) {
-                existing.update = this.update.updateState(existing.update, builder.update)
+                existing.update = await this.update.update(existing.update, builder.update)
             } else {
                 this.builders.push(builder)
             }
         }
     }
 
-    toJson(): {} {
+    protected get data(): {} {
         return this.builders.map((builder) => {
             return {
                 ref: builder.ref.toJson(),
@@ -76,9 +85,50 @@ export class BuilderDirective<T> extends Directive {
     }
 }
 
+export type EditorDirectiveValue<T> = {
+    ref: ResourceReference<any>
+    update?: T
+}
+
+export class EditorDirective<T> extends AbstractUpdateDirective<T> {
+
+    constructor(
+        extension: string,
+        update: Update<T>,
+        readonly editors: EditorDirectiveValue<T>[]
+    ) {
+        super(`editor/${extension}`, update)
+    }
+
+    static update<T>(editor: Editor, update: Update<T>, data?: T): EditorDirective<T> {
+        return new EditorDirective(editor.extension, update, [{ ref: editor.engineer.reference, update: data }])
+    }
+
+    async override(directive: EditorDirective<T>): Promise<void> {
+        for (let i = 0; i < directive.editors.length; i++) {
+            const editor = directive.editors[i]
+            const existing = this.editors.find((b) => b.ref.equals(editor.ref))
+            if (existing) {
+                existing.update = await this.update.update(existing.update, editor.update)
+            } else {
+                this.editors.push(editor)
+            }
+        }
+    }
+
+    protected get data(): {} {
+        return this.editors.map((editor) => {
+            return {
+                ref: editor.ref.toJson(),
+                update: editor.update
+            }
+        })
+    }
+}
+
 export type UpdateListener<T> = (state: T) => Promise<void>
 
-export abstract class Update<T> {
+export abstract class Update<T = any> {
 
     constructor(
         public listeners: UpdateListener<Exclude<T, undefined>>[] = []
@@ -91,7 +141,7 @@ export abstract class Update<T> {
                 await this.listeners[i](updateState as Exclude<T, undefined>)
             }
         }
-        return updateState
+        return updateState ?? state
     }
 
     abstract updateState(state: T | undefined, newState: T | undefined): T | undefined
@@ -100,7 +150,7 @@ export abstract class Update<T> {
 export class VarUpdate<T> extends Update<T> {
 
     updateState(state: T | undefined, newState: T | undefined): T | undefined {
-        if (newState != undefined) {
+        if (newState != undefined && state != newState) {
             return newState
         }
     }
@@ -109,7 +159,9 @@ export class VarUpdate<T> extends Update<T> {
 export class CheckUpdate extends Update<boolean> {
 
     updateState(state: boolean | undefined, newState: boolean | undefined): boolean | undefined {
-        return newState ?? state
+        if(state !== true && newState === true) {
+            return true
+        }
     }
 }
 
@@ -122,7 +174,7 @@ export class VarConditionedUpdate<T> extends Update<T> {
     }
 
     updateState(state: T | undefined, newState: T | undefined): T | undefined {
-        if (newState != undefined && this.condition(state, newState)) {
+        if (newState !== undefined && this.condition(state, newState)) {
             return newState
         }
     }
@@ -131,10 +183,41 @@ export class VarConditionedUpdate<T> extends Update<T> {
 export class ArrayUpdate<T> extends Update<T[]> {
 
     updateState(state: T[] | undefined, newState: T[] | undefined): T[] | undefined {
-        if (state != undefined) {
-            state.push(...newState ?? [])
-        } else {
-            return newState
+        if(newState) {
+            if (state !== undefined) {
+                state.push(...newState)
+                return state
+            } else {
+                return newState
+            }
+        }
+    }
+}
+
+export class SetUpdate<T> extends Update<T[]> {
+
+    constructor(
+        readonly equals: (state: T, otherState: T) => T | undefined
+    ) {
+        super()
+    }
+
+    updateState(state: T[] | undefined, newState: T[] | undefined): T[] | undefined {
+        if(newState) {
+            if (state !== undefined) {
+                let updated = [...state]
+                newState.forEach((s) => {
+                    for(let i = 0; i < state.length; i++) {
+                        if(this.equals(s, state[i])) {
+                            return
+                        }
+                    }
+                    updated.push(s)
+                })
+                return updated
+            } else {
+                return newState
+            }
         }
     }
 }

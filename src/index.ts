@@ -18,6 +18,8 @@ import { registerDirectorMessages } from './connection/director.js'
 import { argv } from 'process'
 import { setArchitect } from './instance.js'
 import { ArchitectData, loadArchitect } from './project/architect.js'
+import { registerEnStructureMessages } from './engineer/structure/messages.js'
+import { registerEditorMessages } from './engineer/editor.js'
 
 const log = console.log
 console.log = (...args) => {
@@ -55,7 +57,6 @@ import './builder/surface/rect.js'
 import './builder/surface/to-prism.js'
 import './builder/object/prism/stack.js'
 import './builder/object/prism/flex.js'
-import { registerEnStructureMessages } from './engineer/structure/messages.js'
 
 const identifier = argv[3]
 const port = argv[4] ? Number(argv[4]) : 8224
@@ -88,6 +89,7 @@ registerProjectMessages(onServerMessage as OnMessage)
 registerDirectorMessages(onServerMessage)
 registerStyleMessages(onServerMessage)
 registerEnStructureMessages(onServerMessage)
+registerEditorMessages(onServerMessage)
 
 const url = await server.open(port, isPublic, onServerMessage)
 console.info(`Opened Project Server '${identifier}' on ${url ?? `port ${port}`}`)

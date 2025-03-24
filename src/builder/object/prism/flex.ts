@@ -10,7 +10,7 @@
 
 import { MaterialReference } from "../../../engineer/data-pack/style/material.js";
 import { GenerationStyle } from "../../../engineer/data-pack/style/style.js";
-import { BooleanOption, NumberOption } from "../../../util/option.js";
+import { Option } from "../../../util/option.js";
 import { RandomBoolean, RandomList, RandomNumber, Seed } from "../../../util/random.js";
 import { Plane2 } from "../../../world/bi-geo/plane.js";
 import { Prism } from "../../../world/geo/object.js";
@@ -21,19 +21,19 @@ import { EmptyBuilder } from "../../generic/empty.js";
 
 @MultiChildBuilder((json) => {
     return {
-        isStatic: BooleanOption.fromJson(json.isStatic),
-        weight: NumberOption.fromJson(json.weight)
+        isStatic: Option.fromJson(json.isStatic),
+        weight: Option.fromJson(json.weight)
     }
 })
 export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<Prism<P>, {}, {
-    isStatic: BooleanOption,
-    weight: NumberOption
+    isStatic: Option<boolean>,
+    weight: Option<number>
 }> implements ChildrenManager {
 
     constructor(
         public children: BuilderChild<ObjectBuilder<Prism<P>>, {
-            isStatic: BooleanOption,
-            weight: NumberOption
+            isStatic: Option<boolean>,
+            weight: Option<number>
         }>[],
         materials: RandomList<MaterialReference> = new RandomList()
     ) {
@@ -48,8 +48,8 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
         this.children.push({
             builder: new EmptyBuilder(),
             options: {
-                isStatic: new BooleanOption(RandomBoolean.constant(true)),
-                weight: new NumberOption(RandomNumber.constant(1))
+                isStatic: new Option(RandomBoolean.constant(true)),
+                weight: new Option(RandomNumber.constant(1))
             }
         })
     }

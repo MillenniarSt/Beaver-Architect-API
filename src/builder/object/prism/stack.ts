@@ -10,11 +10,11 @@
 
 import { MaterialReference } from '../../../engineer/data-pack/style/material.js';
 import { GenerationStyle } from '../../../engineer/data-pack/style/style.js';
-import { NumberOption, ObjectOption, Vec2Option } from '../../../util/option.js';
+import { Option } from '../../../util/option.js';
 import { RandomList, RandomNumber, RandomVec2, Seed } from '../../../util/random.js';
 import { Plane2 } from '../../../world/bi-geo/plane.js';
 import { Prism } from '../../../world/geo/object.js';
-import { Vec3 } from '../../../world/vector.js';
+import { Vec2, Vec3 } from '../../../world/vector.js';
 import { BuilderChild, BuilderResult, ChildrenManager, ObjectBuilder } from '../../builder.js';
 import { MultiChildOptionBuilder } from '../../collective.js';
 import { EmptyBuilder } from '../../generic/empty.js';
@@ -34,42 +34,42 @@ export enum RepetitionMode {
 
 @MultiChildOptionBuilder((json) => {
     return {
-        alignment: ObjectOption.fromJson(json.alignment),
-        repeat: ObjectOption.fromJson(json.repeat),
-        gap: NumberOption.fromJson(json.gap),
-        padding: Vec2Option.fromJson(json.padding)
+        alignment: Option.fromJson(json.alignment),
+        repeat: Option.fromJson(json.repeat),
+        gap: Option.fromJson(json.gap),
+        padding: Option.fromJson(json.padding)
     }
 }, (json) => {
     return {
-        height: NumberOption.fromJson(json.height)
+        height: Option.fromJson(json.height)
     }
 })
 export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<Prism<P>, {
-    alignment: ObjectOption<StackAlignment>
-    repeat: ObjectOption<RepetitionMode>
-    gap: NumberOption
-    padding: Vec2Option
+    alignment: Option<StackAlignment | undefined>
+    repeat: Option<RepetitionMode | undefined>
+    gap: Option<number>
+    padding: Option<Vec2>
 }, {
-    height: NumberOption
+    height: Option<number>
 }> implements ChildrenManager {
 
     constructor(
         public children: BuilderChild<ObjectBuilder<Prism<P>>, {
-            height: NumberOption
+            height: Option<number>
         }>[],
         options: {
-            alignment?: ObjectOption<StackAlignment>
-            repeat?: ObjectOption<RepetitionMode>
-            gap?: NumberOption
-            padding?: Vec2Option
+            alignment?: Option<StackAlignment | undefined>
+            repeat?: Option<RepetitionMode | undefined>
+            gap?: Option<number>
+            padding?: Option<Vec2>
         } = {},
         materials: RandomList<MaterialReference> = new RandomList()
     ) {
         super({
-            alignment: options.alignment ?? new ObjectOption(StackAlignment.START),
-            repeat: options.repeat ?? new ObjectOption(RepetitionMode.NONE),
-            gap: options.gap ?? new NumberOption(RandomNumber.constant(0)),
-            padding: options.padding ?? new Vec2Option(RandomVec2.constant(0))
+            alignment: options.alignment ?? new Option(StackAlignment.START),
+            repeat: options.repeat ?? new Option(RepetitionMode.NONE),
+            gap: options.gap ?? new Option(RandomNumber.constant(0)),
+            padding: options.padding ?? new Option(RandomVec2.constant(0))
         }, materials)
     }
 
@@ -81,7 +81,7 @@ export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<
         this.children.push({
             builder: new EmptyBuilder(),
             options: {
-                height: new NumberOption(RandomNumber.constant(1))
+                height: new Option(RandomNumber.constant(1))
             }
         })
     }

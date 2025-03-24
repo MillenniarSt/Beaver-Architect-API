@@ -8,16 +8,17 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
+import { NameNotRegistered } from "../../connection/errors.js";
 import { Plane2 } from "../bi-geo/plane.js";
-import { Geo3, Geo3Type } from "../geo.js";
+import { Geo3, Geo3Function, Geo3Type } from "../geo.js";
 import { Quaternion, Rotation3 } from "../quaternion.js";
 import { Vec3 } from "../vector.js";
 
-export const namedSurfaces: Map<string, (json: any) => Surface> = new Map()
+export const namedSurfaces: Map<string, Geo3Function<Surface>> = new Map()
 
-export function NamedSurface(fromJson: (json: any) => Surface) {
-    return function (constructor: { new(...args: any): Surface }) {
-        namedSurfaces.set(constructor.name, fromJson)
+export function NamedSurface() {
+    return function (constructor: Geo3Function<Surface>) {
+        namedSurfaces.set(constructor.name, constructor)
     }
 }
 
@@ -38,9 +39,9 @@ export abstract class Surface implements Geo3 {
     abstract toNamedJson(): {}
 
     static fromJson(json: any): Surface {
-        const factory = namedSurfaces.get(json.name)
+        const factory = namedSurfaces.get(json.name)?.fromJson
         if (!factory) {
-            throw Error(`No Surface registered for name: ${json.name}`)
+            throw new NameNotRegistered(json.name, 'Surface')
         }
         return factory(json)
     }
@@ -53,8 +54,10 @@ export abstract class Surface implements Geo3 {
     }
 }
 
-@NamedSurface(GeneralSurface.fromJson)
+@NamedSurface()
 export class GeneralSurface extends Surface {
+
+    static readonly parents = null
 
     constructor(
         readonly vertices: Vec3[],
@@ -84,8 +87,10 @@ export class GeneralSurface extends Surface {
     }
 }
 
-@NamedSurface(Plane3.fromJson)
+@NamedSurface()
 export class Plane3<P extends Plane2 = Plane2> extends Surface {
+
+    static readonly parents: Geo3Function[] = [GeneralSurface]
 
     constructor(
         readonly plane: P,

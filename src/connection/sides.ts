@@ -11,6 +11,8 @@
 import { v4 } from "uuid"
 import { WebSocket } from "ws"
 import { WebSocketError, WebSocketResponse } from "./server.js"
+import { Editor } from "../engineer/editor.js"
+import { ResourceReference } from "../engineer/engineer.js"
 
 export abstract class Side {
 
@@ -65,14 +67,14 @@ export abstract class SocketSide extends Side {
     }
 
     onResponse(res: any) {
-        if(res.channel) {
+        if (res.channel) {
             const f = this.channels.get(res.channel)
             if (f) {
                 f(res.data)
             } else {
                 console.error(`Invalid Channel ID: ${res.channel}`)
             }
-        } else if(res.id) {
+        } else if (res.id) {
             const f = this.waitingRequests.get(res.id)
             if (f) {
                 f(res.data)
@@ -146,6 +148,29 @@ export class ClientSide extends SocketSide {
     error(message: string) {
         this.send('message', { severity: 'error', summary: 'Error', detail: message })
     }
+
+    protected editors: Map<string, Editor> = new Map()
+
+    openEditor(ref: ResourceReference, extension: string): Editor {
+        let editor = this.getEditor(ref, extension)
+        if(!editor) {
+            editor = Editor.get(ref, extension)
+            this.editors.set(this.getUniqueEditorId(ref, extension), editor)
+        }
+        return editor
+    }
+
+    getEditor(ref: ResourceReference, extension: string): Editor | undefined {
+        return this.editors.get(this.getUniqueEditorId(ref, extension))
+    }
+
+    closeEditor(ref: ResourceReference, extension: string) {
+        this.editors.delete(this.getUniqueEditorId(ref, extension))
+    }
+
+    protected getUniqueEditorId(ref: ResourceReference, extension: string): string {
+        return `${ref.toString()}$${extension}`
+    }
 }
 
 export class ArchitectSide extends SocketSide {
@@ -174,7 +199,7 @@ export class HiddenSide extends Side {
 
     async openChannel(id: string, onMessage: (data: {} | null) => void): Promise<(data: {} | null) => void> {
         console.warn('An Hidden Side can not open Channels')
-        return (data) => {}
+        return (data) => { }
     }
 
     isRunningChannel(id: string): boolean {

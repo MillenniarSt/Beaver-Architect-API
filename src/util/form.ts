@@ -53,10 +53,6 @@ export class Form {
     }
 }
 
-export type FormData = {
-    inputs: FormDataInputRegistered[]
-}
-
 export type FormOutput<V = any> = {
     id: string,
     value: V,

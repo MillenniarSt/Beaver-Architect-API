@@ -11,11 +11,11 @@
 import { MaterialReference } from "../../engineer/data-pack/style/material.js";
 import { GenerationStyle } from "../../engineer/data-pack/style/style.js";
 import { NodeTypedBuilder } from "../../engineer/structure/editors/rete/nodes/builder.js";
-import { ObjectOption, Vec2Option, Vec4Option } from "../../util/option.js";
+import { Option } from "../../util/option.js";
 import { RandomList, RandomVec2, RandomVec4, Seed } from "../../util/random.js";
 import { Rect2 } from "../../world/bi-geo/plane.js";
 import { Plane3 } from "../../world/geo/surface.js";
-import { Vec2 } from "../../world/vector.js";
+import { Vec2, Vec4 } from "../../world/vector.js";
 import { BuilderResult, SurfaceBuilder } from "../builder.js";
 import { SingleChildBuilder } from "../collective.js";
 import { EmptyBuilder } from "../generic/empty.js";
@@ -29,40 +29,42 @@ export enum GridAxisAlignment {
 
 @NodeTypedBuilder({
     label: 'Grid Builder',
-    object: 'rect',
-    outputs: [{ id: 'child', object: 'rect', getChildren: (builder) => [builder.child] }],
+    object: Rect2,
+    outputs: {
+        child: { object: Rect2, getChildren: (builder) => [builder.child] }
+    },
     get: (getChildren, getOption, materials) => new GridRectBuilder(getChildren('child')[0] ?? new EmptyBuilder(), {}, materials)
 })
 @SingleChildBuilder((json) => {
     return {
-        alignment: ObjectOption.fromJson(json.alignment),
-        cell: Vec2Option.fromJson(json.cell),
-        gap: Vec2Option.fromJson(json.gap),
-        padding: Vec4Option.fromJson(json.padding)
+        alignment: Option.fromJson(json.alignment),
+        cell: Option.fromJson(json.cell),
+        gap: Option.fromJson(json.gap),
+        padding: Option.fromJson(json.padding)
     }
 })
 export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>, {
-    alignment: ObjectOption<[GridAxisAlignment, GridAxisAlignment]>
-    cell: Vec2Option
-    gap: Vec2Option
-    padding: Vec4Option
+    alignment: Option<[GridAxisAlignment, GridAxisAlignment] | undefined>
+    cell: Option<Vec2>
+    gap: Option<Vec2>
+    padding: Option<Vec4>
 }, {}> {
 
     constructor(
         protected child: SurfaceBuilder<Plane3<Rect2>>,
         options: {
-            alignment?: ObjectOption<[GridAxisAlignment, GridAxisAlignment]>
-            cell?: Vec2Option
-            gap?: Vec2Option
-            padding?: Vec4Option
+            alignment?: Option<[GridAxisAlignment, GridAxisAlignment] | undefined>
+            cell?: Option<Vec2>
+            gap?: Option<Vec2>
+            padding?: Option<Vec4>
         } = {},
         materials: RandomList<MaterialReference> = new RandomList()
     ) {
         super({
-            alignment: options.alignment ?? new ObjectOption(RandomList.constant([GridAxisAlignment.FILL, GridAxisAlignment.FILL])),
-            cell: options.cell ?? new Vec2Option(RandomVec2.constant(1)),
-            gap: options.gap ?? new Vec2Option(RandomVec2.constant(0)),
-            padding: options.padding ?? new Vec4Option(RandomVec4.constant(0))
+            alignment: options.alignment ?? new Option(RandomList.constant([GridAxisAlignment.FILL, GridAxisAlignment.FILL])),
+            cell: options.cell ?? new Option(RandomVec2.constant(1)),
+            gap: options.gap ?? new Option(RandomVec2.constant(0)),
+            padding: options.padding ?? new Option(RandomVec4.constant(0))
         }, materials)
     }
 

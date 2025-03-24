@@ -8,10 +8,11 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { WebSocketServer, WebSocket } from "ws"
+import { WebSocketServer } from "ws"
 import { ArchitectSide, ClientSide, Side } from "./sides.js"
 import localtunnel from 'localtunnel'
 import * as http from 'http'
+import { ServerProblem } from "./errors.js"
 
 export type WebSocketMessage = {
     path: string,
@@ -26,17 +27,20 @@ export type WebSocketResponse = {
 }
 
 export type WebSocketError = {
+    severity: 'warn' | 'error' | 'fatal'
     name: string,
     message: string,
-    stack: string,
-    errno: string,
-    syscall: string
+    stack?: string,
+    errno?: string,
+    syscall?: string
 }
 
-export type OnMessage = Map<string, (data: any, sender: Side, id?: string) => void>
+export type MessageFunction<S extends Side = Side, D = any> = (data: D, sender: S, id?: string) => void
 
-export type ServerOnMessage = Map<string, (data: any, client: ClientSide, id?: string) => void>
-export type ArchitectOnMessage = Map<string, (data: any, client: ArchitectSide, id?: string) => void>
+export type OnMessage = Map<string, MessageFunction>
+
+export type ServerOnMessage = Map<string, MessageFunction<ClientSide>>
+export type ArchitectOnMessage = Map<string, MessageFunction<ArchitectSide>>
 
 export class Server {
 
@@ -73,7 +77,8 @@ export class Server {
                                 console.error(`[ Socket ] |  GET   | Invalid Message Path : ${message.path}`)
                             }
                         } catch (error) {
-                            client.respond(message.id ?? null, { path: message.path, data: message.data }, toSocketError(error))
+                            const socketError = error instanceof ServerProblem ? error.toSocketError() : toSocketError(error)
+                            client.respond(message.id ?? null, { path: message.path, data: message.data }, socketError)
                         }
                     } else {
                         if (message.err) {
@@ -126,6 +131,7 @@ export const server = new Server()
 
 export function toSocketError(err: any): WebSocketError {
     return {
+        severity: 'error',
         name: err.name,
         message: err.message,
         stack: err.stack,

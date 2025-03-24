@@ -8,22 +8,23 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { Geo2 } from "../geo.js"
+import { NameNotRegistered } from "../../connection/errors.js"
+import { Geo2, Geo2Function } from "../geo.js"
 import { Rotation2 } from "../quaternion.js"
 import { Vec2 } from "../vector.js"
 import { CloseLine2 } from "./line.js"
 
-export const namedPlanes: Map<string, (json: any) => Plane2> = new Map()
+export const namedPlanes: Map<string, Geo2Function<Plane2>> = new Map()
 
-export function NamedPlane(fromJson: (json: any) => Plane2) {
-    return function (constructor: { new(...args: any): Plane2 }) {
-        namedPlanes.set(constructor.name, fromJson)
+export function NamedPlane() {
+    return function (constructor: Geo2Function<Plane2>) {
+        namedPlanes.set(constructor.name, constructor)
     }
 }
 
-export abstract class Plane2 implements Geo2 {
+export abstract class Plane2<Edge extends CloseLine2 = CloseLine2> implements Geo2 {
 
-    abstract get edge(): CloseLine2
+    abstract get edge(): Edge
 
     abstract move(vec: Vec2): Plane2
 
@@ -45,9 +46,9 @@ export abstract class Plane2 implements Geo2 {
     }
 
     static fromJson(json: any): Plane2 {
-        const factory = namedPlanes.get(json.name)
+        const factory = namedPlanes.get(json.name)?.fromJson
         if (!factory) {
-            throw Error(`No Plane2 registered for name: ${json.name}`)
+            throw new NameNotRegistered(json.name, 'Plane2')
         }
         return factory(json)
     }
@@ -57,8 +58,10 @@ export abstract class Plane2 implements Geo2 {
     }
 }
 
-@NamedPlane(GeneralPlane2.fromJson)
+@NamedPlane()
 export class GeneralPlane2 extends Plane2 {
+
+    static readonly parents = null
 
     constructor(readonly edge: CloseLine2) {
         super()
@@ -84,8 +87,10 @@ export class GeneralPlane2 extends Plane2 {
     }
 }
 
-@NamedPlane(Rect2.fromJson)
+@NamedPlane()
 export class Rect2 extends Plane2 {
+
+    static readonly parents: Geo2Function[] = [GeneralPlane2]
 
     constructor(
         readonly pos: Vec2, 

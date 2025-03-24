@@ -42,29 +42,33 @@ export abstract class Director<S extends Side> {
     }
 }
 
-export type ClientDirectorExe = (director: ClientDirector) => Promise<void>
+export type ClientDirectorExe<T = any> = (director: ClientDirector) => Promise<T>
+export type ClientDirectorUndo<T = any> = (director: ClientDirector, data: T) => Promise<any>
 
-export class ClientDirector extends Director<ClientSide> {
+export class ClientDirector<T = any> extends Director<ClientSide> {
 
-    readonly exe: ClientDirectorExe
-    readonly undo: ClientDirectorExe
+    readonly exe: ClientDirectorExe<T>
+    readonly undo: ClientDirectorUndo<T>
 
-    constructor(sender: ClientSide, exe: ClientDirectorExe, undo: ClientDirectorExe) {
+    protected exeData!: T
+
+    constructor(sender: ClientSide, exe: ClientDirectorExe<T>, undo: ClientDirectorUndo<T>) {
         super(sender)
         this.exe = exe
         this.undo = undo
     }
 
-    public static async execute(side: ClientSide, exe: ClientDirectorExe, undo: ClientDirectorExe) {
+    public static async execute<T>(side: ClientSide, exe: ClientDirectorExe<T>, undo: ClientDirectorUndo<T>) {
         const director = new ClientDirector(side, exe, undo)
         await director.do()
         director.send()
     }
 
-    do(): Promise<void> {
+    async do(): Promise<T> {
+        this.exeData = await this.exe(this)
         this.sender.do({
             undo: async () => {
-                await this.undo(this)
+                await this.undo(this, this.exeData!)
                 this.send()
             },
             redo: async () => {
@@ -72,7 +76,7 @@ export class ClientDirector extends Director<ClientSide> {
                 this.send()
             }
         })
-        return this.exe(this)
+        return this.exeData
     }
 }
 

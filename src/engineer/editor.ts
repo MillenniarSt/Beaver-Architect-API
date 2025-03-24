@@ -1,22 +1,72 @@
 import { ClientDirector } from "../connection/director.js";
+import { NameNotRegistered } from "../connection/errors.js";
+import { MessageFunction, ServerOnMessage } from "../connection/server.js";
 import { ClientSide } from "../connection/sides.js";
 import { getProject } from "../instance.js";
-import { Engineer } from "./engineer.js";
+import { ToJson } from "../util/util.js";
+import { Engineer, ResourceReference } from "./engineer.js";
 
-export abstract class Editor<E extends Engineer = Engineer> {
+export const namedEditors: Map<string, EditorFunction> = new Map()
+
+export function NamedEditor<E extends Engineer>() {
+    return function (constructor: EditorFunction<E>) {
+        namedEditors.set(constructor.name, constructor)
+    }
+}
+
+export interface EditorFunction<E extends Engineer = Engineer> extends Function {
+
+    get extension(): string
+
+    new(...args: any[]): Editor<E>
+
+    create(engineer: E): Editor<E>
+
+    fromJson(json: any, engineer: E): Editor<E>
+
+    get basePath(): string
+
+    messages(): Record<string, MessageFunction<ClientSide>>
+}
+
+export abstract class Editor<E extends Engineer = Engineer> implements ToJson {
 
     constructor(
-        readonly extension: string,
         readonly engineer: E
     ) { }
 
-    abstract update(director: ClientDirector, update: {}): void
+    static get(ref: ResourceReference, extension: string): Editor {
+        const factory = namedEditors.get(extension)
+        if(!factory) {
+            throw new NameNotRegistered(extension, 'Editor')
+        }
+        const engineer = ref.get()
+        try {
+            return factory.fromJson(getProject().read(ref.getEditorPath('rete')), engineer)
+        } catch (e) {
+            return factory.create(engineer)
+        }
+    }
+
+    get extension(): string {
+        return (this.constructor as EditorFunction).extension
+    }
+
+    protected abstract update(director: ClientDirector, update: {}): void
 
     abstract apply(client: ClientSide): void
+
+    abstract isValid(): boolean
 
     save() {
         getProject(this.engineer.reference.pack).write(this.engineer.reference.getEditorPath(this.extension), this.toJson())
     }
 
     abstract toJson(): {}
+}
+
+export function registerEditorMessages(onMessage: ServerOnMessage) {
+    namedEditors.forEach((editorFunction) => Object.entries(editorFunction.messages()).forEach(([path, f]) => 
+        onMessage.set(`${editorFunction.basePath}$${editorFunction.extension}/${path}`, f)
+    ))
 }

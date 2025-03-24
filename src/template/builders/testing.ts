@@ -4,7 +4,7 @@ import { ToFacesPrismBuilder } from "../../builder/object/prism/to-faces.js";
 import { GridAxisAlignment, GridRectBuilder } from "../../builder/surface/rect.js";
 import { SurfaceToPrismBuilder } from "../../builder/surface/to-prism.js";
 import { MaterialReference } from "../../engineer/data-pack/style/material.js";
-import { NumberOption, ObjectOption, Vec2Option } from "../../util/option.js";
+import { Option } from "../../util/option.js";
 import { RandomList, RandomNumber, RandomVec2 } from "../../util/random.js";
 
 /**
@@ -17,13 +17,13 @@ export const templateTestBuilders = {
         new SurfaceToPrismBuilder(
             new EmptyBuilder(new RandomList([MaterialReference.ref('primary')])),
             {
-                height: new NumberOption(height ?? new RandomNumber(2, 6))
+                height: new Option(height ?? new RandomNumber(2, 6))
             }
         ),
         {
-            cell: new Vec2Option(cell ?? RandomVec2.constant(1)),
-            gap: new Vec2Option(gap ?? RandomVec2.constant(1)),
-            alignment: new ObjectOption(RandomList.constant([GridAxisAlignment.START, GridAxisAlignment.START]))
+            cell: new Option(cell ?? RandomVec2.constant(1)),
+            gap: new Option(gap ?? RandomVec2.constant(1)),
+            alignment: new Option(RandomList.constant([GridAxisAlignment.START, GridAxisAlignment.START]))
         }
     ),
 
@@ -33,7 +33,7 @@ export const templateTestBuilders = {
             ceil: new SurfaceToPrismBuilder(new EmptyBuilder(new RandomList([MaterialReference.ref('primary')]))),
         }),
         {
-            height: new NumberOption(height ?? RandomNumber.constant(6))
+            height: new Option(height ?? RandomNumber.constant(6))
         }
     )
 }

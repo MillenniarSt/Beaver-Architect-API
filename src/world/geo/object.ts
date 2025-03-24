@@ -8,17 +8,18 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
+import { NameNotRegistered } from "../../connection/errors.js";
 import { Plane2, Rect2 } from "../bi-geo/plane.js";
-import { Geo3, Geo3Type } from "../geo.js";
+import { Geo3, Geo3Function, Geo3Type } from "../geo.js";
 import { Quaternion, Rotation3 } from "../quaternion.js";
 import { Vec2, Vec3 } from "../vector.js";
 import { Plane3, Surface } from "./surface.js";
 
-export const namedObjects: Map<string, (json: any) => Object3> = new Map()
+export const namedObjects: Map<string, Geo3Function<Object3>> = new Map()
 
-export function NamedObject(fromJson: (json: any) => Object3) {
-    return function (constructor: { new(...args: any): Object3 }) {
-        namedObjects.set(constructor.name, fromJson)
+export function NamedObject<G extends Object3>() {
+    return function (constructor: Geo3Function<G>) {
+        namedObjects.set(constructor.name, constructor)
     }
 }
 
@@ -39,9 +40,9 @@ export abstract class Object3 implements Geo3 {
     abstract toNamedJson(): {}
 
     static fromJson(json: any): Object3 {
-        const factory = namedObjects.get(json.name)
+        const factory = namedObjects.get(json.name)?.fromJson
         if (!factory) {
-            throw Error(`No Object registered for name: ${json.name}`)
+            throw new NameNotRegistered(json.name, 'Object3')
         }
         return factory(json)
     }
@@ -54,8 +55,10 @@ export abstract class Object3 implements Geo3 {
     }
 }
 
-@NamedObject(GeneralObject3.fromJson)
+@NamedObject()
 export class GeneralObject3 extends Object3 {
+
+    static readonly parents = null
 
     constructor(
         readonly vertices: Vec3[],
@@ -85,8 +88,10 @@ export class GeneralObject3 extends Object3 {
     }
 }
 
-@NamedObject(Prism.fromJson)
+@NamedObject()
 export class Prism<P extends Plane2 = Plane2> extends Object3 {
+
+    static readonly parents: Geo3Function[] = [GeneralObject3]
 
     constructor(
         readonly base: Plane3<P>,
@@ -141,8 +146,11 @@ export class Prism<P extends Plane2 = Plane2> extends Object3 {
     }
 }
 
-@NamedObject(Rect3.fromJson)
+@NamedObject()
 export class Rect3 extends Prism<Rect2> {
+
+    static readonly parents: Geo3Function[] = [Prism]
+
 
     constructor(
         readonly pos: Vec3,

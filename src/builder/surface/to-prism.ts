@@ -10,7 +10,7 @@
 
 import { MaterialReference } from "../../engineer/data-pack/style/material.js";
 import { GenerationStyle } from "../../engineer/data-pack/style/style.js";
-import { NumberOption } from "../../util/option.js";
+import { Option } from "../../util/option.js";
 import { RandomList, RandomNumber, Seed } from "../../util/random.js";
 import { Plane2 } from "../../world/bi-geo/plane.js";
 import { Prism } from "../../world/geo/object.js";
@@ -19,21 +19,21 @@ import { Builder, BuilderResult, ObjectBuilder, SurfaceBuilder } from "../builde
 import { SingleChildBuilder } from "../collective.js";
 
 @SingleChildBuilder((json) => { return {
-    height: NumberOption.fromJson(json.height)
+    height: Option.fromJson(json.height)
 } })
 export class SurfaceToPrismBuilder<P extends Plane2 = Plane2> extends SurfaceBuilder<Plane3<P>, {
-    height: NumberOption
+    height: Option<number>
 }, {}> {
 
     constructor(
         protected child: ObjectBuilder<Prism<P>>,
         options: {
-            height?: NumberOption
+            height?: Option<number>
         } = {},
         materials: RandomList<MaterialReference> = new RandomList()
     ) {
         super({
-            height: options.height ?? new NumberOption(RandomNumber.constant(1))
+            height: options.height ?? new Option(RandomNumber.constant(1))
         }, materials)
     }
 

@@ -8,6 +8,7 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
+import { NameNotRegistered } from "../connection/errors.js"
 import { Vec2, Vec3, Vec4 } from "../world/vector.js"
 
 export class Seed {
@@ -27,18 +28,51 @@ export class Seed {
     }
 }
 
-export interface Random<T = any> {
+export const namedRandom: Map<string, RandomFunction> = new Map()
 
-    random(): T
-
-    seeded(seed: Seed): T
-
-    toJson(): {}
+export function NamedRandom() {
+    return function (constructor: RandomFunction) {
+        namedRandom.set(constructor.name, constructor)
+    }
 }
 
-export class RandomNumber implements Random<number> {
+export interface RandomFunction extends Function {
+
+    new (...args: any[]): Random
+
+    fromJson(json: any): Random
+}
+
+export abstract class Random<T = any> {
+
+    static fromJson(json: any): Random {
+        const factory = namedRandom.get(json.name)?.fromJson
+        if (!factory) {
+            throw new NameNotRegistered(json.name, 'Line2')
+        }
+        return factory(json.data)
+    }
+
+    abstract random(): T
+
+    abstract seeded(seed: Seed): T
+
+    abstract toJson(): {}
+
+    toNamedJson() {
+        return {
+            name: this.constructor.name,
+            data: this.toJson()
+        }
+    }
+}
+
+@NamedRandom()
+export class RandomNumber extends Random<number> {
     
-    constructor(public min: number, public max: number) { }
+    constructor(public min: number, public max: number) {
+        super()
+    }
 
     static constant(value: number): RandomNumber {
         return new RandomNumber(value, value)
@@ -64,6 +98,7 @@ export class RandomNumber implements Random<number> {
     }
 }
 
+@NamedRandom()
 export class RandomInteger extends RandomNumber {
 
     random(): number {
@@ -75,9 +110,12 @@ export class RandomInteger extends RandomNumber {
     }
 }
 
-export class RandomVec2 implements Random<Vec2> {
+@NamedRandom()
+export class RandomVec2 extends Random<Vec2> {
     
-    constructor(public x: RandomNumber, public y: RandomNumber) { }
+    constructor(public x: RandomNumber, public y: RandomNumber) {
+        super()
+    }
 
     static constant(x: number, y: number = x): RandomVec2 {
         return new RandomVec2(RandomNumber.constant(x), RandomNumber.constant(y))
@@ -107,9 +145,12 @@ export class RandomVec2 implements Random<Vec2> {
     }
 }
 
-export class RandomVec3 implements Random<Vec3> {
+@NamedRandom()
+export class RandomVec3 extends Random<Vec3> {
     
-    constructor(public x: RandomNumber, public y: RandomNumber, public z: RandomNumber) { }
+    constructor(public x: RandomNumber, public y: RandomNumber, public z: RandomNumber) {
+        super()
+    }
 
     static constant(x: number, y: number = x, z: number = x): RandomVec3 {
         return new RandomVec3(RandomNumber.constant(x), RandomNumber.constant(y), RandomNumber.constant(z))
@@ -140,9 +181,12 @@ export class RandomVec3 implements Random<Vec3> {
     }
 }
 
-export class RandomVec4 implements Random<Vec4> {
+@NamedRandom()
+export class RandomVec4 extends Random<Vec4> {
     
-    constructor(public a: RandomNumber, public b: RandomNumber, public c: RandomNumber, public d: RandomNumber) { }
+    constructor(public a: RandomNumber, public b: RandomNumber, public c: RandomNumber, public d: RandomNumber) {
+        super()
+    }
 
     static constant(a: number, b: number = a, c: number = a, d: number = a): RandomVec4 {
         return new RandomVec4(RandomNumber.constant(a), RandomNumber.constant(b), RandomNumber.constant(c), RandomNumber.constant(d))
@@ -174,9 +218,12 @@ export class RandomVec4 implements Random<Vec4> {
     }
 }
 
-export class RandomBoolean implements Random<boolean> {
+@NamedRandom()
+export class RandomBoolean extends Random<boolean> {
 
-    constructor(public probability: number) { }
+    constructor(public probability: number) {
+        super()
+    }
 
     static constant(value: boolean): RandomBoolean {
         return new RandomBoolean(value ? 1 : 0)
@@ -199,13 +246,15 @@ export class RandomBoolean implements Random<boolean> {
     }
 }
 
-export class RandomList<T = any> implements Random<T | undefined> {
+@NamedRandom()
+export class RandomList<T = any> extends Random<T | undefined> {
 
     constructor(
         readonly list: T[] = [], 
         readonly getter: RandomInteger = new RandomInteger(0, list.length -1), 
         public itemToJson: (item: T) => any = (item) => item
     ) {
+        super()
         this.getter.min = 0
         this.getter.max = this.list.length -1
     }

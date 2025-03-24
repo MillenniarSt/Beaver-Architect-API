@@ -102,7 +102,7 @@ export class Vec2 {
         return new Vec2(json[0], json[1])
     }
 
-    toJson(): number[] {
+    toJson(): [number, number] {
         return [this.x, this.y]
     }
 }
@@ -191,7 +191,7 @@ export class Vec3 {
         return new Vec3(json[0], json[1], json[2])
     }
 
-    toJson(): number[] {
+    toJson(): [number, number, number] {
         return [this.x, this.y, this.z]
     }
 }
@@ -255,7 +255,7 @@ export class Vec4 {
         return new Vec4(json[0], json[1], json[2], json[3])
     }
 
-    toJson(): number[] {
+    toJson(): [number, number, number, number] {
         return [this.a, this.b, this.c, this.d]
     }
 }

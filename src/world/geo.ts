@@ -44,3 +44,37 @@ export interface Geo3 {
 
     toJson(): {}
 }
+
+export interface Geo2Function<G extends Geo2 = any> extends Function {
+
+    new (...args: any[]): G
+
+    fromJson(json: any): G
+
+    get parents(): Geo2Function[] | null
+}
+
+export interface Geo3Function<G extends Geo3 = any> extends Function {
+
+    new (...args: any[]): G
+
+    fromJson(json: any): G
+
+    get parents(): Geo3Function[] | null
+}
+
+export function isGeoCompatible<F extends Geo2Function | Geo3Function>(parent: F, child: F): boolean {
+    if(parent.parents === null) {
+        return child.parents === null
+    } else if(child.parents === null || parent === child) {
+        return true
+    }
+
+    for(let i = 0; i < parent.parents.length; i++) {
+        if(isGeoCompatible(parent.parents[i], child)) {
+            return true
+        }
+    }
+
+    return false
+}
