@@ -1,9 +1,9 @@
 import { ClientDirector } from "../connection/director.js";
 import { NameNotRegistered } from "../connection/errors.js";
-import { MessageFunction, ServerOnMessage } from "../connection/server.js";
+import { type MessageFunction, type ServerOnMessage } from "../connection/server.js";
 import { ClientSide } from "../connection/sides.js";
 import { getProject } from "../instance.js";
-import { ToJson } from "../util/util.js";
+import { type ToJson } from "../util/util.js";
 import { Engineer, ResourceReference } from "./engineer.js";
 
 export const namedEditors: Map<string, EditorFunction> = new Map()

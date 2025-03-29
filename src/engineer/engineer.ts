@@ -13,10 +13,14 @@ import { ClientDirector } from '../connection/director.js'
 import { SaveDirective } from '../connection/directives/save.js'
 import { idToLabel } from '../util/form.js'
 import { getProject } from '../instance.js'
+import type { StyleDependency } from './data-pack/style/dependency.js'
 
 export abstract class Engineer {
 
-    constructor(protected _reference: ResourceReference<Engineer>) { }
+    constructor(
+        protected _reference: ResourceReference<Engineer>,
+        readonly dependency: StyleDependency
+    ) { }
 
     get pack(): string {
         return this.reference.pack

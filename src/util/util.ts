@@ -31,3 +31,9 @@ export function mapToJson<T extends ToJson>(map: Map<string, T>): Record<string,
 export function mapFromJson<T>(json: any, itemFromJson: (json: any) => T): Map<string, T> {
     return new Map(Object.entries(json).map(([key, item]) => [key, itemFromJson(item)]))
 }
+
+export function joinBiLists<T>(biList: T[][]): T[] {
+    let list: T[] = []
+    biList.forEach((singleList) => list.push(...singleList))
+    return list
+}

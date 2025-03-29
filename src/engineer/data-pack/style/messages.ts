@@ -9,10 +9,10 @@
 //      ##    \__|__/
 
 import { ClientDirector } from "../../../connection/director.js"
-import { ServerOnMessage } from "../../../connection/server.js"
+import { type ServerOnMessage } from "../../../connection/server.js"
 import { getArchitect, getProject } from "../../../instance.js"
 import { Vec2 } from "../../../world/vector.js"
-import { Paint, Material } from "./material.js"
+import { type Paint, Material } from "./material.js"
 import { Style, StyleReference } from "./style.js"
 
 export function registerStyleMessages(onMessage: ServerOnMessage) {

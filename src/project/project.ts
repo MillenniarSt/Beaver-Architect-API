@@ -11,11 +11,12 @@
 import fs from "fs"
 import path from "path"
 import { librariesDir, projectsDir } from "../util/paths.js"
-import { OnMessage } from "./../connection/server.js"
+import { type OnMessage } from "./../connection/server.js"
 import { DataPack } from "./../engineer/data-pack/data-pack.js"
 import { getArchitect, getProject, getProjectOrNull, loadProject, setMainProject } from "../instance.js"
 import { Structure } from "./structure.js"
 import { StyleDependency } from "../engineer/data-pack/style/dependency.js"
+import type { ArchitectData } from "./architect.js"
 
 /**
 * @param identifier should be no.space.with.dots
@@ -63,23 +64,45 @@ export class Project {
         protected _styleDependence: StyleDependency
     ) { }
 
-    static async create(dir: string, data: ProjectData, isMain: boolean = true): Promise<Project> {
+    static create(data: ProjectData, architect: ArchitectData): Project {
+        const project = new Project(
+            path.join(projectsDir, data.identifier),
+            new Version(data.version),
+            data.identifier, data.name, data.authors, data.description, [],
+            new StyleDependency([], [])
+        )
+
+        fs.mkdirSync(project.dir)
+        fs.writeFileSync(path.join(project.dir, 'project.json'), JSON.stringify(project.toData()), 'utf-8')
+        fs.writeFileSync(path.join(project.dir, 'info.html'), '', 'utf-8')
+        fs.writeFileSync(path.join(project.dir, 'architect.json'), JSON.stringify(architect), 'utf-8')
+        fs.mkdirSync(path.join(project.dir, 'dependeces'))
+        fs.mkdirSync(path.join(project.dir, 'architect'))
+        fs.mkdirSync(path.join(project.dir, 'data_pack'))
+        fs.mkdirSync(path.join(project.dir, 'data_pack', 'structures'))
+        fs.mkdirSync(path.join(project.dir, 'data_pack', 'styles'))
+        fs.writeFileSync(path.join(project.dir, 'data_pack', 'style_dependence.json'), JSON.stringify(project.styleDependence.toJson()), 'utf-8')
+
+        return project
+    }
+
+    static async load(dir: string, data: ProjectData, isMain: boolean = true): Promise<Project> {
         const loaded = getProjectOrNull(data.identifier)
-        if(loaded) {
+        if (loaded) {
             return loaded
         }
 
         const dependencies: Project[] = []
-        for(let i = 0; i < data.dependencies.length; i++) {
+        for (let i = 0; i < data.dependencies.length; i++) {
             const identifier = data.dependencies[i].identifier
             const version = new Version(data.dependencies[i].version)
             const dir = path.join(librariesDir, `${identifier}:${version.toJson()}`)
-            if(!fs.existsSync(dir)) {
+            if (!fs.existsSync(dir)) {
                 throw new Error(`Invalid dependency: ${identifier}:${version.toJson()} does not exists or it is not installed`)
             }
-            dependencies.push(await Project.create(dir, JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf-8')), false))
+            dependencies.push(await Project.load(dir, JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf-8')), false))
         }
-        
+
         const project = new Project(
             dir,
             new Version(data.version),
@@ -88,7 +111,7 @@ export class Project {
             StyleDependency.join(dependencies.map((dependency) => dependency.dataPack.styleDependence))
         )
         loadProject(project)
-        if(isMain) {
+        if (isMain) {
             setMainProject(project)
         }
         await project.init()
@@ -106,6 +129,19 @@ export class Project {
 
     get styleDependence(): StyleDependency {
         return this._styleDependence
+    }
+
+    toData(): ProjectData {
+        return {
+            identifier: this.identifier,
+
+            name: this.name,
+            authors: this.authors,
+            description: this.description,
+
+            version: this.version.toJson(),
+            dependencies: [] // TODO
+        }
     }
 
     read(relPath: string): any {

@@ -8,13 +8,13 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { Builder } from "../../builder/builder.js";
-import { builderFromJson } from "../../builder/collective.js";
-import { BuilderDirective, CheckUpdate, ObjectUpdate } from "../../connection/directives/update.js";
-import { ClientDirector } from "../../connection/director.js";
-import { getProject } from "../../instance.js";
-import { Geo3 } from "../../world/geo.js";
-import { Engineer, ResourceReference } from "../engineer.js";
+import { Builder } from "../../../builder/builder.js";
+import { builderFromJson } from "../../../builder/collective.js";
+import { BuilderDirective, CheckUpdate, ObjectUpdate } from "../../../connection/directives/update.js";
+import { ClientDirector } from "../../../connection/director.js";
+import { getProject } from "../../../instance.js";
+import { Engineer, ResourceReference } from "../../engineer.js";
+import { StyleDependency } from "../style/dependency.js";
 
 export type EnStructureUpdate = {
     refreshBuilders?: boolean
@@ -38,8 +38,8 @@ export class StructureEngineer extends Engineer {
 
     builder: Builder
 
-    constructor(ref: ResourceReference<StructureEngineer>, builder: Builder) {
-        super(ref)
+    constructor(ref: ResourceReference<StructureEngineer>, dependency: StyleDependency, builder: Builder) {
+        super(ref, dependency)
         this.builder = builder
     }
 
@@ -55,12 +55,14 @@ export class StructureEngineer extends Engineer {
     static loadFromRef(ref: ResourceReference<StructureEngineer>): StructureEngineer {
         const data = getProject(ref.pack).read(ref.path)
         return new StructureEngineer(ref,
+            StyleDependency.fromJson(data.dependency),
             builderFromJson(data.builder)
         )
     }
 
     toJson(): {} {
         return {
+            dependency: this.dependency.toJson(),
             builder: this.builder.toJson()
         }
     }

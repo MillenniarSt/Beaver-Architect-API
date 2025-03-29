@@ -10,7 +10,7 @@
 
 import { NameNotRegistered } from "../../connection/errors.js";
 import { Plane2, Rect2 } from "../bi-geo/plane.js";
-import { Geo3, Geo3Function, Geo3Type } from "../geo.js";
+import { type Geo3, type Geo3Function, Geo3Type } from "../geo.js";
 import { Quaternion, Rotation3 } from "../quaternion.js";
 import { Vec2, Vec3 } from "../vector.js";
 import { Plane3, Surface } from "./surface.js";

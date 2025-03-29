@@ -1,4 +1,3 @@
-import { Builder } from "../../builder/builder.js";
 import { EmptyBuilder } from "../../builder/generic/empty.js";
 import { ToFacesPrismBuilder } from "../../builder/object/prism/to-faces.js";
 import { GridAxisAlignment, GridRectBuilder } from "../../builder/surface/rect.js";

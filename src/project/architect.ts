@@ -15,7 +15,7 @@ import { architectsDir } from '../util/paths.js';
 import { WebSocket } from 'ws';
 import { registerProjectMessages } from '../project/project.js';
 import { ArchitectSide } from '../connection/sides.js';
-import { OnMessage, toSocketError } from '../connection/server.js';
+import { type OnMessage, toSocketError } from '../connection/server.js';
 
 export class Architect {
 

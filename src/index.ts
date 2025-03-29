@@ -10,15 +10,15 @@
 
 import fs from 'fs'
 import path from 'path'
-import { Project, ProjectData, registerProjectMessages } from "./project/project.js"
+import { Project, type ProjectData, registerProjectMessages, Version } from "./project/project.js"
 import { architectsDir, dir, librariesDir, projectsDir } from './util/paths.js'
 import { registerStyleMessages } from './engineer/data-pack/style/messages.js'
-import { OnMessage, server, ServerOnMessage } from './connection/server.js'
+import { type OnMessage, server, type ServerOnMessage } from './connection/server.js'
 import { registerDirectorMessages } from './connection/director.js'
 import { argv } from 'process'
-import { setArchitect } from './instance.js'
-import { ArchitectData, loadArchitect } from './project/architect.js'
-import { registerEnStructureMessages } from './engineer/structure/messages.js'
+import { commander, setArchitect } from './instance.js'
+import { type ArchitectData, loadArchitect } from './project/architect.js'
+import { registerEnStructureMessages } from './engineer/data-pack/structure/messages.js'
 import { registerEditorMessages } from './engineer/editor.js'
 
 const log = console.log
@@ -57,13 +57,15 @@ import './builder/surface/rect.js'
 import './builder/surface/to-prism.js'
 import './builder/object/prism/stack.js'
 import './builder/object/prism/flex.js'
+import { identifierToLabel, idToLabel, labelToId } from './util/form.js'
+import { userInfo } from 'os'
 
-const identifier = argv[3]
-const port = argv[4] ? Number(argv[4]) : 8224
-const isPublic = argv[3] === 'true'
+const identifier = process.env.IDENTIFIER ?? `${labelToId(userInfo().username)}.project`
+const port = process.env.PORT ? Number(process.env.PORT) : 8224
+const isPublic = process.env.IS_PUBLIC === 'true'
 
 if (!fs.existsSync(dir)) {
-    console.info('Generating server resources for the first launch...')
+    console.info('Generating Beaver Architect default resources for the first launch...')
     fs.mkdirSync(dir)
     fs.mkdirSync(projectsDir)
     fs.mkdirSync(architectsDir)
@@ -72,11 +74,30 @@ if (!fs.existsSync(dir)) {
 
 console.info(`Starting local project Server '${identifier}' on port ${port} ${isPublic ? '[PUBLIC]' : ''}...`)
 
-const projectData: ProjectData = JSON.parse(fs.readFileSync(path.join(projectsDir, identifier, 'project.json'), 'utf8'))
+commander.open()
 
-await Project.create(path.join(projectsDir, identifier), projectData)
+let projectData: ProjectData
+let architectData: ArchitectData
+if(fs.existsSync(path.join(projectsDir, identifier))) {
+    projectData = JSON.parse(fs.readFileSync(path.join(projectsDir, identifier, 'project.json'), 'utf8'))
+    architectData = JSON.parse(fs.readFileSync(path.join(projectsDir, identifier, 'architect.json'), 'utf8'))
 
-const architectData: ArchitectData = JSON.parse(fs.readFileSync(path.join(projectsDir, identifier, 'architect.json'), 'utf8'))
+    await Project.load(path.join(projectsDir, identifier), projectData)
+} else {
+    console.info(`Generating default resources for new project '${identifier}'...`)
+
+    projectData = {
+        identifier: identifier, 
+        name: identifierToLabel(identifier.substring(identifier.includes('.') ? identifier.lastIndexOf('.') +1 : 0)), 
+        authors: userInfo().username,
+        description: 'My beautiful project',
+        version: new Version('1.0.0').toJson(),
+        dependencies: []
+    }
+    architectData = { identifier: 'minecraft', version: new Version('1.0.0').toJson(), name: 'Minecraft' }
+
+    Project.create(projectData, architectData)
+}
 
 console.log(`Launching Architect ${architectData.name}...`)
 const architect = await loadArchitect(architectData.identifier, projectData.identifier)
@@ -93,6 +114,8 @@ registerEditorMessages(onServerMessage)
 
 const url = await server.open(port, isPublic, onServerMessage)
 console.info(`Opened Project Server '${identifier}' on ${url ?? `port ${port}`}`)
+
+import './command/commander.js'
 
 /*
 // Testing

@@ -1,14 +1,13 @@
 import { Builder } from "../../../../builder/builder.js"
-import { ListUpdate, ListUpdateObject, ObjectUpdate, VarUpdate } from "../../../../connection/directives/update.js"
+import { ObjectUpdate, VarUpdate } from "../../../../connection/directives/update.js"
 import { InternalServerWarn } from "../../../../connection/errors.js"
 import { idToLabel } from "../../../../util/form.js"
 import { Option } from "../../../../util/option.js"
 import { RandomList } from "../../../../util/random.js"
-import { Geo3Function, isGeoCompatible } from "../../../../world/geo.js"
+import { type Geo3Function, isGeoCompatible } from "../../../../world/geo.js"
 import { Vec2 } from "../../../../world/vector.js"
 import { MaterialReference } from "../../../data-pack/style/material.js"
-import { ReteNode, ReteNodeUpdate } from "../rete.js"
-import { RandomReteNode } from "./random.js"
+import { ReteNode, type ReteNodeUpdate } from "../rete.js"
 
 const typedBuilders: Map<string, NodeBuilderType<any>> = new Map()
 
@@ -43,7 +42,7 @@ export type BuilderTypeOutput<B extends Builder = Builder> = {
     getChildren: (builder: B) => Builder[]
 }
 
-export type NodeBuilderGetter<B extends Builder = Builder> = (getChildren: (output: string) => Builder[], getOption: (id: string) => Option | null, materials: RandomList<MaterialReference>) => B
+export type NodeBuilderGetter<B extends Builder = Builder> = (getChild: (output: string) => Builder, getChildren: (output: string) => Builder[], getOption: (id: string) => Option | null, materials: RandomList<MaterialReference>) => B
 
 export class NodeBuilderType<B extends Builder = Builder> {
 
@@ -100,14 +99,6 @@ export class BuilderReteNode<B extends Builder = Builder> extends ReteNode {
 
     isValidChild(port: string, type: NodeBuilderType): boolean {
         return this.type.isCompatibleChild(port, type)
-    }
-
-    get(getBuilder: (id: string) => BuilderReteNode, getOption: (id: string) => RandomReteNode): B {
-        return this.type.get(
-            (output) => this.children[output].map((child) => getBuilder(child).get(getBuilder, getOption)),
-            (option) => this.options[option] ? new Option(getOption(this.options[option]).random) : null,
-            new RandomList()
-        )
     }
 
     toJson(): {} {

@@ -10,11 +10,18 @@
 
 import { v4 } from "uuid"
 import { WebSocket } from "ws"
-import { WebSocketError, WebSocketResponse } from "./server.js"
+import { type WebSocketError, type WebSocketResponse } from "./server.js"
 import { Editor } from "../engineer/editor.js"
 import { ResourceReference } from "../engineer/engineer.js"
+import type { PermissionLevel } from "./permission.js"
 
 export abstract class Side {
+
+    constructor(
+        readonly permissions: PermissionLevel
+    ) { }
+
+    abstract get identfier(): string
 
     abstract send(path: string, data?: {} | null): void
 
@@ -38,8 +45,8 @@ export abstract class SocketSide extends Side {
     protected waitingRequests: Map<string, (data: any) => void> = new Map()
     protected channels: Map<string, (data: {} | null) => void> = new Map()
 
-    constructor(readonly socket: WebSocket) {
-        super()
+    constructor(readonly socket: WebSocket, permissions: PermissionLevel) {
+        super(permissions)
     }
 
     send(path: string, data?: {} | null) {
@@ -115,6 +122,10 @@ export class ClientSide extends SocketSide {
     protected history: ClientHistoryDo[] = []
     protected historyIndex = 0
 
+    get identfier(): string {
+        return 'TODO client' // TODO
+    }
+
     do(update: ClientHistoryDo) {
         if (this.historyIndex < this.history.length) {
             this.history = this.history.slice(0, this.historyIndex + 1)
@@ -175,30 +186,37 @@ export class ClientSide extends SocketSide {
 
 export class ArchitectSide extends SocketSide {
 
+    get identfier(): string {
+        return 'architect'
+    }
 }
 
-export class HiddenSide extends Side {
+export class ServerSide extends Side {
+
+    get identfier(): string {
+        return 'server'
+    }
 
     send(path: string, data?: {} | null): void {
-        console.warn('An Hidden Side can not send data')
+        console.warn('A Server Side can not send data')
     }
 
     async request(path: string, data?: {} | null): Promise<any> {
-        console.warn('An Hidden Side can not receive Requests')
+        console.warn('A Server Side can not receive Requests')
     }
 
     sendChannel(channel: string, data?: {} | null): void {
-        console.warn('An Hidden Side can not send data to Channels')
+        console.warn('A Server Side can not send data to Channels')
     }
 
     respond(id: string | undefined | null, data: {}, err?: WebSocketError): void {
-        console.warn('An Hidden Side can not respond')
+        console.warn('A Server Side can not respond')
     }
 
     onResponse(res: WebSocketResponse): void { }
 
     async openChannel(id: string, onMessage: (data: {} | null) => void): Promise<(data: {} | null) => void> {
-        console.warn('An Hidden Side can not open Channels')
+        console.warn('A Server Side can not open Channels')
         return (data) => { }
     }
 
@@ -207,6 +225,6 @@ export class HiddenSide extends Side {
     }
 
     closeChannel(id: string): void {
-        console.warn('An Hidden Side can not close Channels')
+        console.warn('A Server Side can not close Channels')
     }
 }

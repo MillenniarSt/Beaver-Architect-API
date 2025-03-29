@@ -15,7 +15,7 @@ import { RandomBoolean, RandomList, RandomNumber, Seed } from "../../../util/ran
 import { Plane2 } from "../../../world/bi-geo/plane.js";
 import { Prism } from "../../../world/geo/object.js";
 import { Vec3 } from "../../../world/vector.js";
-import { BuilderChild, BuilderResult, ChildrenManager, ObjectBuilder } from "../../builder.js";
+import { type BuilderChild, BuilderResult, ChildrenManager, ObjectBuilder } from "../../builder.js";
 import { MultiChildBuilder } from "../../collective.js";
 import { EmptyBuilder } from "../../generic/empty.js";
 

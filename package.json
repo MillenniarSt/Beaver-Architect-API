@@ -1,46 +1,24 @@
 {
-  "name": "beaver-architect-api",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "beaver_architect_api",
+  "module": "index.ts",
   "type": "module",
+  "private": true,
   "scripts": {
-    "test": "npx tsc & node dist/index.js",
-    "build": "npx tsc",
-    "install": "npx tsc & gulp install",
-    "ci": "npx tsc & gulp install-src",
-    "i": "gulp install-src",
-    "im": "gulp install-modules",
-    "uninstall": "gulp uninstall",
-    "clean": "gulp clean",
-    "compress": "gulp compress",
-    "serve": "npx tsc & node ./dist/index.js -id",
-    "reserve": "node ./dist/index.js -id",
-    "exe": "npx tsc & npx babel dist --out-dir common & pkg ./common/index.js --output server --targets node18.5.0-win-x64"
-  },
-  "author": "Millenniar",
-  "license": "ISC",
-  "description": "",
-  "pkg": {
-    "scripts": [
-      "dist/**/*.js",
-      "node_modules/**/*"
-    ]
+    "serve": "bun run src/index.ts"
   },
   "devDependencies": {
-    "@babel/cli": "^7.26.4",
-    "@babel/core": "^7.26.0",
-    "@babel/preset-env": "^7.26.0",
+    "@types/bun": "latest",
     "@types/localtunnel": "^2.0.4",
     "@types/uuid": "^10.0.0",
-    "@types/ws": "^8.5.13",
-    "gulp": "^5.0.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.7.3"
+    "@types/ws": "^8.18.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
   },
   "dependencies": {
     "appdata-path": "^1.0.0",
     "localtunnel": "^2.0.2",
-    "uuid": "^11.0.5",
-    "ws": "^8.18.0"
+    "uuid": "^11.1.0",
+    "ws": "^8.18.1"
   }
 }

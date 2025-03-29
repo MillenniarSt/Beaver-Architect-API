@@ -10,7 +10,7 @@
 
 import { MaterialReference } from "../../engineer/data-pack/style/material.js";
 import { GenerationStyle } from "../../engineer/data-pack/style/style.js";
-import { NodeTypedBuilder } from "../../engineer/structure/editors/rete/nodes/builder.js";
+import { NodeTypedBuilder } from "../../engineer/editors/rete/nodes/builder.js";
 import { Option } from "../../util/option.js";
 import { RandomList, RandomVec2, RandomVec4, Seed } from "../../util/random.js";
 import { Rect2 } from "../../world/bi-geo/plane.js";
@@ -33,7 +33,7 @@ export enum GridAxisAlignment {
     outputs: {
         child: { object: Rect2, getChildren: (builder) => [builder.child] }
     },
-    get: (getChildren, getOption, materials) => new GridRectBuilder(getChildren('child')[0] ?? new EmptyBuilder(), {}, materials)
+    get: (getChild, getChildren, getOption, materials) => new GridRectBuilder(getChildren('child')[0] ?? new EmptyBuilder(), {}, materials)
 })
 @SingleChildBuilder((json) => {
     return {

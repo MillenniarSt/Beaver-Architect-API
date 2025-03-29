@@ -1,5 +1,5 @@
 import { Vec2 } from "../../../../world/vector.js"
-import { ReteNode, ReteNodeUpdate } from "../rete.js"
+import { ReteNode, type ReteNodeUpdate } from "../rete.js"
 import { ObjectUpdate, VarUpdate } from "../../../../connection/directives/update.js"
 import { Random } from "../../../../util/random.js"
 

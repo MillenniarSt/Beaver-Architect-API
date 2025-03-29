@@ -9,8 +9,8 @@
 //      ##    \__|__/
 
 import { Directive } from "./directives/directive.js";
-import { ServerOnMessage } from "./server.js";
-import { ClientSide, HiddenSide, Side } from "./sides.js";
+import { type ServerOnMessage } from "./server.js";
+import { ClientSide, ServerSide, Side } from "./sides.js";
 
 export abstract class Director<S extends Side> {
 
@@ -80,7 +80,7 @@ export class ClientDirector<T = any> extends Director<ClientSide> {
     }
 }
 
-export class HiddenDirector extends Director<HiddenSide> {
+export class HiddenDirector extends Director<ServerSide> {
 
 }
 

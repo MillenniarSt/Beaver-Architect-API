@@ -1,19 +1,22 @@
-import { ClientDirector } from "../../../../connection/director.js";
-import { Connection, ConnectionNotExists, MappedConnections, ReteEditor, RetePortSocket, ReteSocket } from "../../../editors/rete/rete.js";
+import { ClientDirector } from "../../../../../connection/director.js";
+import { Connection, ConnectionNotExists, MappedConnections, ReteEditor, ReteSocket } from "../../../../editors/rete/rete.js";
 import { StructureEngineer } from "../../structure.js";
-import { Builder } from "../../../../builder/builder.js";
+import { Builder } from "../../../../../builder/builder.js";
 import { v4 } from "uuid";
-import { Vec2 } from "../../../../world/vector.js";
-import { ClientSide } from "../../../../connection/sides.js";
-import { EditorDirective, ListUpdate, ListUpdateObject, ObjectUpdate, VarUpdate } from "../../../../connection/directives/update.js";
-import { NamedEditor } from "../../../editor.js";
-import { IdAlreadyExists, IdNotExists } from "../../../../connection/errors.js";
-import { MessageFunction } from "../../../../connection/server.js";
+import { Vec2 } from "../../../../../world/vector.js";
+import { ClientSide } from "../../../../../connection/sides.js";
+import { EditorDirective, ListUpdate, type ListUpdateObject, ObjectUpdate, VarUpdate } from "../../../../../connection/directives/update.js";
+import { NamedEditor } from "../../../../editor.js";
+import { IdAlreadyExists, IdNotExists } from "../../../../../connection/errors.js";
+import { type MessageFunction } from "../../../../../connection/server.js";
 import { reteEngineerStructureMessages } from "./messages.js";
-import { itemsOfMap, mapFromJson, mapToJson } from "../../../../util/util.js";
-import { RandomReteNode, randomReteNodeUpdate, RandomReteNodeUpdate } from "../../../editors/rete/nodes/random.js";
-import { StructureEngineerReteNode, structureEngineerReteNodeUpdate, StructureEngineerReteNodeUpdate } from "../../../editors/rete/nodes/engineer.js";
-import { BuilderReteNode, builderReteNodeUpdate, BuilderReteNodeUpdate, getBuilderReteType, IncompatibleReteBuilderTypes } from "../../../editors/rete/nodes/builder.js";
+import { itemsOfMap, mapFromJson, mapToJson } from "../../../../../util/util.js";
+import { RandomReteNode, randomReteNodeUpdate, type RandomReteNodeUpdate } from "../../../../editors/rete/nodes/random.js";
+import { StructureEngineerReteNode, structureEngineerReteNodeUpdate, type StructureEngineerReteNodeUpdate } from "../../../../editors/rete/nodes/engineer.js";
+import { BuilderReteNode, builderReteNodeUpdate, type BuilderReteNodeUpdate, getBuilderReteType, IncompatibleReteBuilderTypes } from "../../../../editors/rete/nodes/builder.js";
+import { ReteMultiplePortSocket, ReteMultipleSocket, RetePortSocket } from "../../../../editors/rete/sockets/base.js";
+import { RandomList } from "../../../../../util/random.js";
+import { Option } from "../../../../../util/option.js";
 
 export type StructureReteEditorUpdate = {
     base?: StructureEngineerReteNodeUpdate
@@ -47,18 +50,22 @@ export class StructureReteEditor extends ReteEditor<StructureEngineer> {
         protected readonly builders: Map<string, BuilderReteNode>,
         protected readonly randoms: Map<string, RandomReteNode>,
 
-        public baseConnection: ReteSocket | null,
-        protected readonly builderConnections: MappedConnections<RetePortSocket, ReteSocket>,
-        protected readonly optionConnections: MappedConnections<RetePortSocket, ReteSocket>
+        protected _baseConnection: ReteSocket | null,
+        protected readonly builderConnections: MappedConnections<ReteMultiplePortSocket, ReteSocket>,
+        protected readonly optionConnections: MappedConnections<RetePortSocket, ReteMultipleSocket>
     ) {
         super(engineer)
+    }
+
+    get baseConnection(): ReteSocket | null {
+        return this._baseConnection
     }
 
     static create(engineer: StructureEngineer): StructureReteEditor {
         let builders: Map<string, BuilderReteNode> = new Map()
         let randoms: Map<string, RandomReteNode> = new Map()
-        let builderConnections: MappedConnections<RetePortSocket, ReteSocket> = MappedConnections.empty()
-        let optionConnections: MappedConnections<RetePortSocket, ReteSocket> = MappedConnections.empty()
+        let builderConnections: MappedConnections<ReteMultiplePortSocket, ReteSocket> = MappedConnections.empty()
+        let optionConnections: MappedConnections<RetePortSocket, ReteMultipleSocket> = MappedConnections.empty()
 
         function recursive(builder: Builder, parent: RetePortSocket | null = null, pos: Vec2 = Vec2.ZERO): string {
             const id = v4()
@@ -68,11 +75,11 @@ export class StructureReteEditor extends ReteEditor<StructureEngineer> {
             type.options.forEach((option) => {
                 const node = new RandomReteNode(builder.options[option.id].getDefined()!, pos.add(new Vec2(50, 30))) // TODO add style compatibility
                 randoms.set(node.id, node)
-                optionConnections.push(new RetePortSocket(id, option.id), new ReteSocket(node.id))
+                optionConnections.push(new RetePortSocket(id, option.id), new ReteMultipleSocket(node.id))
             })
             Object.entries(type.outputs).forEach(([port, output], i) => output.getChildren(builder).forEach((child, j) => {
                 const childId = recursive(child, new RetePortSocket(id, port), pos.add(new Vec2(120 * (i + 1), (i * 20) + (j * 100))))
-                builderConnections.push(new RetePortSocket(id, port), new ReteSocket(childId))
+                builderConnections.push(new ReteMultiplePortSocket(id, port, j), new ReteSocket(childId))
             }))
 
             return id
@@ -88,8 +95,8 @@ export class StructureReteEditor extends ReteEditor<StructureEngineer> {
             mapFromJson(json.builders, BuilderReteNode.fromJson),
             mapFromJson(json.randoms, RandomReteNode.fromJson),
             json.baseConnection ? ReteSocket.fromJson(json.baseConnection) : null,
-            MappedConnections.fromJson(json.builderConnections, RetePortSocket.fromJson, ReteSocket.fromJson),
-            MappedConnections.fromJson(json.optionConnections, RetePortSocket.fromJson, ReteSocket.fromJson)
+            MappedConnections.fromJson(json.builderConnections, ReteMultiplePortSocket.fromJson, ReteSocket.fromJson),
+            MappedConnections.fromJson(json.optionConnections, RetePortSocket.fromJson, ReteMultipleSocket.fromJson)
         )
     }
 
@@ -109,13 +116,19 @@ export class StructureReteEditor extends ReteEditor<StructureEngineer> {
         } else {
             const oldBuilder = this.engineer.builder
             ClientDirector.execute(client,
-                async (director) => this.engineer.setBuilder(director, this.getBuilder(this.baseConnection!.id).get(
-                    (id) => this.getBuilder(id),
-                    (id) => this.getRandom(id)
-                )),
+                async (director) => this.engineer.setBuilder(director, this.createBuilder(this.getBuilder(this.baseConnection!.id))),
                 async (director) => this.engineer.setBuilder(director, oldBuilder)
             )
         }
+    }
+
+    createBuilder<B extends Builder>(node: BuilderReteNode<B>): B {
+        return node.type.get(
+            (output) => this.createBuilder(this.getBuilder(this.builderConnections.getByParent(new ReteMultiplePortSocket(node.id, output, 0))!.id)),
+            (output) => this.builderConnections.getAllParents().filter((parent) => parent.id === node.id && parent.port === output).map((parent) => this.createBuilder(this.getBuilder(this.builderConnections.getByParent(parent)!.id))),
+            (output) => new Option('TODO'),
+            new RandomList()
+        )
     }
 
     pushBuilder(director: ClientDirector, builder: BuilderReteNode) {
@@ -136,10 +149,10 @@ export class StructureReteEditor extends ReteEditor<StructureEngineer> {
         builder: BuilderReteNode,
         connections: {
             base: ReteSocket | undefined,
-            builders: Connection<RetePortSocket, ReteSocket>[]
+            builders: Connection<ReteMultiplePortSocket, ReteSocket>[]
         }
     } {
-        let connectionsDeleted: { base: ReteSocket | undefined, builders: Connection<RetePortSocket, ReteSocket>[] } = {
+        let connectionsDeleted: { base: ReteSocket | undefined, builders: Connection<ReteMultiplePortSocket, ReteSocket>[] } = {
             base: undefined,
             builders: []
         }
@@ -174,14 +187,14 @@ export class StructureReteEditor extends ReteEditor<StructureEngineer> {
     connectBaseBuilder(director: ClientDirector, id: string | null) {
         if (id) {
             this.getBuilder(id)
-            this.baseConnection = new ReteSocket(id)
+            this._baseConnection = new ReteSocket(id)
         } else {
-            this.baseConnection = null
+            this._baseConnection = null
         }
         this.update(director, { baseConnection: id })
     }
 
-    connectBuilders(director: ClientDirector, connection: Connection<RetePortSocket, ReteSocket>) {
+    connectBuilders(director: ClientDirector, connection: Connection<ReteMultiplePortSocket, ReteSocket>) {
         const parentNode = this.getBuilder(connection.parent.id)
         const childNode = this.getBuilder(connection.child.id)
 
@@ -205,7 +218,7 @@ export class StructureReteEditor extends ReteEditor<StructureEngineer> {
         })
     }
 
-    disconnectBuildersByParent(director: ClientDirector, parent: RetePortSocket): Connection<RetePortSocket, ReteSocket> {
+    disconnectBuildersByParent(director: ClientDirector, parent: ReteMultiplePortSocket): Connection<ReteMultiplePortSocket, ReteSocket> {
         const child = this.builderConnections.getByParent(parent)
         if (!child) {
             throw new ConnectionNotExists(new Connection(parent, ReteSocket.UNDEFINED), 'builder', 'builder')
@@ -213,7 +226,7 @@ export class StructureReteEditor extends ReteEditor<StructureEngineer> {
         return this.disconnectBuilders(director, new Connection(parent, child))
     }
 
-    disconnectBuildersByChild(director: ClientDirector, child: ReteSocket): Connection<RetePortSocket, ReteSocket> {
+    disconnectBuildersByChild(director: ClientDirector, child: ReteSocket): Connection<ReteMultiplePortSocket, ReteSocket> {
         const parent = this.builderConnections.getByChild(child)
         if (!parent) {
             throw new ConnectionNotExists(new Connection(RetePortSocket.UNDEFINED, child), 'builder', 'builder')
@@ -221,8 +234,8 @@ export class StructureReteEditor extends ReteEditor<StructureEngineer> {
         return this.disconnectBuilders(director, new Connection(parent, child))
     }
 
-    disconnectBuilders(director: ClientDirector, connection: Connection<RetePortSocket, ReteSocket>): Connection<RetePortSocket, ReteSocket> {
-        if (!this.builderConnections.remove(connection)) {
+    disconnectBuilders(director: ClientDirector, connection: Connection<ReteMultiplePortSocket, ReteSocket>): Connection<ReteMultiplePortSocket, ReteSocket> {
+        if (!this.builderConnections.removeConnection(connection)) {
             throw new ConnectionNotExists(connection, 'builder', 'builder')
         }
         this.update(director, {

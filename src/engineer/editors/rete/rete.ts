@@ -2,7 +2,7 @@ import { v4 } from "uuid";
 import { Vec2 } from "../../../world/vector.js";
 import { Editor } from "../../editor.js";
 import { Engineer } from "../../engineer.js";
-import { Equals, itemsOfMap, mapFromJson, mapToJson, ToJson, ToKey } from "../../../util/util.js";
+import { type Equals, itemsOfMap, type ToJson, type ToKey } from "../../../util/util.js";
 import { InternalServerError } from "../../../connection/errors.js";
 
 export abstract class ReteEditor<E extends Engineer> extends Editor<E> {
@@ -53,31 +53,6 @@ export class ReteSocket implements ToJson, ToKey, Equals {
     }
 }
 
-export class RetePortSocket extends ReteSocket {
-
-    static readonly UNDEFINED = new RetePortSocket('undefined', 'undefined')
-
-    constructor(
-        id: string,
-        readonly port: string
-    ) {
-        super(id)
-    }
-
-    static fromJson(json: any): RetePortSocket {
-        const key = json.split('#')
-        return new RetePortSocket(key[0], key[1])
-    }
-
-    equals(other: RetePortSocket): boolean {
-        return this.id === other.id && this.port === other.port
-    }
-
-    toKey(): string {
-        return `${this.id}#${this.port}`
-    }
-}
-
 export class Connection<Parent extends ReteSocket = ReteSocket, Child extends ReteSocket = ReteSocket> implements ToJson, ToKey {
 
     constructor(
@@ -85,8 +60,8 @@ export class Connection<Parent extends ReteSocket = ReteSocket, Child extends Re
         readonly child: Child
     ) { }
 
-    static fromJson(json: any): Connection {
-        return new Connection(json.parent, json.child)
+    static fromJson<Parent extends ReteSocket = ReteSocket, Child extends ReteSocket = ReteSocket>(json: any, parentFromJson: (json: any) => Parent, childFromJson: (json: any) => Child): Connection<Parent, Child> {
+        return new Connection(parentFromJson(json.parent), childFromJson(json.child))
     }
 
     toKey(): string {
@@ -117,7 +92,8 @@ export class MappedConnections<Parent extends ReteSocket = ReteSocket, Child ext
     }
 
     static fromJson<Parent extends ReteSocket = ReteSocket, Child extends ReteSocket = ReteSocket>(json: any, parentFromJson: (json: any) => Parent, childFromJson: (json: any) => Child): MappedConnections<Parent, Child> {
-        return new MappedConnections(mapFromJson(json, (connection) => parentFromJson(connection.parent)), mapFromJson(json, (connection) => childFromJson(connection.child)))
+        const connections: Connection<Parent, Child>[] =  json.map((connection: any) => Connection.fromJson(connection, parentFromJson, childFromJson))
+        return new MappedConnections(new Map(connections.map((connection) => [connection.child.toKey(), connection.parent])), new Map(connections.map((connection) => [connection.parent.toKey(), connection.child])))
     }
 
     getAll(): Connection<Parent, Child>[] {
@@ -140,8 +116,12 @@ export class MappedConnections<Parent extends ReteSocket = ReteSocket, Child ext
         return this.parents.get(child.toKey())
     }
 
-    has(connection: Connection<Parent, Child>): boolean {
-        return this.hasParent(connection.parent) && this.hasChild(connection.child)
+    hasConnection(connection: Connection<Parent, Child>): boolean {
+        return this.getByParent(connection.parent)?.equals(connection.child) ?? false
+    }
+
+    has(parent: Parent, child: Child): boolean {
+        return this.getByParent(parent)?.equals(child) ?? false
     }
 
     hasParent(parent: Parent): boolean {
@@ -161,9 +141,13 @@ export class MappedConnections<Parent extends ReteSocket = ReteSocket, Child ext
         this.children.set(parent.toKey(), child)
     }
 
-    remove(connection: Connection<Parent, Child>): Connection<Parent, Child> | undefined {
-        if(this.getByParent(connection.parent)?.equals(connection.child)) {
-            return this.removeByParent(connection.parent)
+    removeConnection(connection: Connection<Parent, Child>): Connection<Parent, Child> | undefined {
+        return this.remove(connection.parent, connection.child)
+    }
+
+    remove(parent: Parent, child: Child): Connection<Parent, Child> | undefined {
+        if(this.has(parent, child)) {
+            return this.removeByParent(parent)
         }
     }
 

@@ -9,7 +9,7 @@
 //      ##    \__|__/
 
 import { NameNotRegistered } from "../../connection/errors.js"
-import { Geo3Function, Geo3, Geo3Type } from "../geo.js"
+import { type Geo3Function, type Geo3, Geo3Type } from "../geo.js"
 import { Rotation3 } from "../quaternion.js"
 import { Vec3 } from "../vector.js"
 

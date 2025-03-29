@@ -9,9 +9,9 @@
 //      ##    \__|__/
 
 import { getProject } from "../../instance.js"
-import { FileNode } from "../../project/project.js"
-import { Engineer, ReferenceData } from "../engineer.js"
-import { StructureEngineer, StructureReference } from "../structure/structure.js"
+import { type FileNode } from "../../project/project.js"
+import { Engineer, type ReferenceData } from "../engineer.js"
+import { StructureEngineer, StructureReference } from "./structure/structure.js"
 import { StyleDependency } from "./style/dependency.js"
 import { Style, StyleReference } from "./style/style.js"
 

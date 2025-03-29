@@ -16,7 +16,7 @@ import { builderFromJson } from "./collective.js";
 import { MaterialReference } from "../engineer/data-pack/style/material.js";
 import { Option } from "../util/option.js";
 import { GenerationStyle } from "../engineer/data-pack/style/style.js";
-import { Geo3 } from "../world/geo.js";
+import { type Geo3 } from "../world/geo.js";
 
 export type BuilderChild<B extends Builder, O extends Record<string, Option>> = {
     builder: B

@@ -12,7 +12,7 @@ import { BuilderResult } from "../builder/builder.js";
 import { GenerationStyle } from "../engineer/data-pack/style/style.js";
 import { StructureEngineer } from "../engineer/structure/structure.js";
 import { Seed } from "../util/random.js";
-import { Geo3 } from "../world/geo.js";
+import { type Geo3 } from "../world/geo.js";
 
 export class Structure {
 

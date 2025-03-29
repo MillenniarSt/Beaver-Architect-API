@@ -1,6 +1,6 @@
 import { ObjectUpdate, VarUpdate } from "../../../../connection/directives/update.js"
 import { Vec2 } from "../../../../world/vector.js"
-import { ReteNode, ReteNodeUpdate } from "../rete.js"
+import { ReteNode, type ReteNodeUpdate } from "../rete.js"
 
 export type StructureEngineerReteNodeUpdate = ReteNodeUpdate & {
     

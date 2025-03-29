@@ -23,6 +23,10 @@ export class StyleDependency {
         readonly options: StyleOptionDependency[]
     ) { }
 
+    static empty(): StyleDependency {
+        return new StyleDependency([], [])
+    }
+
     static fromJson(json: any): StyleDependency {
         return new StyleDependency(json.materials, json.options)
     }
@@ -32,8 +36,8 @@ export class StyleDependency {
             return new StyleDependency([], [])
         }
         return new StyleDependency(
-            dependencies.map((dependence) => dependence.materials).reduce((p, c) => p.concat(c), dependencies[0].materials),
-            dependencies.map((dependence) => dependence.options).reduce((p, c) => p.concat(c), dependencies[0].options)
+            dependencies.map((dependence) => dependence.materials).reduce((p, c) => p.concat(c), dependencies[0]!.materials),
+            dependencies.map((dependence) => dependence.options).reduce((p, c) => p.concat(c), dependencies[0]!.options)
         )
     }
 

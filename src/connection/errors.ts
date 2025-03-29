@@ -1,4 +1,6 @@
-import { WebSocketError } from "./server.js";
+import type { Permission } from "./permission.js";
+import { type WebSocketError } from "./server.js";
+import type { Side } from "./sides.js";
 
 export abstract class ServerProblem extends Error {
 
@@ -30,6 +32,13 @@ export class InternalServerError extends ServerProblem {
 }
 
 // Utils error classes
+
+export class PermissionDenided extends InternalServerError {
+
+    constructor(readonly side: Side, readonly permission: Permission) {
+        super(`${side.identfier} has not the permission '${permission.id}'`)
+    }
+}
 
 export class IdNotExists extends InternalServerError {
 

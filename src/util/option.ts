@@ -9,8 +9,7 @@
 //      ##    \__|__/
 
 import { GenerationStyle } from "../engineer/data-pack/style/style.js";
-import { Vec2, Vec3, Vec4 } from "../world/vector.js";
-import { Random, RandomBoolean, RandomList, RandomNumber, RandomVec2, RandomVec3, RandomVec4, Seed } from "./random.js";
+import { Random, Seed } from "./random.js";
 
 export class Option<T = any> {
 

@@ -11,7 +11,7 @@
 import { MaterialReference } from "../engineer/data-pack/style/material.js"
 import { Option } from "../util/option.js"
 import { RandomList } from "../util/random.js"
-import { Builder, BuilderChild } from "./builder.js"
+import { Builder, type BuilderChild } from "./builder.js"
 
 // Json Utils
 

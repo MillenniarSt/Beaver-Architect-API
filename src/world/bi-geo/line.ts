@@ -9,7 +9,7 @@
 //      ##    \__|__/
 
 import { NameNotRegistered } from "../../connection/errors.js";
-import { Geo2, Geo2Function } from "../geo.js";
+import { type Geo2, type Geo2Function } from "../geo.js";
 import { Rotation2 } from "../quaternion.js";
 import { Vec2 } from "../vector.js";
 

@@ -8,13 +8,14 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { Material, materialUpdate, MaterialUpdate } from "./material.js";
+import { Material, materialUpdate, type MaterialUpdate } from "./material.js";
 import { BuilderDirective, ListUpdate, ObjectUpdate, VarUpdate } from "../../../connection/directives/update.js";
 import { ClientDirector } from "../../../connection/director.js";
 import { Engineer, ResourceReference } from "../../engineer.js";
 import { getProject } from "../../../instance.js";
 import { Random } from "../../../util/random.js";
 import { Option } from "../../../util/option.js";
+import { StyleDependency } from "./dependency.js";
 
 export type StyleUpdate = {
     isAbstract?: boolean
@@ -63,11 +64,12 @@ export class Style extends Engineer {
 
     constructor(
         ref: ResourceReference<Style>, 
+        dependency: StyleDependency, 
         isAbstract: boolean = false, implementations: ResourceReference<Style>[] = [], 
         materials: Map<string, Material> = new Map(), 
         options: Map<string, Option> = new Map()
     ) {
-        super(ref)
+        super(ref, dependency)
         this.materials = materials
         this.options = options
         this.isAbstract = isAbstract
@@ -274,6 +276,7 @@ export class Style extends Engineer {
     static loadFromRef(ref: ResourceReference<Style>): Style {
         const data = getProject(ref.pack).read(ref.path)
         return new Style(ref,
+            StyleDependency.fromJson(data.dependency),
             data.isAbstract,
             data.implementations.map((implementation: string) => new StyleReference(implementation)),
             new Map(data.materials.map((material: any) => [material.id, Material.fromJson(material.data)]))
@@ -283,6 +286,7 @@ export class Style extends Engineer {
     toJson(): {} {
         return {
             isAbstract: this.isAbstract,
+            dependency: this.dependency.toJson(),
             implementations: this.implementations.map((implementation) => implementation.toJson()),
             materials: this.mapMaterials((material, id) => {
                 return {

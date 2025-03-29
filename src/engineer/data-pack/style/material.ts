@@ -9,7 +9,7 @@
 //      ##    \__|__/
 
 import { CheckUpdate, ObjectUpdate, VarUpdate } from "../../../connection/directives/update.js"
-import { FormOutput } from "../../../util/form.js"
+import { type FormOutput } from "../../../util/form.js"
 import { RandomList } from "../../../util/random.js"
 import { Style } from "./style.js"
 
