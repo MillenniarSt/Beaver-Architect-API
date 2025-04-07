@@ -15,12 +15,15 @@ import { idToLabel } from '../util/form.js'
 import { getProject } from '../instance.js'
 import type { StyleDependency } from './data-pack/style/dependency.js'
 
-export abstract class Engineer {
+export abstract class Engineer<Resource extends Engineer<Resource> = any> {
+
+    protected _dependency: StyleDependency
 
     constructor(
-        protected _reference: ResourceReference<Engineer>,
-        readonly dependency: StyleDependency
-    ) { }
+        readonly reference: ResourceReference<Resource>
+    ) {
+        this._dependency = this.buildDependency()
+    }
 
     get pack(): string {
         return this.reference.pack
@@ -30,12 +33,8 @@ export abstract class Engineer {
         return this.reference.name
     }
 
-    get reference(): ResourceReference<Engineer> {
-        return this._reference
-    }
-
-    setReference(director: ClientDirector, reference: ResourceReference<Engineer>) {
-        this._reference = reference
+    get dependency(): StyleDependency {
+        return this._dependency
     }
 
     save() {
@@ -51,6 +50,12 @@ export abstract class Engineer {
     }
 
     abstract update(director: ClientDirector, update: {}): void
+
+    repair() {
+        this._dependency = this.buildDependency()
+    }
+
+    abstract buildDependency(): StyleDependency
 }
 
 export type ReferenceData = { pack?: string, location: string } | string
@@ -61,8 +66,8 @@ export abstract class ResourceReference<E extends Engineer = Engineer> {
     readonly location: string
 
     constructor(ref: ReferenceData) {
-        if(typeof ref === 'string') {
-            if(ref.includes(':')) {
+        if (typeof ref === 'string') {
+            if (ref.includes(':')) {
                 const unpack = ref.split(':')
                 this.pack = unpack[0]
                 this.location = unpack[1]
@@ -82,10 +87,10 @@ export abstract class ResourceReference<E extends Engineer = Engineer> {
 
     get(): E {
         const builder = this._get()
-        if(builder) {
+        if (builder) {
             return builder
         } else {
-            throw new Error(`Can not access to Builder '${this.toString()}', it not exists or it is not registered`)
+            throw new Error(`Can not access to Resource '${this.toString()}', it not exists or it is not registered`)
         }
     }
 
@@ -94,7 +99,7 @@ export abstract class ResourceReference<E extends Engineer = Engineer> {
     }
 
     get path(): string {
-        if(getProject().identifier === this.pack) {
+        if (getProject().identifier === this.pack) {
             return path.join(this.folder, `${this.location}.json`)
         } else {
             return path.join('dependencies', this.pack, this.folder, `${this.location}.json`)
@@ -106,7 +111,7 @@ export abstract class ResourceReference<E extends Engineer = Engineer> {
     }
 
     getEditorPath(extension: string) {
-        if(getProject().identifier === this.pack) {
+        if (getProject().identifier === this.pack) {
             return path.join(this.folder, `${this.location}.${extension}.json`)
         } else {
             return path.join('dependencies', this.pack, this.folder, `${this.location}.${extension}.json`)
@@ -118,7 +123,7 @@ export abstract class ResourceReference<E extends Engineer = Engineer> {
     }
 
     toJson(): string {
-        if(getProject().identifier === this.pack) {
+        if (getProject().identifier === this.pack) {
             return this.location
         } else {
             return `${this.pack}:${this.location}`

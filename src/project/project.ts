@@ -10,13 +10,12 @@
 
 import fs from "fs"
 import path from "path"
-import { librariesDir, projectsDir } from "../util/paths.js"
-import { type OnMessage } from "./../connection/server.js"
+import { type MessageFunction, type OnMessage } from "./../connection/server.js"
 import { DataPack } from "./../engineer/data-pack/data-pack.js"
 import { getArchitect, getProject, getProjectOrNull, loadProject, setMainProject } from "../instance.js"
 import { Structure } from "./structure.js"
-import { StyleDependency } from "../engineer/data-pack/style/dependency.js"
 import type { ArchitectData } from "./architect.js"
+import { PERMISSIONS } from "../connection/permission.js"
 
 /**
 * @param identifier should be no.space.with.dots
@@ -60,28 +59,27 @@ export class Project {
         public name: string,
         public authors: string,
         public description: string,
-        public dependencies: Project[],
-        protected _styleDependence: StyleDependency
+        public dependencies: Project[]
     ) { }
 
-    static create(data: ProjectData, architect: ArchitectData): Project {
+    static async create(dir: string, data: ProjectData, architect: ArchitectData): Promise<Project> {
         const project = new Project(
-            path.join(projectsDir, data.identifier),
+            dir,
             new Version(data.version),
-            data.identifier, data.name, data.authors, data.description, [],
-            new StyleDependency([], [])
+            data.identifier, data.name, data.authors, data.description, []
         )
 
         fs.mkdirSync(project.dir)
         fs.writeFileSync(path.join(project.dir, 'project.json'), JSON.stringify(project.toData()), 'utf-8')
         fs.writeFileSync(path.join(project.dir, 'info.html'), '', 'utf-8')
         fs.writeFileSync(path.join(project.dir, 'architect.json'), JSON.stringify(architect), 'utf-8')
-        fs.mkdirSync(path.join(project.dir, 'dependeces'))
+        fs.mkdirSync(path.join(project.dir, 'dependences'))
         fs.mkdirSync(path.join(project.dir, 'architect'))
-        fs.mkdirSync(path.join(project.dir, 'data_pack'))
-        fs.mkdirSync(path.join(project.dir, 'data_pack', 'structures'))
-        fs.mkdirSync(path.join(project.dir, 'data_pack', 'styles'))
-        fs.writeFileSync(path.join(project.dir, 'data_pack', 'style_dependence.json'), JSON.stringify(project.styleDependence.toJson()), 'utf-8')
+        fs.writeFileSync(path.join(project.dir, 'users.json'), JSON.stringify({}), 'utf-8')
+
+        loadProject(project)
+        setMainProject(project)
+        project._dataPack = await DataPack.create(project.identifier)
 
         return project
     }
@@ -96,19 +94,18 @@ export class Project {
         for (let i = 0; i < data.dependencies.length; i++) {
             const identifier = data.dependencies[i].identifier
             const version = new Version(data.dependencies[i].version)
-            const dir = path.join(librariesDir, `${identifier}:${version.toJson()}`)
-            if (!fs.existsSync(dir)) {
+            const dependeciesDir = path.join(dir, 'dependences', `${identifier}:${version.toJson()}`)
+            if (!fs.existsSync(dependeciesDir)) {
                 throw new Error(`Invalid dependency: ${identifier}:${version.toJson()} does not exists or it is not installed`)
             }
-            dependencies.push(await Project.load(dir, JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf-8')), false))
+            dependencies.push(await Project.load(dependeciesDir, JSON.parse(fs.readFileSync(path.join(dependeciesDir, 'project.json'), 'utf-8')), false))
         }
 
         const project = new Project(
             dir,
             new Version(data.version),
             data.identifier, data.name, data.authors, data.description,
-            dependencies,
-            StyleDependency.join(dependencies.map((dependency) => dependency.dataPack.styleDependence))
+            dependencies
         )
         loadProject(project)
         if (isMain) {
@@ -119,16 +116,11 @@ export class Project {
     }
 
     private async init() {
-        this._dataPack = await DataPack.create(this.identifier)
-        this._styleDependence = StyleDependency.join([this.styleDependence, this.dataPack.styleDependence])
+        this._dataPack = await DataPack.load(this.identifier)
     }
 
     get dataPack(): DataPack {
         return this._dataPack!
-    }
-
-    get styleDependence(): StyleDependency {
-        return this._styleDependence
     }
 
     toData(): ProjectData {
@@ -161,6 +153,7 @@ export class Project {
     }
 
     exists(relPath: string): boolean {
+        
         return fs.existsSync(this.getFilePath(relPath))
     }
 
@@ -169,10 +162,12 @@ export class Project {
     }
 
     readDir(relPath: string, recursive: boolean = false): string[] | Buffer[] {
+        
         return fs.readdirSync(this.getAndCheckFilePath(relPath), { recursive: recursive })
     }
 
     mapDir(relPath: string, dir: string = this.getAndCheckFilePath(relPath)): FileNode[] {
+        
         return fs.readdirSync(dir, { withFileTypes: true }).map((entry) => {
             const relFilePath = path.join(relPath, entry.name)
             return {
@@ -183,7 +178,7 @@ export class Project {
         })
     }
 
-    getAndCheckFilePath(relPath: string): string {
+    protected getAndCheckFilePath(relPath: string): string {
         const filePath = this.getFilePath(relPath)
         if (!fs.existsSync(filePath)) {
             throw new Error(`Can not read file, it does not exist [${filePath}]`)
@@ -192,7 +187,7 @@ export class Project {
     }
 
     getFilePath(relPath: string): string {
-        return path.join(projectsDir, this.identifier, relPath)
+        return path.join(this.dir, relPath)
     }
 }
 
@@ -220,12 +215,38 @@ export function registerProjectMessages(onMessage: OnMessage) {
 
     // File Manager
 
-    onMessage.set('file/read-text', (data, client, id) => client.respond(id, getProject(data.identifier).readText(data.path)))
-    onMessage.set('file/read-json', (data, client, id) => client.respond(id, getProject(data.identifier).read(data.path)))
-    onMessage.set('file/write-text', (data) => getProject(data.identifier).writeText(data.path, data.data))
-    onMessage.set('file/write-json', (data) => getProject(data.identifier).write(data.path, data.data))
-    onMessage.set('file/exists', (data, client, id) => client.respond(id, getProject(data.identifier).exists(data.path)))
-    onMessage.set('file/mkdir', (data) => getProject(data.identifier).mkDir(data.path))
-    onMessage.set('file/read-dir', (data, client, id) => client.respond(id, getProject(data.identifier).readDir(data.path, data.recursive)))
-    onMessage.set('file/map-dir', (data, client, id) => client.respond(id, getProject(data.identifier).mapDir(data.path)))
+    onMessage.set('file/read-text', ensureReadAll((project, path) => project.readText(path)))
+    onMessage.set('file/read-json', ensureReadAll((project, path) => project.read(path)))
+    onMessage.set('file/write-text', ensureWriteAll((project, path, data) => project.writeText(path, data)))
+    onMessage.set('file/write-json', ensureWriteAll((project, path, data) => project.write(path, data)))
+    onMessage.set('file/exists', ensureReadAll((project, path) => project.exists(path)))
+    onMessage.set('file/mkdir', ensureWriteAll((project, path) => project.mkDir(path)))
+    onMessage.set('file/read-dir', ensureReadAll((project, path, data) => project.readDir(path, data.recursive)))
+    onMessage.set('file/map-dir', ensureReadAll((project, path) => project.mapDir(path)))
+}
+
+function ensureReadAll(read: (project: Project, path: string, data: any) => any): MessageFunction {
+    return (data, client, id) => {
+        const path: string = data.path.replace('/', '\\')
+        switch(path.split('\\')[0]) {
+            case 'datapack': client.ensurePermission(PERMISSIONS.ACCESS_DATAPACK); break;
+            case 'architect': client.ensurePermission(PERMISSIONS.MANAGE_ARCHITECT_FILE); break;
+            case 'dependences': client.ensurePermission(PERMISSIONS.ACCESS_DEPENDENCES); break;
+            default: client.ensurePermission(PERMISSIONS.READ_ALL_FILE)
+        }
+        client.respond(id, read(getProject(data.identifier), path, data))
+    }
+}
+
+function ensureWriteAll(write: (project: Project, path: string, data: any) => void): MessageFunction {
+    return (data, client) => {
+        const path: string = data.path.replace('/', '\\')
+        switch(path.split('\\')[0]) {
+            case 'datapack': client.ensurePermission(PERMISSIONS.ACCESS_DATAPACK); break;
+            case 'architect': client.ensurePermission(PERMISSIONS.MANAGE_ARCHITECT_FILE); break;
+            case 'dependences': client.ensurePermission(PERMISSIONS.MANAGE_DEPENDENCES); break;
+            default: client.ensurePermission(PERMISSIONS.WRITE_ALL_FILE)
+        }
+        write(getProject(data.identifier), path, data.data)
+    }
 }

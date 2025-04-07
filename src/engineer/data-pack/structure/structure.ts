@@ -9,9 +9,10 @@
 //      ##    \__|__/
 
 import { Builder } from "../../../builder/builder.js";
-import { builderFromJson } from "../../../builder/collective.js";
+import { builderFromJson } from "../../../builder/collective-decorator.js";
 import { BuilderDirective, CheckUpdate, ObjectUpdate } from "../../../connection/directives/update.js";
 import { ClientDirector } from "../../../connection/director.js";
+import type { Side } from "../../../connection/sides.js";
 import { getProject } from "../../../instance.js";
 import { Engineer, ResourceReference } from "../../engineer.js";
 import { StyleDependency } from "../style/dependency.js";
@@ -31,7 +32,7 @@ export class StructureReference extends ResourceReference<StructureEngineer> {
     }
 
     protected _get(): StructureEngineer | undefined {
-        return getProject(this.pack).dataPack.engineers.structures.get(this.location)
+        return getProject(this.pack).dataPack.structures.get(this.location)
     }
 }
 export class StructureEngineer extends Engineer {
@@ -41,6 +42,32 @@ export class StructureEngineer extends Engineer {
     constructor(ref: ResourceReference<StructureEngineer>, dependency: StyleDependency, builder: Builder) {
         super(ref, dependency)
         this.builder = builder
+    }
+
+    buildDependency(): void {
+        this._dependency = StyleDependency.empty()
+        this.refreshBuilderDependency(this.builder)
+    }
+
+    protected refreshBuilderDependency(builder: Builder) {
+        builder.materials.list.forEach((material) => {
+            if(material.isReference()) {
+                this.dependency.materials.add({ id: material.getRef()! })
+            }
+            Object.entries(builder.options).forEach(([id, option]) => {
+                if(option.isReference()) {
+                    this.dependency.options.add({ id: option.getRef()! })
+                }
+            })
+            builder.children.forEach((child) => {
+                Object.entries(child.options).forEach(([id, option]) => {
+                    if(option.isReference()) {
+                        this.dependency.options.add({ id: option.getRef()! })
+                    }
+                })
+                this.refreshBuilderDependency(child.builder)
+            })
+        })
     }
 
     setBuilder(director: ClientDirector, builder: Builder) {

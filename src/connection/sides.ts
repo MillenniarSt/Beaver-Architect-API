@@ -13,15 +13,16 @@ import { WebSocket } from "ws"
 import { type WebSocketError, type WebSocketResponse } from "./server.js"
 import { Editor } from "../engineer/editor.js"
 import { ResourceReference } from "../engineer/engineer.js"
-import type { PermissionLevel } from "./permission.js"
+import { Permission, PermissionLevel } from "./permission.js"
+import { PermissionDenided } from "./errors.js"
+import type { AbstractUser, User } from "./user.js"
+import type { Architect } from "../project/architect.js"
 
 export abstract class Side {
 
-    constructor(
-        readonly permissions: PermissionLevel
-    ) { }
-
     abstract get identfier(): string
+
+    abstract get permissions(): PermissionLevel
 
     abstract send(path: string, data?: {} | null): void
 
@@ -38,6 +39,12 @@ export abstract class Side {
     abstract isRunningChannel(id: string): boolean
 
     abstract closeChannel(id: string): void
+
+    ensurePermission(permission: Permission) {
+        if(!this.permissions.hasPermission(permission)) {
+            throw new PermissionDenided(this, permission)
+        }
+    }
 }
 
 export abstract class SocketSide extends Side {
@@ -45,8 +52,8 @@ export abstract class SocketSide extends Side {
     protected waitingRequests: Map<string, (data: any) => void> = new Map()
     protected channels: Map<string, (data: {} | null) => void> = new Map()
 
-    constructor(readonly socket: WebSocket, permissions: PermissionLevel) {
-        super(permissions)
+    constructor(readonly socket: WebSocket) {
+        super()
     }
 
     send(path: string, data?: {} | null) {
@@ -122,8 +129,16 @@ export class ClientSide extends SocketSide {
     protected history: ClientHistoryDo[] = []
     protected historyIndex = 0
 
+    constructor(readonly user: AbstractUser, socket: WebSocket) {
+        super(socket)
+    }
+
     get identfier(): string {
-        return 'TODO client' // TODO
+        return `$${this.user.id}`
+    }
+
+    get permissions(): PermissionLevel {
+        return this.user.permissions
     }
 
     do(update: ClientHistoryDo) {
@@ -186,15 +201,29 @@ export class ClientSide extends SocketSide {
 
 export class ArchitectSide extends SocketSide {
 
+    constructor(readonly architect: Architect, socket: WebSocket) {
+        super(socket)
+    }
+
     get identfier(): string {
         return 'architect'
+    }
+
+    get permissions(): PermissionLevel {
+        return this.architect.permissions
     }
 }
 
 export class ServerSide extends Side {
 
+    private static readonly PERMISSIONS = new PermissionLevel(Permission.owner())
+
     get identfier(): string {
         return 'server'
+    }
+
+    get permissions(): PermissionLevel {
+        return ServerSide.PERMISSIONS
     }
 
     send(path: string, data?: {} | null): void {

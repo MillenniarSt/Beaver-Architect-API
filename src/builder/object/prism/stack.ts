@@ -8,17 +8,18 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { MaterialReference } from '../../../engineer/data-pack/style/material.js';
 import { GenerationStyle } from '../../../engineer/data-pack/style/style.js';
-import { Option } from '../../../util/option.js';
-import { RandomList, RandomNumber, RandomVec2, Seed } from '../../../util/random.js';
 import { Plane2 } from '../../../world/bi-geo/plane.js';
 import { Prism } from '../../../world/geo/object.js';
 import { Vec2, Vec3 } from '../../../world/vector.js';
-import { type BuilderChild, BuilderResult, ChildrenManager, ObjectBuilder } from '../../builder.js';
-import { MultiChildOptionBuilder } from '../../collective.js';
-import { EmptyBuilder } from '../../generic/empty.js';
+import { type BuilderChild, BuilderResult, ObjectBuilder } from '../../builder.js';
+import { Option } from '../../option.js';
+import { ConstantEnum } from '../../random/enum.js';
+import { ConstantNumber } from '../../random/number.js';
+import type { Seed } from '../../random/random.js';
+import { ConstantVec2 } from '../../random/vec/vec2.js';
 
+export type StackAlignmentValue = 'start' | 'center' | 'end' | 'fill'
 export enum StackAlignment {
     START = 'start',
     CENTER = 'center',
@@ -26,71 +27,44 @@ export enum StackAlignment {
     FILL = 'fill'
 }
 
+export type RepetitionModeValue = 'none' | 'block' | 'builder'
 export enum RepetitionMode {
     NONE = 'none',
     BLOCK = 'block',
     BUILDER = 'builder'
 }
 
-@MultiChildOptionBuilder((json) => {
-    return {
-        alignment: Option.fromJson(json.alignment),
-        repeat: Option.fromJson(json.repeat),
-        gap: Option.fromJson(json.gap),
-        padding: Option.fromJson(json.padding)
-    }
-}, (json) => {
-    return {
-        height: Option.fromJson(json.height)
-    }
-})
 export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<Prism<P>, {
-    alignment: Option<StackAlignment | undefined>
-    repeat: Option<RepetitionMode | undefined>
+    alignment: Option<StackAlignmentValue | undefined>
+    repeat: Option<RepetitionModeValue | undefined>
     gap: Option<number>
     padding: Option<Vec2>
-}, {
-    height: Option<number>
-}> implements ChildrenManager {
+}> {
 
     constructor(
         public children: BuilderChild<ObjectBuilder<Prism<P>>, {
             height: Option<number>
         }>[],
         options: {
-            alignment?: Option<StackAlignment | undefined>
-            repeat?: Option<RepetitionMode | undefined>
+            alignment?: Option<StackAlignmentValue | undefined>
+            repeat?: Option<RepetitionModeValue | undefined>
             gap?: Option<number>
             padding?: Option<Vec2>
-        } = {},
-        materials: RandomList<MaterialReference> = new RandomList()
+        } = {}
     ) {
         super({
-            alignment: options.alignment ?? new Option(StackAlignment.START),
-            repeat: options.repeat ?? new Option(RepetitionMode.NONE),
-            gap: options.gap ?? new Option(RandomNumber.constant(0)),
-            padding: options.padding ?? new Option(RandomVec2.constant(0))
-        }, materials)
-    }
-
-    canAddChild(): boolean {
-        return true
-    }
-
-    addChild(): void {
-        this.children.push({
-            builder: new EmptyBuilder(),
-            options: {
-                height: new Option(RandomNumber.constant(1))
-            }
+            alignment: options.alignment ?? Option.random(new ConstantEnum<StackAlignmentValue[]>(StackAlignment.START)),
+            repeat: options.repeat ?? Option.random(new ConstantEnum<RepetitionModeValue[]>(RepetitionMode.NONE)),
+            gap: options.gap ?? Option.random(new ConstantNumber(0)),
+            padding: options.padding ?? Option.random(new ConstantVec2(Vec2.ZERO))
         })
     }
 
-    protected buildChildren(context: Prism<P>, style: GenerationStyle, seed: Seed): BuilderResult[] {
-        const padding = this.options.padding.get(style, seed)
-        const gap = this.options.gap.get(style, seed)
-        const repeat = this.options.repeat.get(style, seed)
-        const alignment = this.options.alignment.get(style, seed)
+    protected buildChildren(context: Prism<P>, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[] {
+        const padding = this.options.padding.get(style, parameters, seed)
+        const gap = this.options.gap.get(style, parameters, seed)
+        const repeat = this.options.repeat.get(style, parameters, seed)
+        const alignment = this.options.alignment.get(style, parameters, seed)
         const size = context.height - padding.x - padding.y
         const base = context.base.z + padding.x
 
@@ -99,7 +73,7 @@ export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<
             return []
         }
 
-        let childrenHeights = this.children.map((child) => child.options.height.get(style, seed))
+        let childrenHeights = this.children.map((child) => child.options.height.get(style, parameters, seed))
         let childrenHeight = -gap
         childrenHeights.forEach((height) => {
             childrenHeight += height + gap
@@ -134,7 +108,7 @@ export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<
                 const height = childrenHeights[i % this.children.length] + stretch
                 const prism = new Prism(context.base.move(new Vec3(0, 0, z)), height)
                 z += height + gap
-                results.push(this.children[i % this.children.length].builder.build(prism, style, seed))
+                results.push(this.children[i % this.children.length].builder.build(prism, style, parameters, seed))
             }
             return results
         } else {
@@ -153,7 +127,7 @@ export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<
                 const height = childrenHeights[i % this.children.length]
                 const prism = new Prism(context.base.move(new Vec3(0, 0, z)), height)
                 z += height + gap
-                results.push(this.children[i % this.children.length].builder.build(prism, style, seed))
+                results.push(this.children[i % this.children.length].builder.build(prism, style, parameters, seed))
             }
             return results
         }

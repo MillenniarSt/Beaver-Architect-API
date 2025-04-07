@@ -8,39 +8,33 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { Material, materialUpdate, type MaterialUpdate } from "./material.js";
-import { BuilderDirective, ListUpdate, ObjectUpdate, VarUpdate } from "../../../connection/directives/update.js";
+import { BuilderDirective, ListUpdate, ObjectUpdate, VarUpdate, type ListUpdateObject } from "../../../connection/directives/update.js";
 import { ClientDirector } from "../../../connection/director.js";
 import { Engineer, ResourceReference } from "../../engineer.js";
 import { getProject } from "../../../instance.js";
-import { Random } from "../../../util/random.js";
-import { Option } from "../../../util/option.js";
+import { Random, randomTypes } from "../../../builder/random/random.js";
 import { StyleDependency } from "./dependency.js";
+import { IdAlreadyExists, IdNotExists, InternalServerError } from "../../../connection/errors.js";
+import { mapFromJson, mapToJson, recordToJson, type ToJson } from "../../../util/util.js";
+import type { Seed } from "../../../util/random.js";
 
 export type StyleUpdate = {
     isAbstract?: boolean
-    implementations?: {
-        id: string,
-        mode?: 'push' | 'delete',
-        data?: {
-            pack?: string,
-            location: string
-        }
-    }[]
-    materials?: {
-        id: string,
-        mode?: 'push' | 'delete',
-        data?: MaterialUpdate
-    }[]
+    implementations?: ListUpdateObject<{
+        pack?: string,
+        location: string
+    }>[]
+    values?: ListUpdateObject<{
+        type: string,
+        random: any,
+        generationConstant: boolean
+    }>[]
 }
 
 export const styleUpdate = new ObjectUpdate<StyleUpdate>({
-    isAbstract: new VarUpdate<boolean>(),
-    implementations: new ListUpdate(new VarUpdate<{
-        pack?: string,
-        location: string
-    }>()),
-    materials: new ListUpdate(materialUpdate)
+    isAbstract: new VarUpdate(),
+    implementations: new ListUpdate(new VarUpdate()),
+    values: new ListUpdate(new VarUpdate())
 })
 
 export class StyleReference extends ResourceReference<Style> {
@@ -50,51 +44,56 @@ export class StyleReference extends ResourceReference<Style> {
     }
 
     protected _get(): Style | undefined {
-        return getProject(this.pack).dataPack.engineers.styles.get(this.location)
+        return getProject(this.pack).dataPack.styles.get(this.location)
     }
 }
 
-export class Style extends Engineer {
+export type StyleChanges = { isAbstract?: boolean }
+export type MaterialChanges = { id?: string }
 
-    isAbstract: boolean
-    implementations: ResourceReference<Style>[]
-
-    materials: Map<string, Material>
-    options: Map<string, Option>
+export class Style extends Engineer<Style> {
 
     constructor(
-        ref: ResourceReference<Style>, 
-        dependency: StyleDependency, 
-        isAbstract: boolean = false, implementations: ResourceReference<Style>[] = [], 
-        materials: Map<string, Material> = new Map(), 
-        options: Map<string, Option> = new Map()
+        ref: ResourceReference<Style>,
+        public isAbstract: boolean = false,
+        readonly implementations: ResourceReference<Style>[] = [],
+        readonly values: Map<string, StyleValue> = new Map()
     ) {
-        super(ref, dependency)
-        this.materials = materials
-        this.options = options
-        this.isAbstract = isAbstract
-        this.implementations = implementations
+        super(ref)
     }
 
-    toGenerationStyle(): GenerationStyle {
-        return new GenerationStyle(Array.from(this.options).reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {}))
+    toGenerationStyle(seed: Seed): GenerationStyle {
+        return new GenerationStyle(Object.fromEntries(this.completeValues.filter(([key, value]) => !randomTypes[value.type].isPostGeneration).map(([key, item]) => {
+            const random = item.getGenerationRandom(seed)
+            if(!random)
+                throw new RandomNotDefined(this.reference, key)
+            return [key, random]
+        })))
     }
 
     toPostGenerationStyle(): PostGenerationStyle {
-        return new PostGenerationStyle(Array.from(this.materials).reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {}))
+        return new PostGenerationStyle(Object.fromEntries(this.completeValues.filter(([key, value]) => randomTypes[value.type].isPostGeneration).map(([key, item]) => {
+            if(!item.random)
+                throw new RandomNotDefined(this.reference, key)
+            return [key, item]
+        })))
     }
 
-    get completeMaterials(): [string, Material][] {
-        let entries: [string, Material][] = []
+    buildDependency(): StyleDependency {
+        return new StyleDependency(Object.fromEntries(this.completeValues.filter(([key, value]) => value.random === null).map(([key, value]) => [key, value.type])))
+    }
+
+    get completeValues(): [string, StyleValue][] {
+        let entries: [string, StyleValue][] = []
         this.implementations.forEach((implementation) => {
-            entries.push(...implementation.get().completeMaterials)
+            entries.push(...implementation.get().completeValues)
         })
-        entries.push(...Object.entries(this.materials))
+        entries.push(...Object.entries(this.values))
         return entries
     }
 
     containsImplementation(implementation: ResourceReference<Style>): boolean {
-        if (implementation.equals(this.reference)) {
+        if (implementation.equals(this.reference as ResourceReference<Style>)) {
             return true
         }
         for (let i = 0; i < this.implementations.length; i++) {
@@ -105,39 +104,36 @@ export class Style extends Engineer {
         return false
     }
 
-    implementationsOfMaterial(id: string, includeSelf: boolean = false): ResourceReference<Style>[] {
+    implementationsOfValue(id: string, includeSelf: boolean = false): ResourceReference<Style>[] {
         let implementations: ResourceReference<Style>[] = []
-        if (this.materials.has(id) && includeSelf) {
-            implementations.push(this.reference)
+        if (this.values.has(id) && includeSelf) {
+            implementations.push(this.reference as ResourceReference<Style>)
         }
-        this.implementations.forEach((implementation) => implementations.push(...implementation.get().implementationsOfMaterial(id, true)))
+        this.implementations.forEach((implementation) => implementations.push(...implementation.get().implementationsOfValue(id, true)))
         return implementations
     }
 
-    edit(director: ClientDirector, changes: { isAbstract?: boolean }) {
+    edit(director: ClientDirector, changes: StyleChanges): StyleChanges {
+        const undoChanges: StyleChanges = {}
         if (changes.isAbstract !== undefined) {
+            undoChanges.isAbstract = this.isAbstract
             this.isAbstract = changes.isAbstract
             this.update(director, { isAbstract: changes.isAbstract })
         }
 
         this.saveDirector(director)
-    }
-
-    undoChanges(changes: { isAbstract?: boolean }): { isAbstract?: boolean } {
-        const undoChanges: { isAbstract?: boolean } = {}
-        if (changes.isAbstract) undoChanges.isAbstract = this.isAbstract
         return undoChanges
     }
 
     pushImplementation(director: ClientDirector, implementation: ResourceReference<Style>) {
         if (this.containsImplementation(implementation)) {
-            console.warn(`Can not push implementation ${implementation}: it is already contained in ${this.reference.toString()}`)
-        } else if (implementation.get().containsImplementation(this.reference)) {
-            console.warn(`Can not push implementation ${implementation}: it contains ${this.reference.toString()}`)
+            throw new IdAlreadyExists(implementation.toString(), this.constructor.name, 'implementations', this.reference.toString()).warn()
+        } else if (implementation.get().containsImplementation(this.reference as ResourceReference<Style>)) {
+            throw new InternalServerError(`Can not push implementation ${implementation}: it contains ${this.reference.toString()}`).warn()
         } else {
-            implementation.get().materials.forEach((material, id) => {
-                if (!this.materials.has(id)) {
-                    this.pushMaterial(director, id, material)
+            implementation.get().completeValues.forEach(([id, value]) => {
+                if (value.isAbstract() && !this.values.has(id)) {
+                    this.pushValue(director, id, new StyleValue(value.type, randomTypes[value.type].defaultRandom(), value.generationConstant))
                 }
             })
             this.implementations.push(implementation)
@@ -157,20 +153,6 @@ export class Style extends Engineer {
         const index = this.implementations.findIndex((imp) => imp.equals(implementation))
         if (index >= 0) {
             this.implementations.splice(index, 1)
-            implementation.get().materials.forEach((material, id) => {
-                if (this.implementationsOfMaterial(id).length === 1) {
-                    this.deleteMaterial(director, id)
-                } else {
-                    this.update(director, {
-                        materials: [{
-                            id: id,
-                            data: {
-                                fromImplementations: this.implementationsOfMaterial(id).map((ref) => ref.toString())
-                            }
-                        }]
-                    })
-                }
-            })
 
             this.update(director, {
                 implementations: [{
@@ -180,138 +162,121 @@ export class Style extends Engineer {
             })
             this.saveDirector(director)
         } else {
-            console.warn(`Can not remove implementation ${implementation} that not exists in ${this.reference.toString()}`)
+            throw new IdNotExists(implementation.toString(), this.constructor.name, 'implementations', this.reference.toString())
         }
     }
 
-    getMaterial(id: string): Material {
-        const material = this.materials.get(id)
-        if (!material) {
-            throw new Error(`Can not find material with id ${id}, it not exists in ${this.reference.toString()}`)
+    getValue(id: string): StyleValue {
+        const value = this.values.get(id)
+        if (!value) {
+            throw new IdNotExists(id, this.constructor.name, 'values')
         }
-        return material
+        return value
     }
 
-    pushMaterial(director: ClientDirector, id: string, material: Material) {
-        if (this.materials.has(id)) {
-            console.warn(`Can not push material with id ${id}, it already exists in ${this.reference.toString()}`)
+    pushValue(director: ClientDirector, id: string, value: StyleValue) {
+        if (this.values.has(id)) {
+            throw new IdAlreadyExists(id, this.constructor.name, 'values', this.reference.toString())
         } else {
-            this.materials.set(id, material)
+            this.values.set(id, value)
             this.update(director, {
-                materials: [{
+                values: [{
                     id: id,
                     mode: 'push',
-                    data: {
-                        type: material.type,
-                        fromImplementations: this.implementationsOfMaterial(id).map((ref) => ref.toString())
-                    }
+                    data: value.toJson()
                 }]
             })
             this.saveDirector(director)
         }
     }
 
-    editMaterial(director: ClientDirector, id: string, changes: { id?: string }) {
-        const material = this.materials.get(id)
-        if (material) {
-            if (changes.id) {
-                this.materials.delete(id)
-                this.materials.set(changes.id, material)
-                this.update(director, {
-                    materials: [{
-                        id: id,
-                        data: {
-                            id: changes.id
-                        }
-                    }]
-                })
-            }
-            this.saveDirector(director)
-        } else {
-            console.warn(`Can not edit material with id ${id}, it not exists in ${this.reference.toString()}`)
-        }
-    }
-
-    deleteMaterial(director: ClientDirector, id: string) {
-        if (this.materials.has(id)) {
-            this.materials.delete(id)
-            this.update(director, {
-                materials: [{
-                    id: id,
-                    mode: 'delete'
-                }]
-            })
-            this.saveDirector(director)
-        } else {
-            console.warn(`Can not delete material with id ${id}, it not exists in ${this.reference.toString()}`)
-        }
-    }
-
-    materialUndoChanges(id: string, changes: { id?: string }): { id?: string } {
-        const undoChanges: { id?: string } = {}
-        if (changes.id) undoChanges.id = id
-        return undoChanges
-    }
-
-    updateMaterial(director: ClientDirector, material: string) {
+    deleteValue(director: ClientDirector, id: string): StyleValue {
+        const value = this.getValue(id)
+        this.values.delete(id)
         this.update(director, {
-            materials: [{
-                id: material,
-                data: { paints: true }
+            values: [{
+                id: id,
+                mode: 'delete'
             }]
         })
         this.saveDirector(director)
+        return value
     }
 
     update(director: ClientDirector, update: StyleUpdate) {
         director.addDirective(BuilderDirective.update('data-pack/styles/update', this.reference, styleUpdate, update))
     }
 
-    mapMaterials(map: (material: Material, id: string) => any): any[] {
-        let materials: any[] = []
-        this.materials.forEach((material, id) => materials.push(map(material, id)))
-        return materials
-    }
-
     static loadFromRef(ref: ResourceReference<Style>): Style {
         const data = getProject(ref.pack).read(ref.path)
         return new Style(ref,
-            StyleDependency.fromJson(data.dependency),
             data.isAbstract,
             data.implementations.map((implementation: string) => new StyleReference(implementation)),
-            new Map(data.materials.map((material: any) => [material.id, Material.fromJson(material.data)]))
+            mapFromJson(data.values, StyleValue.fromJson)
         )
     }
 
     toJson(): {} {
         return {
             isAbstract: this.isAbstract,
-            dependency: this.dependency.toJson(),
             implementations: this.implementations.map((implementation) => implementation.toJson()),
-            materials: this.mapMaterials((material, id) => {
-                return {
-                    id: id,
-                    data: material.toJson()
-                }
-            })
+            values: mapToJson(this.values)
         }
     }
+}
 
-    get reference(): ResourceReference<Style> {
-        return this._reference as ResourceReference<Style>
+export class StyleValue<T = any> implements ToJson {
+
+    constructor(
+        readonly type: string,
+        readonly random: Random<T> | null,
+        public generationConstant: boolean
+    ) { }
+
+    static fromJson<T = any>(json: any): StyleValue<T> {
+        return new StyleValue(json.type, json.random ? Random.fromJson(json.random) : null, json.generationConstant)
+    }
+
+    isAbstract(): boolean {
+        return this.random === null
+    }
+
+    getGenerationRandom(seed: Seed): Random<T> | null {
+        return this.generationConstant ? this.random?.toConstant(seed) ?? null : this.random
+    }
+
+    toJson() {
+        return {
+            type: this.type,
+            random: this.random?.toNamedJson(),
+            generationConstant: this.generationConstant
+        }
     }
 }
 
 export class GenerationStyle {
 
     constructor(
-        readonly options: Record<string, Random>
+        readonly randoms: Record<string, Random>
     ) { }
 }
 
-export class PostGenerationStyle {
+export class PostGenerationStyle implements ToJson {
 
     constructor(
-        readonly materials: Record<string, Material>
+        readonly values: Record<string, StyleValue>
     ) { }
+
+    toJson(): {} {
+        return {
+            values: recordToJson(this.values)
+        }
+    }
+}
+
+export class RandomNotDefined extends InternalServerError {
+
+    constructor(readonly styleRef: ResourceReference<Style>, readonly id: string) {
+        super(`Can not get random from style ${styleRef.toString()} [${id}]: it is abstract`)
+    }
 }

@@ -4,26 +4,30 @@ import type { Side } from "./sides.js";
 
 export abstract class ServerProblem extends Error {
 
+    severity: 'warn' | 'error' | 'fatal' = 'error'
+
+    abstract print(): string
+
     abstract toSocketError(): WebSocketError
-}
 
-export class InternalServerWarn extends ServerProblem {
+    warn() {
+        this.severity = 'warn'
+    }
 
-    toSocketError(): WebSocketError {
-        return {
-            severity: 'warn',
-            name: this.name,
-            message: this.message,
-            stack: this.stack
-        }
+    fatal() {
+        this.severity = 'fatal'
     }
 }
 
 export class InternalServerError extends ServerProblem {
 
+    print(): string {
+        return `${this.name}: ${this.message}`
+    }
+
     toSocketError(): WebSocketError {
         return {
-            severity: 'error',
+            severity: this.severity,
             name: this.name,
             message: this.message,
             stack: this.stack
@@ -58,5 +62,12 @@ export class NameNotRegistered extends InternalServerError {
 
     constructor(readonly name: string, ...context: string[]) {
         super(`Name '${name}' is not registered in ${context.join('/')}`)
+    }
+}
+
+export class ListEmptyError extends InternalServerError {
+
+    constructor(readonly list: string) {
+        super(`Can not get an item from the list '${list}': it is empty`)
     }
 }

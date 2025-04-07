@@ -13,6 +13,9 @@ import { ArchitectSide, ClientSide, Side } from "./sides.js"
 import localtunnel from 'localtunnel'
 import * as http from 'http'
 import { ServerProblem } from "./errors.js"
+import { Permission, PermissionLevel } from "./permission.js"
+import { User } from "./user.js"
+import { getLocalUser } from "../instance.js"
 
 export type WebSocketMessage = {
     path: string,
@@ -46,7 +49,7 @@ export class Server {
 
     private _wss: WebSocketServer | null = null
 
-    private clients: ClientSide[] = []
+    readonly clients: ClientSide[] = []
 
     async open(port: number, isPublic: boolean, onMessage: ServerOnMessage): Promise<string | undefined> {
         const server = http.createServer()
@@ -61,7 +64,8 @@ export class Server {
         this._wss.on('connection', (ws, req) => {
             console.info(`[ Socket ] |  JOIN  | Client ${req.socket.remoteAddress} Connected on port ${port}`)
 
-            const client = new ClientSide(ws)
+            // TODO set a security algorith for external clients
+            const client = new ClientSide(getLocalUser(), ws)
             this.clients.push(client)
 
             ws.on('message', (data) => {

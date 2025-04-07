@@ -1,5 +1,6 @@
 import { ClientDirector } from "../../../../../connection/director.js";
 import { InternalServerError } from "../../../../../connection/errors.js";
+import { PERMISSIONS } from "../../../../../connection/permission.js";
 import { type MessageFunction } from "../../../../../connection/server.js";
 import { ClientSide } from "../../../../../connection/sides.js";
 import { Vec2 } from "../../../../../world/vector.js";
@@ -31,15 +32,16 @@ type MessagesStructure = {
 export function reteEngineerStructureMessages(): MessagesStructure {
     return {
         'open': (data: { ref: string }, client, id) => {
+            client.ensurePermission(PERMISSIONS.ACCESS_DATAPACK)
             const editor = client.openEditor(new StructureReference(data.ref), StructureReteEditor.extension) as StructureReteEditor
             client.respond(id, editor.toClient())
         },
         'close': (data, client, id) => {
             client.closeEditor(new StructureReference(data.ref), StructureReteEditor.extension)
         },
-        'get': (data, client, id) => {
-            client.respond(id, getEditor(client, data).toClient())
-        },
+        'get': read((editor, data, client, id) => {
+            client.respond(id, editor.toClient())
+        }),
 
         'base/connect-builder': simpleEdit(
             async (director, editor, data) => {
@@ -96,6 +98,7 @@ function simpleEdit<D extends { ref: string }, R>(
     undo: (director: ClientDirector, editor: StructureReteEditor, result: R, data: D, client: ClientSide) => Promise<any>
 ): MessageFunction<ClientSide, D> {
     return (data, client) => {
+        client.ensurePermission(PERMISSIONS.MANAGE_STYLE)
         const editor = getEditor(client, data)
         ClientDirector.execute(client,
             (director) => exe(director, editor, data, client),
@@ -105,7 +108,17 @@ function simpleEdit<D extends { ref: string }, R>(
 }
 
 function edit<D extends { ref: string }>(f: (editor: StructureReteEditor, data: D, client: ClientSide, id: string | undefined) => any): MessageFunction<ClientSide, D> {
-    return (data, client, id) => f(getEditor(client, data), data, client, id)
+    return (data, client, id) => {
+        client.ensurePermission(PERMISSIONS.MANAGE_STYLE)
+        f(getEditor(client, data), data, client, id)
+    }
+}
+
+function read<D extends { ref: string }>(f: (editor: StructureReteEditor, data: D, client: ClientSide, id: string | undefined) => any): MessageFunction<ClientSide, D> {
+    return (data, client, id) => {
+        client.ensurePermission(PERMISSIONS.ACCESS_DATAPACK)
+        f(getEditor(client, data), data, client, id)
+    }
 }
 
 function getEditor(client: ClientSide, data: { ref: string }): StructureReteEditor {

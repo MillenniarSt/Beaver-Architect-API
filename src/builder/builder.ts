@@ -8,38 +8,40 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { RandomList, Seed } from "../util/random.js";
+import { Random, Seed } from "./random/random.js";
 import { Line3 } from "../world/geo/line.js";
 import { Object3 } from "../world/geo/object.js";
 import { Surface } from "../world/geo/surface.js";
-import { builderFromJson } from "./collective.js";
-import { MaterialReference } from "../engineer/data-pack/style/material.js";
-import { Option } from "../util/option.js";
+import { builderFromJson } from "./collective-decorator.js";
+import { Option } from "./option.js";
 import { GenerationStyle } from "../engineer/data-pack/style/style.js";
 import { type Geo3 } from "../world/geo.js";
+import { ArchitectRandom } from "./random/architect.js";
+import { recordFromJson, recordToJson } from "../util/util.js";
 
 export type BuilderChild<B extends Builder, O extends Record<string, Option>> = {
     builder: B
     options: O
 }
 
-export abstract class Builder<G extends Geo3 = any, O extends Record<string, Option> = Record<string, Option>, C extends Record<string, Option> = Record<string, Option>> {
+export abstract class Builder<G extends Geo3 = any, O extends Record<string, Option> = Record<string, Option>> {
 
     constructor(
-        readonly options: O,
-        public materials: RandomList<MaterialReference>
-    ) {
-        materials.itemToJson = (ref) => ref.toJson()
-    }
+        readonly options: O
+    ) { }
 
-    abstract get children(): BuilderChild<Builder, C>[]
+    abstract get children(): BuilderChild<Builder, Record<string, Option>>[]
 
     // Building
 
-    protected abstract buildChildren(context: G, style: GenerationStyle, seed: Seed): BuilderResult[]
+    protected abstract buildChildren(context: G, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[]
 
-    build(context: G, style: GenerationStyle, seed: Seed): BuilderResult<G> {
-        return new BuilderResult(context, this.materials.seeded(seed), this.buildChildren(context, style, seed))
+    build(context: G, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult<G> {
+        return new BuilderResult(
+            context, 
+            Object.fromEntries(Object.entries(this.options).map(([key, option]) => [key, option.getRandom(style, parameters)]).filter((random) => random instanceof ArchitectRandom)), 
+            this.buildChildren(context, style, parameters, seed)
+        )
     }
 
     // Json & Save
@@ -51,7 +53,6 @@ export abstract class Builder<G extends Geo3 = any, O extends Record<string, Opt
     toJson() {
         return {
             name: this.constructor.name,
-            materials: this.materials.toJson(),
             options: Object.fromEntries(Object.entries(this.options).map(([key, option]) => [key, option.toJson()])),
             children: this.children.map((child: any) => { return {
                 builder: child.builder.toJson(),
@@ -67,17 +68,17 @@ export abstract class Builder<G extends Geo3 = any, O extends Record<string, Opt
     }
 }
 
-export abstract class LineBuilder<L extends Line3 = Line3, O extends Record<string, Option> = Record<string, Option>, C extends Record<string, Option> = Record<string, Option>> extends Builder<L, O, C> { }
+export abstract class LineBuilder<L extends Line3 = Line3, O extends Record<string, Option> = Record<string, Option>> extends Builder<L, O> { }
 
-export abstract class SurfaceBuilder<S extends Surface = Surface, O extends Record<string, Option> = Record<string, Option>, C extends Record<string, Option> = Record<string, Option>> extends Builder<S, O, C> { }
+export abstract class SurfaceBuilder<S extends Surface = Surface, O extends Record<string, Option> = Record<string, Option>> extends Builder<S, O> { }
 
-export abstract class ObjectBuilder<O extends Object3 = Object3, Opt extends Record<string, Option> = Record<string, Option>, C extends Record<string, Option> = Record<string, Option>> extends Builder<O, Opt, C> { }
+export abstract class ObjectBuilder<O extends Object3 = Object3, Opt extends Record<string, Option> = Record<string, Option>> extends Builder<O, Opt> { }
 
 export class BuilderResult<T extends Geo3 = any> {
 
     constructor(
         readonly object: T,
-        readonly material: MaterialReference | undefined = undefined,
+        readonly architectRandom: Record<string, ArchitectRandom>,
         readonly children: BuilderResult[] = [],
     ) { }
 
@@ -89,22 +90,15 @@ export class BuilderResult<T extends Geo3 = any> {
             case 'object': object = Object3.fromJson(json.object); break
             default: throw new Error(`BuilderResult: invalid type while parsing json: ${json.type}`)
         }
-        return new BuilderResult(object, json.material ? MaterialReference.fromJson(json.material) : undefined, json.children.map((child: any) => BuilderResult.fromJson(child)))
+        return new BuilderResult(object, recordFromJson(json.architectRandom, ArchitectRandom.fromJson), json.children.map((child: any) => BuilderResult.fromJson(child)))
     }
 
     toJson(): {} {
         return {
             type: this.object.type,
             object: this.object.toJson(),
-            material: this.material?.toJson(),
+            architectRandom: recordToJson(this.architectRandom),
             children: this.children.map((child) => child.toJson())
         }
     }
-}
-
-export abstract class ChildrenManager {
-
-    abstract canAddChild(): boolean
-
-    abstract addChild(): void
 }

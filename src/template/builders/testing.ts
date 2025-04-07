@@ -4,7 +4,7 @@ import { GridAxisAlignment, GridRectBuilder } from "../../builder/surface/rect.j
 import { SurfaceToPrismBuilder } from "../../builder/surface/to-prism.js";
 import { MaterialReference } from "../../engineer/data-pack/style/material.js";
 import { Option } from "../../util/option.js";
-import { RandomList, RandomNumber, RandomVec2 } from "../../util/random.js";
+import { RandomList, RandomNumber, RandomVec2 } from "../../builder/random/random.js";
 
 /**
  * Use Styles in '../styles/testing.ts' for the Build

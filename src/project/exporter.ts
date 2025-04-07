@@ -12,7 +12,7 @@ import { v4 } from "uuid";
 import { BuilderResult } from "../builder/builder.js";
 import { PostGenerationStyle } from "../engineer/data-pack/style/style.js";
 import { getArchitect } from "../instance.js";
-import { Seed } from "../util/random.js";
+import { Seed } from "../builder/random/random.js";
 
 export type ExportToArchitectUpdate = {
     isDone?: boolean

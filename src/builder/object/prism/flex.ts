@@ -8,60 +8,33 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { MaterialReference } from "../../../engineer/data-pack/style/material.js";
 import { GenerationStyle } from "../../../engineer/data-pack/style/style.js";
-import { Option } from "../../../util/option.js";
-import { RandomBoolean, RandomList, RandomNumber, Seed } from "../../../util/random.js";
 import { Plane2 } from "../../../world/bi-geo/plane.js";
 import { Prism } from "../../../world/geo/object.js";
 import { Vec3 } from "../../../world/vector.js";
-import { type BuilderChild, BuilderResult, ChildrenManager, ObjectBuilder } from "../../builder.js";
-import { MultiChildBuilder } from "../../collective.js";
-import { EmptyBuilder } from "../../generic/empty.js";
+import { type BuilderChild, BuilderResult, ObjectBuilder } from "../../builder.js";
+import type { Option } from "../../option.js";
+import type { Seed } from "../../random/random.js";
 
-@MultiChildBuilder((json) => {
-    return {
-        isStatic: Option.fromJson(json.isStatic),
-        weight: Option.fromJson(json.weight)
-    }
-})
-export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<Prism<P>, {}, {
-    isStatic: Option<boolean>,
-    weight: Option<number>
-}> implements ChildrenManager {
+export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<Prism<P>, {}> {
 
     constructor(
         public children: BuilderChild<ObjectBuilder<Prism<P>>, {
             isStatic: Option<boolean>,
             weight: Option<number>
-        }>[],
-        materials: RandomList<MaterialReference> = new RandomList()
+        }>[]
     ) {
-        super({}, materials)
+        super({})
     }
 
-    canAddChild(): boolean {
-        return true
-    }
-
-    addChild(): void {
-        this.children.push({
-            builder: new EmptyBuilder(),
-            options: {
-                isStatic: new Option(RandomBoolean.constant(true)),
-                weight: new Option(RandomNumber.constant(1))
-            }
-        })
-    }
-
-    protected buildChildren(context: Prism<P>, style: GenerationStyle, seed: Seed): BuilderResult[] {
+    protected buildChildren(context: Prism<P>, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[] {
         const height = context.height
 
         let staticsHeight = 0
         let totalWeight = 0
         const children = this.children.map((child) => {
-            const isStatic = child.options.isStatic.get(style, seed)
-            const weight = child.options.weight.get(style, seed)
+            const isStatic = child.options.isStatic.get(style, parameters, seed)
+            const weight = child.options.weight.get(style, parameters, seed)
             if (isStatic) {
                 staticsHeight += weight
             } else {
@@ -80,7 +53,7 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
             let z = 0
             children.forEach((child) => {
                 if (child.isStatic) {
-                    results.push(child.builder.build(new Prism(context.base.move(new Vec3(0, 0, z)), child.weight), style, seed))
+                    results.push(child.builder.build(new Prism(context.base.move(new Vec3(0, 0, z)), child.weight), style, parameters, seed))
                     z += child.weight
                 }
             })
@@ -91,10 +64,10 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
         let z = 0
         children.forEach((child) => {
             if (child.isStatic) {
-                results.push(child.builder.build(new Prism(context.base.move(new Vec3(0, 0, z)), child.weight), style, seed))
+                results.push(child.builder.build(new Prism(context.base.move(new Vec3(0, 0, z)), child.weight), style, parameters, seed))
                 z += child.weight
             } else {
-                results.push(child.builder.build(new Prism(context.base.move(new Vec3(0, 0, z)), (totalWeight / child.weight) * height), style, seed))
+                results.push(child.builder.build(new Prism(context.base.move(new Vec3(0, 0, z)), (totalWeight / child.weight) * height), style, parameters, seed))
             }
         })
         return results

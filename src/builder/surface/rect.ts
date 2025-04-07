@@ -8,18 +8,19 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { MaterialReference } from "../../engineer/data-pack/style/material.js";
 import { GenerationStyle } from "../../engineer/data-pack/style/style.js";
 import { NodeTypedBuilder } from "../../engineer/editors/rete/nodes/builder.js";
-import { Option } from "../../util/option.js";
-import { RandomList, RandomVec2, RandomVec4, Seed } from "../../util/random.js";
 import { Rect2 } from "../../world/bi-geo/plane.js";
 import { Plane3 } from "../../world/geo/surface.js";
 import { Vec2, Vec4 } from "../../world/vector.js";
 import { BuilderResult, SurfaceBuilder } from "../builder.js";
-import { SingleChildBuilder } from "../collective.js";
-import { EmptyBuilder } from "../generic/empty.js";
+import { Option } from "../option.js";
+import { ConstantSquareEnum } from "../random/enum.js";
+import type { Seed } from "../random/random.js";
+import { ConstantVec2 } from "../random/vec/vec2.js";
+import { ConstantVec4 } from "../random/vec/vec4.js";
 
+export type GridAxisAlignmentValue = 'start' | 'center' | 'end' | 'fill'
 export enum GridAxisAlignment {
     START = 'start',
     CENTER = 'center',
@@ -33,57 +34,48 @@ export enum GridAxisAlignment {
     outputs: {
         child: { object: Rect2, getChildren: (builder) => [builder.child] }
     },
-    get: (getChild, getChildren, getOption, materials) => new GridRectBuilder(getChildren('child')[0] ?? new EmptyBuilder(), {}, materials)
-})
-@SingleChildBuilder((json) => {
-    return {
-        alignment: Option.fromJson(json.alignment),
-        cell: Option.fromJson(json.cell),
-        gap: Option.fromJson(json.gap),
-        padding: Option.fromJson(json.padding)
-    }
+    get: (getChild, getChildren, getOption, materials) => new GridRectBuilder(getChildren('child')[0], {})
 })
 export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>, {
-    alignment: Option<[GridAxisAlignment, GridAxisAlignment] | undefined>
+    alignment: Option<[GridAxisAlignmentValue, GridAxisAlignmentValue] | undefined>
     cell: Option<Vec2>
     gap: Option<Vec2>
     padding: Option<Vec4>
-}, {}> {
+}> {
 
     constructor(
         protected child: SurfaceBuilder<Plane3<Rect2>>,
         options: {
-            alignment?: Option<[GridAxisAlignment, GridAxisAlignment] | undefined>
+            alignment?: Option<[GridAxisAlignmentValue, GridAxisAlignmentValue] | undefined>
             cell?: Option<Vec2>
             gap?: Option<Vec2>
             padding?: Option<Vec4>
-        } = {},
-        materials: RandomList<MaterialReference> = new RandomList()
+        } = {}
     ) {
         super({
-            alignment: options.alignment ?? new Option(RandomList.constant([GridAxisAlignment.FILL, GridAxisAlignment.FILL])),
-            cell: options.cell ?? new Option(RandomVec2.constant(1)),
-            gap: options.gap ?? new Option(RandomVec2.constant(0)),
-            padding: options.padding ?? new Option(RandomVec4.constant(0))
-        }, materials)
+            alignment: options.alignment ?? Option.random(new ConstantSquareEnum<GridAxisAlignmentValue[]>([GridAxisAlignment.FILL, GridAxisAlignment.FILL])),
+            cell: options.cell ?? Option.random(new ConstantVec2(Vec2.UNIT)),
+            gap: options.gap ?? Option.random(new ConstantVec2(Vec2.ZERO)),
+            padding: options.padding ?? Option.random(new ConstantVec4(Vec4.ZERO))
+        })
     }
 
-    buildChildren(context: Plane3<Rect2>, style: GenerationStyle, seed: Seed): BuilderResult[] {
-        const gap = this.options.gap.get(style, seed)
-        const padding = this.options.padding.get(style, seed)
-        const alignment = this.options.alignment.get(style, seed)!
-        let cell = this.options.cell.get(style, seed)
+    buildChildren(context: Plane3<Rect2>, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[] {
+        const gap = this.options.gap.get(style, parameters, seed)
+        const padding = this.options.padding.get(style, parameters, seed)
+        const alignment = this.options.alignment.get(style, parameters, seed)!
+        let cell = this.options.cell.get(style, parameters, seed)
 
         const size = context.plane.size.subtract(new Vec2(padding.b + padding.d, padding.a + padding.c))
 
         if (context.plane.size.isLess(cell)) {
             if (size.isLess(cell)) {
                 console.warn('GridRectBuilder: size is less than a cell with padding')
-                return [this.child.build(context, style, seed)]
+                return [this.child.build(context, style, parameters, seed)]
             } else {
                 console.warn('GridRectBuilder: size is less than a cell')
                 const rect = new Rect2(context.plane.pos.add(new Vec2(padding.d, padding.c)), size)
-                return [this.child.build(context.withPlane(rect), style, seed)]
+                return [this.child.build(context.withPlane(rect), style, parameters, seed)]
             }
         }
 
@@ -113,7 +105,7 @@ export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>, {
         for (let i = 0; i < repetitions.x; i++) {
             for (let j = 0; j < repetitions.y; j++) {
                 const rect = new Rect2(new Vec2(x + (i * (cell.x + gap.x)), y + (j * (cell.y + gap.y))), cell)
-                results.push(this.child.build(context.withPlane(rect), style, seed))
+                results.push(this.child.build(context.withPlane(rect), style, parameters, seed))
             }
         }
 

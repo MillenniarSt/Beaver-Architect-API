@@ -11,12 +11,10 @@
 import fs from 'fs'
 import path from 'path'
 import { Project, type ProjectData, registerProjectMessages, Version } from "./project/project.js"
-import { architectsDir, dir, librariesDir, projectsDir } from './util/paths.js'
 import { registerStyleMessages } from './engineer/data-pack/style/messages.js'
 import { type OnMessage, server, type ServerOnMessage } from './connection/server.js'
 import { registerDirectorMessages } from './connection/director.js'
-import { argv } from 'process'
-import { commander, setArchitect } from './instance.js'
+import { commander, getProject, setArchitect, setLocalUser, users } from './instance.js'
 import { type ArchitectData, loadArchitect } from './project/architect.js'
 import { registerEnStructureMessages } from './engineer/data-pack/structure/messages.js'
 import { registerEditorMessages } from './engineer/editor.js'
@@ -44,11 +42,6 @@ console.error = (...args) => {
     server.sendAll('message', { severity: 'error', summary: 'Server Error', detail: args.join(' ') })
 }
 
-const debug = console.debug
-console.debug = (...args) => {
-    debug('[     Server     ] | DEBUG |', ...args)
-}
-
 /**
  * Import all Builders here
  * so you make sure they are registered
@@ -57,20 +50,14 @@ import './builder/surface/rect.js'
 import './builder/surface/to-prism.js'
 import './builder/object/prism/stack.js'
 import './builder/object/prism/flex.js'
-import { identifierToLabel, idToLabel, labelToId } from './util/form.js'
+import { identifierToLabel, labelToId } from './util/form.js'
 import { userInfo } from 'os'
+import { LocalUser, User } from './connection/user.js'
 
 const identifier = process.env.IDENTIFIER ?? `${labelToId(userInfo().username)}.project`
 const port = process.env.PORT ? Number(process.env.PORT) : 8224
 const isPublic = process.env.IS_PUBLIC === 'true'
-
-if (!fs.existsSync(dir)) {
-    console.info('Generating Beaver Architect default resources for the first launch...')
-    fs.mkdirSync(dir)
-    fs.mkdirSync(projectsDir)
-    fs.mkdirSync(architectsDir)
-    fs.mkdirSync(librariesDir)
-}
+const dir = process.env.DIR ?? __dirname
 
 console.info(`Starting local project Server '${identifier}' on port ${port} ${isPublic ? '[PUBLIC]' : ''}...`)
 
@@ -78,11 +65,11 @@ commander.open()
 
 let projectData: ProjectData
 let architectData: ArchitectData
-if(fs.existsSync(path.join(projectsDir, identifier))) {
-    projectData = JSON.parse(fs.readFileSync(path.join(projectsDir, identifier, 'project.json'), 'utf8'))
-    architectData = JSON.parse(fs.readFileSync(path.join(projectsDir, identifier, 'architect.json'), 'utf8'))
+if(fs.existsSync(dir)) {
+    projectData = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf8'))
+    architectData = JSON.parse(fs.readFileSync(path.join(dir, 'architect.json'), 'utf8'))
 
-    await Project.load(path.join(projectsDir, identifier), projectData)
+    await Project.load(dir, projectData)
 } else {
     console.info(`Generating default resources for new project '${identifier}'...`)
 
@@ -94,16 +81,20 @@ if(fs.existsSync(path.join(projectsDir, identifier))) {
         version: new Version('1.0.0').toJson(),
         dependencies: []
     }
-    architectData = { identifier: 'minecraft', version: new Version('1.0.0').toJson(), name: 'Minecraft' }
+    architectData = { identifier: 'minecraft', version: new Version('1.0.0-1.20.1').toJson(), port: 8225, name: 'Minecraft' }
 
-    Project.create(projectData, architectData)
+    await Project.create(dir, projectData, architectData)
 }
 
-console.log(`Launching Architect ${architectData.name}...`)
-const architect = await loadArchitect(architectData.identifier, projectData.identifier)
-console.info(`Loaded Architect ${architect.name} [${architectData.identifier}]`)
+Object.entries(getProject().read('users.json')).map(([id, user]) => {
+    users.set(id, User.fromJson(user))
+})
 
-setArchitect(architect)
+console.log(`Launching Architect ${architectData.name}...`)
+const architectSide = await loadArchitect(architectData, projectData.identifier)
+console.info(`Loaded Architect ${architectSide.architect.name} [${architectData.identifier}]`)
+
+setArchitect(architectSide)
 
 const onServerMessage: ServerOnMessage = new Map()
 registerProjectMessages(onServerMessage as OnMessage)
@@ -114,8 +105,6 @@ registerEditorMessages(onServerMessage)
 
 const url = await server.open(port, isPublic, onServerMessage)
 console.info(`Opened Project Server '${identifier}' on ${url ?? `port ${port}`}`)
-
-import './command/commander.js'
 
 /*
 // Testing

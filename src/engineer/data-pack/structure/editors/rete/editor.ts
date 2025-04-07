@@ -15,7 +15,7 @@ import { RandomReteNode, randomReteNodeUpdate, type RandomReteNodeUpdate } from 
 import { StructureEngineerReteNode, structureEngineerReteNodeUpdate, type StructureEngineerReteNodeUpdate } from "../../../../editors/rete/nodes/engineer.js";
 import { BuilderReteNode, builderReteNodeUpdate, type BuilderReteNodeUpdate, getBuilderReteType, IncompatibleReteBuilderTypes } from "../../../../editors/rete/nodes/builder.js";
 import { ReteMultiplePortSocket, ReteMultipleSocket, RetePortSocket } from "../../../../editors/rete/sockets/base.js";
-import { RandomList } from "../../../../../util/random.js";
+import { RandomList } from "../../../../../builder/random/random.js";
 import { Option } from "../../../../../util/option.js";
 
 export type StructureReteEditorUpdate = {

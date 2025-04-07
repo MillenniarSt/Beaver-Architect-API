@@ -1,9 +1,9 @@
 import { Builder } from "../../../../builder/builder.js"
 import { ObjectUpdate, VarUpdate } from "../../../../connection/directives/update.js"
-import { InternalServerWarn } from "../../../../connection/errors.js"
+import { InternalServerError } from "../../../../connection/errors.js"
 import { idToLabel } from "../../../../util/form.js"
 import { Option } from "../../../../util/option.js"
-import { RandomList } from "../../../../util/random.js"
+import { RandomList } from "../../../../builder/random/random.js"
 import { type Geo3Function, isGeoCompatible } from "../../../../world/geo.js"
 import { Vec2 } from "../../../../world/vector.js"
 import { MaterialReference } from "../../../data-pack/style/material.js"
@@ -110,7 +110,7 @@ export class BuilderReteNode<B extends Builder = Builder> extends ReteNode {
     }
 }
 
-export class IncompatibleReteBuilderTypes extends InternalServerWarn {
+export class IncompatibleReteBuilderTypes extends InternalServerError {
 
     constructor(readonly parent: NodeBuilderType, readonly child: NodeBuilderType, readonly port: string) {
         super(`Builders have incompatible types on port '${port}', type '${parent.label}' is incompatible with '${child.label}'`)

@@ -1,3 +1,4 @@
+import { ServerProblem } from '../connection/errors'
 import { PermissionLevel } from '../connection/permission'
 import type { Side } from '../connection/sides'
 
@@ -48,7 +49,11 @@ export abstract class Commander {
         const args = line.split(' ')
         const command = this.commands.get(args[0])
         if(command) {
-            command.execute(this, args.slice(1))
+            try {
+                command.execute(this, args.slice(1))
+            } catch(exc) {
+                this.error(exc instanceof ServerProblem ? exc.print() : exc as any)
+            }
         } else {
             this.error(`Invalid command '${args[0]}'`)
         }
@@ -69,21 +74,16 @@ export class Command<C extends Commander = Commander> extends AbstractCommand<C>
     constructor(
         id: string,
         readonly args: CommandArgs,
-        readonly permissions: PermissionLevel,
         protected readonly exe: (commander: C, args: string[]) => void
     ) {
         super(id)
     }
 
     execute(commander: C, args: string[]) {
-        if(commander.side.permissions.hasPermissions(this.permissions)) {
-            if(this.args.validate(args)) {
-                this.exe(commander, this.args.get(args))
-            } else {
-                commander.error(`Invalid command arguments, missing: ${this.args.getMissing(args).join(', ')}`)
-            }
+        if(this.args.validate(args)) {
+            this.exe(commander, this.args.get(args))
         } else {
-            commander.error(`You do not have the permissions required for command '${args[0]}': ${this.permissions.printPermissions()}`)
+            commander.error(`Invalid command arguments, missing: ${this.args.getMissing(args).join(', ')}`)
         }
     }
 }

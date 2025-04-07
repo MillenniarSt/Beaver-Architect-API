@@ -1,7 +1,7 @@
 import { Vec2 } from "../../../../world/vector.js"
 import { ReteNode, type ReteNodeUpdate } from "../rete.js"
 import { ObjectUpdate, VarUpdate } from "../../../../connection/directives/update.js"
-import { Random } from "../../../../util/random.js"
+import { Random } from "../../../../builder/random/random.js"
 
 export type RandomReteNodeUpdate = ReteNodeUpdate & {
     

@@ -8,7 +8,7 @@ export function registerEnStructureMessages(onMessage: ServerOnMessage) {
     onMessage.set('data-pack/structures/create', (data, client, id) => {
         const ref = new StructureReference(data.ref)
         const structure = new StructureEngineer(ref, StyleDependency.empty(), new EmptyBuilder())
-        getProject(ref.pack).dataPack.engineers.structures.set(structure.reference.location, structure)
+        getProject(ref.pack).dataPack.structures.set(structure.reference.location, structure)
         structure.save()
         client.respond(id, {})
     })

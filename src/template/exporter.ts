@@ -3,7 +3,7 @@ import { Style } from "../engineer/data-pack/style/style.js"
 import { StructureEngineer, StructureReference } from "../engineer/data-pack/structure/structure.js"
 import { Exporter } from "../project/exporter.js"
 import { Structure } from "../project/structure.js"
-import { Seed } from "../util/random.js"
+import { Seed } from "../builder/random/random.js"
 import { type Geo3 } from "../world/geo.js"
 import { StyleDependency } from "../engineer/data-pack/style/dependency.js"
 

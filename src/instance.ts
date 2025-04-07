@@ -10,15 +10,15 @@
 
 import { commands } from './command/commands.js';
 import { ConsoleCommander } from './command/console.js';
-import { Permission, PermissionLevel } from './connection/permission.js';
-import { ServerSide } from './connection/sides.js';
+import { ArchitectSide, ServerSide } from './connection/sides.js';
+import type { LocalUser, User } from './connection/user.js';
 import { Architect } from './project/architect.js';
 import { Project } from './project/project.js';
 import readline from 'readline';
 
 // Server Side
 
-const serverSide: ServerSide = new ServerSide(new PermissionLevel(Permission.owner()))
+export const SERVER_SIDE: ServerSide = new ServerSide()
 
 // Commander
 
@@ -27,24 +27,45 @@ export const commander = new ConsoleCommander(
         input: process.stdin,
         output: process.stdout
     }),
-    serverSide,
+    SERVER_SIDE,
     commands
 )
 
-// Architect
+// Users
 
-let _architect: Architect | undefined
+let _localUser: LocalUser | undefined
+export const users: Map<string, User> = new Map()
 
-export function setArchitect(architect: Architect) {
-    if (_architect === undefined) {
-        _architect = architect
+export function setLocalUser(localUser: LocalUser) {
+    if (_localUser === undefined) {
+        _localUser = localUser
     } else {
-        console.error('Architect already set')
+        console.error('Local User already set')
     }
 }
 
+export function getLocalUser(): LocalUser {
+    return _localUser!
+}
+
+// Architect
+
+let _architectSide: ArchitectSide | undefined
+
+export function setArchitect(architect: ArchitectSide) {
+    if (_architectSide === undefined) {
+        _architectSide = architect
+    } else {
+        console.error('ArchitectSide already set')
+    }
+}
+
+export function getArchitectSide(): ArchitectSide {
+    return _architectSide!
+}
+
 export function getArchitect(): Architect {
-    return _architect!
+    return _architectSide!.architect
 }
 
 // Project
@@ -72,4 +93,10 @@ export function getProject(identifier?: string): Project {
 
 export function getProjectOrNull(identifier: string): Project | null {
     return loadedProjects[identifier]
+}
+
+export function close() {
+    commander.close()
+    getArchitect().process.kill()
+    process.exit()
 }

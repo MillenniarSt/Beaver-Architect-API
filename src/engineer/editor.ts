@@ -1,7 +1,7 @@
 import { ClientDirector } from "../connection/director.js";
 import { NameNotRegistered } from "../connection/errors.js";
 import { type MessageFunction, type ServerOnMessage } from "../connection/server.js";
-import { ClientSide } from "../connection/sides.js";
+import { ClientSide, Side } from "../connection/sides.js";
 import { getProject } from "../instance.js";
 import { type ToJson } from "../util/util.js";
 import { Engineer, ResourceReference } from "./engineer.js";

@@ -8,51 +8,27 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-export type MaterialDependency = {
-    id: string
-}
-
-export type StyleOptionDependency = {
-    id: string
-}
-
 export class StyleDependency {
 
     constructor(
-        readonly materials: MaterialDependency[],
-        readonly options: StyleOptionDependency[]
+        readonly randoms: Record<string, string>
     ) { }
 
     static empty(): StyleDependency {
-        return new StyleDependency([], [])
+        return new StyleDependency({})
     }
 
     static fromJson(json: any): StyleDependency {
-        return new StyleDependency(json.materials, json.options)
+        return new StyleDependency(json.randoms)
     }
 
-    static join(dependencies: StyleDependency[]): StyleDependency {
-        if(dependencies.length === 0) {
-            return new StyleDependency([], [])
-        }
-        return new StyleDependency(
-            dependencies.map((dependence) => dependence.materials).reduce((p, c) => p.concat(c), dependencies[0]!.materials),
-            dependencies.map((dependence) => dependence.options).reduce((p, c) => p.concat(c), dependencies[0]!.options)
-        )
-    }
-
-    getMaterial(id: string): MaterialDependency {
-        return this.materials.find((material) => material.id === id)!
-    }
-
-    getOption(id: string): StyleOptionDependency {
-        return this.options.find((v) => v.id === id)!
+    join(dependency: StyleDependency): StyleDependency {
+        return new StyleDependency({ ...this.randoms, ...dependency.randoms })
     }
 
     toJson() {
         return {
-            materials: this.materials,
-            options: this.options
+            randoms: this.randoms
         }
     }
 }
