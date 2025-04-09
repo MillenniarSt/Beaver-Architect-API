@@ -1,3 +1,13 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { Builder } from "../../../../builder/builder.js"
 import { ObjectUpdate, VarUpdate } from "../../../../connection/directives/update.js"
 import { InternalServerError } from "../../../../connection/errors.js"

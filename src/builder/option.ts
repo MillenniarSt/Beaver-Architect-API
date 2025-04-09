@@ -103,7 +103,7 @@ export class Option<T = any> {
 
     toJson() {
         return {
-            random: this.random?.toJson(),
+            random: this.random?.toNamedJson(),
             paramRef: this.paramRef,
             styleRef: this.styleRef
         }

@@ -13,7 +13,8 @@ import { NodeTypedBuilder } from "../../engineer/editors/rete/nodes/builder.js";
 import { Rect2 } from "../../world/bi-geo/plane.js";
 import { Plane3 } from "../../world/geo/surface.js";
 import { Vec2, Vec4 } from "../../world/vector.js";
-import { BuilderResult, SurfaceBuilder } from "../builder.js";
+import { Builder, BuilderResult, SurfaceBuilder } from "../builder.js";
+import { builderFromJson } from "../collective.js";
 import { Option } from "../option.js";
 import { ConstantSquareEnum } from "../random/enum.js";
 import type { Seed } from "../random/random.js";
@@ -43,6 +44,8 @@ export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>, {
     padding: Option<Vec4>
 }> {
 
+    static readonly type = 'gridRect'
+
     constructor(
         protected child: SurfaceBuilder<Plane3<Rect2>>,
         options: {
@@ -58,6 +61,18 @@ export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>, {
             gap: options.gap ?? Option.random(new ConstantVec2(Vec2.ZERO)),
             padding: options.padding ?? Option.random(new ConstantVec4(Vec4.ZERO))
         })
+    }
+
+    static fromJson(json: any): GridRectBuilder {
+        return new GridRectBuilder(
+            builderFromJson(json.child),
+            {
+                alignment: Option.fromJson(json.alignment),
+                cell: Option.fromJson(json.cell),
+                gap: Option.fromJson(json.gap),
+                padding: Option.fromJson(json.padding)
+            }
+        )
     }
 
     buildChildren(context: Plane3<Rect2>, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[] {
@@ -112,13 +127,9 @@ export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>, {
         return results
     }
 
-    get children(): [{
-        builder: SurfaceBuilder<Plane3<Rect2>>,
-        options: {}
-    }] {
-        return [{
-            builder: this.child,
-            options: {}
-        }]
+    protected additionalJson() {
+        return {
+            child: this.child.toJson()
+        }
     }
 }

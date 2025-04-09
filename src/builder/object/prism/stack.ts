@@ -13,6 +13,7 @@ import { Plane2 } from '../../../world/bi-geo/plane.js';
 import { Prism } from '../../../world/geo/object.js';
 import { Vec2, Vec3 } from '../../../world/vector.js';
 import { type BuilderChild, BuilderResult, ObjectBuilder } from '../../builder.js';
+import { childrenFromJson } from '../../collective.js';
 import { Option } from '../../option.js';
 import { ConstantEnum } from '../../random/enum.js';
 import { ConstantNumber } from '../../random/number.js';
@@ -41,6 +42,8 @@ export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<
     padding: Option<Vec2>
 }> {
 
+    static readonly type = 'stackPrism'
+
     constructor(
         public children: BuilderChild<ObjectBuilder<Prism<P>>, {
             height: Option<number>
@@ -58,6 +61,18 @@ export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<
             gap: options.gap ?? Option.random(new ConstantNumber(0)),
             padding: options.padding ?? Option.random(new ConstantVec2(Vec2.ZERO))
         })
+    }
+
+    static fromJson(json: any): StackPrismBuilder {
+        return new StackPrismBuilder(
+            childrenFromJson(json.children),
+            {
+                alignment: Option.fromJson(json.alignment),
+                repeat: Option.fromJson(json.repeat),
+                gap: Option.fromJson(json.gap),
+                padding: Option.fromJson(json.padding)
+            }
+        )
     }
 
     protected buildChildren(context: Prism<P>, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[] {
@@ -130,6 +145,12 @@ export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<
                 results.push(this.children[i % this.children.length].builder.build(prism, style, parameters, seed))
             }
             return results
+        }
+    }
+
+    protected additionalJson(): Record<string, any> {
+        return {
+            children: this.childrenToJson(this.children)
         }
     }
 }

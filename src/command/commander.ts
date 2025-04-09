@@ -1,3 +1,13 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { ServerProblem } from '../connection/errors'
 import { PermissionLevel } from '../connection/permission'
 import type { Side } from '../connection/sides'

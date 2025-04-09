@@ -1,3 +1,13 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { ClientDirector } from "../../../../../connection/director.js";
 import { InternalServerError } from "../../../../../connection/errors.js";
 import { PERMISSIONS } from "../../../../../connection/permission.js";

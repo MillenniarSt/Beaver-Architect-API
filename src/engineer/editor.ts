@@ -1,3 +1,13 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { ClientDirector } from "../connection/director.js";
 import { NameNotRegistered } from "../connection/errors.js";
 import { type MessageFunction, type ServerOnMessage } from "../connection/server.js";

@@ -9,14 +9,21 @@
 //      ##    \__|__/
 
 import { ChildProcess, spawn } from 'child_process';
-import fs from 'fs';
-import path, { resolve } from 'path';
+import path from 'path';
 import { WebSocket } from 'ws';
 import { registerProjectMessages } from '../project/project.js';
 import { ArchitectSide } from '../connection/sides.js';
 import { type OnMessage, toSocketError } from '../connection/server.js';
 import { PermissionLevel, PERMISSIONS } from '../connection/permission.js';
-import { getProject } from '../instance.js';
+import { closeExceptArchitect, getProject } from '../instance.js';
+import { ConstantRandom, Random } from '../builder/random/random.js';
+import { ArchitectConstant, ArchitectRandom } from '../builder/random/architect.js';
+import { RandomType } from '../builder/random/type.js';
+import { BuilderType } from '../builder/collective.js';
+import { ArchitectBuilder } from '../builder/generic/architect.js';
+import { EmptyBuilder } from '../builder/generic/empty.js';
+import { parseRecord } from '../util/util.js';
+import { Option } from '../builder/option.js';
 
 export class Architect {
 
@@ -63,8 +70,18 @@ export interface ArchitectData {
 }
 
 export async function loadArchitect(data: ArchitectData, projectIdentifier: string): Promise<ArchitectSide> {
+    const exePath = path.join(getProject().dir, 'architect', 'architect.exe')
+    if(!getProject().exists(exePath)) {
+        console.error(`Missing Architect: install an architect in '${exePath}'`)
+        closeExceptArchitect()
+    }
+
+    /**
+     * Open architect as a different process controlled by the server
+     * and wait its setup
+     */
     const process: ChildProcess = await new Promise((resolve) => {
-        const architectProcess = spawn(path.join(getProject().dir, 'architect', 'architect.exe'), [
+        const architectProcess = spawn(exePath, [
             projectIdentifier,
             `${data.port}`,
             'false'
@@ -96,6 +113,9 @@ export async function loadArchitect(data: ArchitectData, projectIdentifier: stri
 
     const architect = new Architect(process, data, new PermissionLevel([PERMISSIONS.MANAGE_ARCHITECT_FILE]))
 
+    /**
+     * Create Architect Side and connect to Architect Websocket server
+     */
     const side = await new Promise<ArchitectSide>((resolve) => {
         const ws = new WebSocket(`ws://localhost:${data.port}`)
 
@@ -140,6 +160,34 @@ export async function loadArchitect(data: ArchitectData, projectIdentifier: stri
         ws.onerror = (error) => {
             console.error('WebSocket Error: ', error)
         }
+    })
+
+    /**
+     * Architect Random registration
+     *  - @param id: unique type id of RandomType
+     *  - @param constant: json convertible to a registered ConstantRandom
+     *  - @param randoms: record of possibles random creations, values must be convertible to Random
+     */
+    const architectRandomTypes: { id: string, constant: any, randoms: Record<string, any> }[] = await side.request('random/get')
+    architectRandomTypes.forEach((randomType) => RandomType.register(
+        randomType.id, 
+        () => new ArchitectConstant(randomType.id, ConstantRandom.fromJson(randomType.constant)),
+        parseRecord(randomType.randoms, (random) => () => new ArchitectRandom(randomType.id, Random.fromJson(random))),
+        true
+    ))
+
+    /**
+     * Architect Builders registration
+     *  - @param id: unique type id of BuilderType
+     *  - @param options: options supported by the builder, values are types of RandomType
+     */
+    const architectBuilderTypes: { id: string, options: Record<string, string> }[] = await side.request('builder/get')
+    architectBuilderTypes.forEach((builderType) => {
+        BuilderType.register(new BuilderType(
+            builderType.id, 
+            ArchitectBuilder.fromJson, 
+            () => new ArchitectBuilder(builderType.id, EmptyBuilder.VOID, parseRecord(builderType.options, (random) => Option.random(RandomType.get(random).constant())))
+        ))
     })
 
     return side

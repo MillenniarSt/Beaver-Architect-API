@@ -1,10 +1,22 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { EmptyBuilder } from "../../builder/generic/empty.js";
 import { ToFacesPrismBuilder } from "../../builder/object/prism/to-faces.js";
-import { GridAxisAlignment, GridRectBuilder } from "../../builder/surface/rect.js";
+import { Option } from "../../builder/option.js";
+import { ConstantSquareEnum } from "../../builder/random/enum.js";
+import { ConstantNumber, RandomNumber } from "../../builder/random/number.js";
+import { ConstantVec2, type RandomVec2 } from "../../builder/random/vec/vec2.js";
+import { GridAxisAlignment, GridAxisAlignmentValue, GridRectBuilder } from "../../builder/surface/rect.js";
 import { SurfaceToPrismBuilder } from "../../builder/surface/to-prism.js";
-import { MaterialReference } from "../../engineer/data-pack/style/material.js";
-import { Option } from "../../util/option.js";
-import { RandomList, RandomNumber, RandomVec2 } from "../../builder/random/random.js";
+import { Vec2 } from "../../world/vector.js";
 
 /**
  * Use Styles in '../styles/testing.ts' for the Build
@@ -16,13 +28,13 @@ export const templateTestBuilders = {
         new SurfaceToPrismBuilder(
             new EmptyBuilder(new RandomList([MaterialReference.ref('primary')])),
             {
-                height: new Option(height ?? new RandomNumber(2, 6))
+                height: Option.random(height ?? new RandomNumber(2, 6))
             }
         ),
         {
-            cell: new Option(cell ?? RandomVec2.constant(1)),
-            gap: new Option(gap ?? RandomVec2.constant(1)),
-            alignment: new Option(RandomList.constant([GridAxisAlignment.START, GridAxisAlignment.START]))
+            cell: Option.random(cell ?? new ConstantVec2(Vec2.UNIT)),
+            gap: Option.random(gap ?? new ConstantVec2(Vec2.UNIT)),
+            alignment: Option.random(new ConstantSquareEnum<GridAxisAlignmentValue[]>([GridAxisAlignment.START, GridAxisAlignment.START]))
         }
     ),
 
@@ -32,7 +44,7 @@ export const templateTestBuilders = {
             ceil: new SurfaceToPrismBuilder(new EmptyBuilder(new RandomList([MaterialReference.ref('primary')]))),
         }),
         {
-            height: new Option(height ?? RandomNumber.constant(6))
+            height: Option.random(height ?? new ConstantNumber(6))
         }
     )
 }

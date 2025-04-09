@@ -1,3 +1,13 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { EmptyBuilder } from "../builder/generic/empty"
 import { PERMISSIONS } from "../connection/permission"
 import { server } from "../connection/server"
@@ -20,7 +30,7 @@ export const commands: AbstractCommand[] = [
         new Command('structure', new CommandArgs(['ref']), (commander, args) => {
             commander.side.ensurePermission(PERMISSIONS.MANAGE_STRUCTURE_ENGINEER)
             const ref = new StructureReference(args[0])
-            const structure = new StructureEngineer(ref, StyleDependency.empty(), new EmptyBuilder())
+            const structure = new StructureEngineer(ref, EmptyBuilder.VOID)
             getProject(ref.pack).dataPack.structures.set(structure.reference.location, structure)
             structure.save()
             commander.info(`Created new structure engineer '${ref.toString()}'`)

@@ -13,10 +13,13 @@ import { Plane2 } from "../../../world/bi-geo/plane.js";
 import { Prism } from "../../../world/geo/object.js";
 import { Vec3 } from "../../../world/vector.js";
 import { type BuilderChild, BuilderResult, ObjectBuilder } from "../../builder.js";
+import { childrenFromJson } from "../../collective.js";
 import type { Option } from "../../option.js";
 import type { Seed } from "../../random/random.js";
 
 export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<Prism<P>, {}> {
+
+    static readonly type = 'flexPrism'
 
     constructor(
         public children: BuilderChild<ObjectBuilder<Prism<P>>, {
@@ -25,6 +28,12 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
         }>[]
     ) {
         super({})
+    }
+
+    static fromJson(json: any): FlexPrismBuilder {
+        return new FlexPrismBuilder(
+            childrenFromJson(json.children)
+        )
     }
 
     protected buildChildren(context: Prism<P>, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[] {
@@ -71,5 +80,11 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<P
             }
         })
         return results
+    }
+
+    protected additionalJson(): Record<string, any> {
+        return {
+            children: this.childrenToJson(this.children)
+        }
     }
 }

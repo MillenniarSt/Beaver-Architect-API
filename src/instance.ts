@@ -96,7 +96,11 @@ export function getProjectOrNull(identifier: string): Project | null {
 }
 
 export function close() {
-    commander.close()
     getArchitect().process.kill()
+    closeExceptArchitect()
+}
+
+export function closeExceptArchitect() {
+    commander.close()
     process.exit()
 }

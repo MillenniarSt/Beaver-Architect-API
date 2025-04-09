@@ -12,11 +12,11 @@ import { BuilderDirective, ListUpdate, ObjectUpdate, VarUpdate, type ListUpdateO
 import { ClientDirector } from "../../../connection/director.js";
 import { Engineer, ResourceReference } from "../../engineer.js";
 import { getProject } from "../../../instance.js";
-import { Random, randomTypes } from "../../../builder/random/random.js";
+import { Random, Seed } from "../../../builder/random/random.js";
 import { StyleDependency } from "./dependency.js";
 import { IdAlreadyExists, IdNotExists, InternalServerError } from "../../../connection/errors.js";
-import { mapFromJson, mapToJson, recordToJson, type ToJson } from "../../../util/util.js";
-import type { Seed } from "../../../util/random.js";
+import { mapFromJson, mapToJson, recordFromJson, recordToJson, type ToJson } from "../../../util/util.js";
+import { RandomType } from "../../../builder/random/type.js";
 
 export type StyleUpdate = {
     isAbstract?: boolean
@@ -24,7 +24,7 @@ export type StyleUpdate = {
         pack?: string,
         location: string
     }>[]
-    values?: ListUpdateObject<{
+    rules?: ListUpdateObject<{
         type: string,
         random: any,
         generationConstant: boolean
@@ -34,7 +34,7 @@ export type StyleUpdate = {
 export const styleUpdate = new ObjectUpdate<StyleUpdate>({
     isAbstract: new VarUpdate(),
     implementations: new ListUpdate(new VarUpdate()),
-    values: new ListUpdate(new VarUpdate())
+    rules: new ListUpdate(new VarUpdate())
 })
 
 export class StyleReference extends ResourceReference<Style> {
@@ -57,38 +57,38 @@ export class Style extends Engineer<Style> {
         ref: ResourceReference<Style>,
         public isAbstract: boolean = false,
         readonly implementations: ResourceReference<Style>[] = [],
-        readonly values: Map<string, StyleValue> = new Map()
+        readonly rules: Map<string, StyleRule> = new Map()
     ) {
         super(ref)
     }
 
     toGenerationStyle(seed: Seed): GenerationStyle {
-        return new GenerationStyle(Object.fromEntries(this.completeValues.filter(([key, value]) => !randomTypes[value.type].isPostGeneration).map(([key, item]) => {
+        return new GenerationStyle(Object.fromEntries(this.completeRules.filter(([key, rule]) => !RandomType.get(rule.type).isArchitectGeneration).map(([key, item]) => {
             const random = item.getGenerationRandom(seed)
             if(!random)
-                throw new RandomNotDefined(this.reference, key)
+                throw new StyleRandomNotDefined(this.reference, key)
             return [key, random]
         })))
     }
 
-    toPostGenerationStyle(): PostGenerationStyle {
-        return new PostGenerationStyle(Object.fromEntries(this.completeValues.filter(([key, value]) => randomTypes[value.type].isPostGeneration).map(([key, item]) => {
+    toArchitectStyle(): ArchitectStyle {
+        return new ArchitectStyle(Object.fromEntries(this.completeRules.filter(([key, rule]) => RandomType.get(rule.type).isArchitectGeneration).map(([key, item]) => {
             if(!item.random)
-                throw new RandomNotDefined(this.reference, key)
+                throw new StyleRandomNotDefined(this.reference, key)
             return [key, item]
         })))
     }
 
     buildDependency(): StyleDependency {
-        return new StyleDependency(Object.fromEntries(this.completeValues.filter(([key, value]) => value.random === null).map(([key, value]) => [key, value.type])))
+        return new StyleDependency(Object.fromEntries(this.completeRules.filter(([key, rule]) => rule.random === null).map(([key, rule]) => [key, rule.type])))
     }
 
-    get completeValues(): [string, StyleValue][] {
-        let entries: [string, StyleValue][] = []
+    get completeRules(): [string, StyleRule][] {
+        let entries: [string, StyleRule][] = []
         this.implementations.forEach((implementation) => {
-            entries.push(...implementation.get().completeValues)
+            entries.push(...implementation.get().completeRules)
         })
-        entries.push(...Object.entries(this.values))
+        entries.push(...Object.entries(this.rules))
         return entries
     }
 
@@ -104,12 +104,12 @@ export class Style extends Engineer<Style> {
         return false
     }
 
-    implementationsOfValue(id: string, includeSelf: boolean = false): ResourceReference<Style>[] {
+    implementationsOfrule(id: string, includeSelf: boolean = false): ResourceReference<Style>[] {
         let implementations: ResourceReference<Style>[] = []
-        if (this.values.has(id) && includeSelf) {
+        if (this.rules.has(id) && includeSelf) {
             implementations.push(this.reference as ResourceReference<Style>)
         }
-        this.implementations.forEach((implementation) => implementations.push(...implementation.get().implementationsOfValue(id, true)))
+        this.implementations.forEach((implementation) => implementations.push(...implementation.get().implementationsOfrule(id, true)))
         return implementations
     }
 
@@ -131,9 +131,9 @@ export class Style extends Engineer<Style> {
         } else if (implementation.get().containsImplementation(this.reference as ResourceReference<Style>)) {
             throw new InternalServerError(`Can not push implementation ${implementation}: it contains ${this.reference.toString()}`).warn()
         } else {
-            implementation.get().completeValues.forEach(([id, value]) => {
-                if (value.isAbstract() && !this.values.has(id)) {
-                    this.pushValue(director, id, new StyleValue(value.type, randomTypes[value.type].defaultRandom(), value.generationConstant))
+            implementation.get().completeRules.forEach(([id, rule]) => {
+                if (rule.isAbstract() && !this.rules.has(id)) {
+                    this.pushRule(director, id, new StyleRule(rule.type, RandomType.get(rule.type).constant(), rule.generationConstant))
                 }
             })
             this.implementations.push(implementation)
@@ -166,41 +166,41 @@ export class Style extends Engineer<Style> {
         }
     }
 
-    getValue(id: string): StyleValue {
-        const value = this.values.get(id)
-        if (!value) {
-            throw new IdNotExists(id, this.constructor.name, 'values')
+    getRule(id: string): StyleRule {
+        const rule = this.rules.get(id)
+        if (!rule) {
+            throw new IdNotExists(id, this.constructor.name, 'rules')
         }
-        return value
+        return rule
     }
 
-    pushValue(director: ClientDirector, id: string, value: StyleValue) {
-        if (this.values.has(id)) {
-            throw new IdAlreadyExists(id, this.constructor.name, 'values', this.reference.toString())
+    pushRule(director: ClientDirector, id: string, rule: StyleRule) {
+        if (this.rules.has(id)) {
+            throw new IdAlreadyExists(id, this.constructor.name, 'rules', this.reference.toString())
         } else {
-            this.values.set(id, value)
+            this.rules.set(id, rule)
             this.update(director, {
-                values: [{
+                rules: [{
                     id: id,
                     mode: 'push',
-                    data: value.toJson()
+                    data: rule.toJson()
                 }]
             })
             this.saveDirector(director)
         }
     }
 
-    deleteValue(director: ClientDirector, id: string): StyleValue {
-        const value = this.getValue(id)
-        this.values.delete(id)
+    deleteRule(director: ClientDirector, id: string): StyleRule {
+        const rule = this.getRule(id)
+        this.rules.delete(id)
         this.update(director, {
-            values: [{
+            rules: [{
                 id: id,
                 mode: 'delete'
             }]
         })
         this.saveDirector(director)
-        return value
+        return rule
     }
 
     update(director: ClientDirector, update: StyleUpdate) {
@@ -212,7 +212,7 @@ export class Style extends Engineer<Style> {
         return new Style(ref,
             data.isAbstract,
             data.implementations.map((implementation: string) => new StyleReference(implementation)),
-            mapFromJson(data.values, StyleValue.fromJson)
+            mapFromJson(data.rules, StyleRule.fromJson)
         )
     }
 
@@ -220,21 +220,21 @@ export class Style extends Engineer<Style> {
         return {
             isAbstract: this.isAbstract,
             implementations: this.implementations.map((implementation) => implementation.toJson()),
-            values: mapToJson(this.values)
+            rules: mapToJson(this.rules)
         }
     }
 }
 
-export class StyleValue<T = any> implements ToJson {
+export class StyleRule<T = any> implements ToJson {
 
     constructor(
         readonly type: string,
         readonly random: Random<T> | null,
-        public generationConstant: boolean
+        public generationConstant: boolean = false
     ) { }
 
-    static fromJson<T = any>(json: any): StyleValue<T> {
-        return new StyleValue(json.type, json.random ? Random.fromJson(json.random) : null, json.generationConstant)
+    static fromJson<T = any>(json: any): StyleRule<T> {
+        return new StyleRule(json.type, json.random ? Random.fromJson(json.random) : null, json.generationConstant)
     }
 
     isAbstract(): boolean {
@@ -261,22 +261,42 @@ export class GenerationStyle {
     ) { }
 }
 
-export class PostGenerationStyle implements ToJson {
+export class ArchitectStyle implements ToJson {
 
     constructor(
-        readonly values: Record<string, StyleValue>
+        readonly rules: Record<string, StyleRule>
     ) { }
+
+    toGenerationStyle(seed: Seed): GenerationStyle {
+        return new GenerationStyle(Object.fromEntries(Object.entries(this.rules).map(([key, rule]) => {
+            const random = rule.getGenerationRandom(seed)
+            if(!random)
+                throw new RandomNotDefined(key)
+            return [key, random]
+        })))
+    }
+
+    static fromJson(json: any): ArchitectStyle {
+        return new ArchitectStyle(recordFromJson(json.rules, StyleRule.fromJson))
+    }
 
     toJson(): {} {
         return {
-            values: recordToJson(this.values)
+            rules: recordToJson(this.rules)
         }
+    }
+}
+
+export class StyleRandomNotDefined extends InternalServerError {
+
+    constructor(readonly styleRef: ResourceReference<Style>, readonly id: string) {
+        super(`Can not get random from style ${styleRef.toString()} [${id}]: it is abstract`)
     }
 }
 
 export class RandomNotDefined extends InternalServerError {
 
-    constructor(readonly styleRef: ResourceReference<Style>, readonly id: string) {
-        super(`Can not get random from style ${styleRef.toString()} [${id}]: it is abstract`)
+    constructor(readonly id: string) {
+        super(`Can not get random from rule [${id}]: it is abstract`)
     }
 }

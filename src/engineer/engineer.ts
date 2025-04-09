@@ -14,6 +14,7 @@ import { SaveDirective } from '../connection/directives/save.js'
 import { idToLabel } from '../util/form.js'
 import { getProject } from '../instance.js'
 import type { StyleDependency } from './data-pack/style/dependency.js'
+import { InternalServerError } from '../connection/errors.js'
 
 export abstract class Engineer<Resource extends Engineer<Resource> = any> {
 
@@ -90,7 +91,7 @@ export abstract class ResourceReference<E extends Engineer = Engineer> {
         if (builder) {
             return builder
         } else {
-            throw new Error(`Can not access to Resource '${this.toString()}', it not exists or it is not registered`)
+            throw new ResourceNotExists(this)
         }
     }
 
@@ -132,5 +133,12 @@ export abstract class ResourceReference<E extends Engineer = Engineer> {
 
     toString(): string {
         return this.toJson()
+    }
+}
+
+export class ResourceNotExists extends InternalServerError {
+
+    constructor(readonly resource: ResourceReference) {
+        super(`Can not get resource '${resource.toString()}': it does not exist`)
     }
 }

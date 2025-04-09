@@ -12,25 +12,36 @@ import { Random, Seed } from "./random/random.js";
 import { Line3 } from "../world/geo/line.js";
 import { Object3 } from "../world/geo/object.js";
 import { Surface } from "../world/geo/surface.js";
-import { builderFromJson } from "./collective-decorator.js";
 import { Option } from "./option.js";
-import { GenerationStyle } from "../engineer/data-pack/style/style.js";
+import { ArchitectStyle, GenerationStyle } from "../engineer/data-pack/style/style.js";
 import { type Geo3 } from "../world/geo.js";
 import { ArchitectRandom } from "./random/architect.js";
-import { recordFromJson, recordToJson } from "../util/util.js";
+import { recordFromJson, recordToJson, type ToJson } from "../util/util.js";
 
-export type BuilderChild<B extends Builder, O extends Record<string, Option>> = {
+export type BuilderChild<B extends Builder, O extends Record<string, Option> = any> = {
     builder: B
     options: O
 }
 
-export abstract class Builder<G extends Geo3 = any, O extends Record<string, Option> = Record<string, Option>> {
+export interface BuilderFunction<B extends Builder = any> extends Function {
+
+    type: string
+
+    fromJson(json: any): B
+}
+
+export abstract class Builder<G extends Geo3 = any, O extends Record<string, Option> = Record<string, Option>> implements ToJson {
+
+    static readonly type: string
+
+    get type(): string {
+        return (this.constructor as BuilderFunction).type
+    }
 
     constructor(
-        readonly options: O
+        readonly options: O,
+        readonly architectOptions: Record<string, Option> = {}
     ) { }
-
-    abstract get children(): BuilderChild<Builder, Record<string, Option>>[]
 
     // Building
 
@@ -38,34 +49,35 @@ export abstract class Builder<G extends Geo3 = any, O extends Record<string, Opt
 
     build(context: G, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult<G> {
         return new BuilderResult(
-            context, 
-            Object.fromEntries(Object.entries(this.options).map(([key, option]) => [key, option.getRandom(style, parameters)]).filter((random) => random instanceof ArchitectRandom)), 
-            this.buildChildren(context, style, parameters, seed)
+            context,
+            this.architectOptions, 
+            this.buildChildren(context, style, parameters, seed),
+            this.groups()
         )
+    }
+
+    protected groups(): string[] {
+        return []
     }
 
     // Json & Save
 
-    static fromJson(json: any): Builder {
-        return builderFromJson(json)
-    }
-
-    toJson() {
+    toJson(): {} {
         return {
-            name: this.constructor.name,
+            type: this.type,
             options: Object.fromEntries(Object.entries(this.options).map(([key, option]) => [key, option.toJson()])),
-            children: this.children.map((child: any) => { return {
-                builder: child.builder.toJson(),
-                options: Object.fromEntries(Object.entries(child.options).map(([key, option]: [string, any]) => [key, option.toJson()]))
-            } })
+            ...this.additionalJson()
         }
     }
 
-    // Utils
-
-    get type(): string {
-        return this.constructor.name
+    protected childrenToJson(children: BuilderChild<Builder>[]) {
+        return children.map((child: any) => { return {
+            builder: child.builder.toJson(),
+            options: recordToJson(child.options)
+        } })
     }
+
+    protected abstract additionalJson(): Record<string, any>
 }
 
 export abstract class LineBuilder<L extends Line3 = Line3, O extends Record<string, Option> = Record<string, Option>> extends Builder<L, O> { }
@@ -74,12 +86,32 @@ export abstract class SurfaceBuilder<S extends Surface = Surface, O extends Reco
 
 export abstract class ObjectBuilder<O extends Object3 = Object3, Opt extends Record<string, Option> = Record<string, Option>> extends Builder<O, Opt> { }
 
-export class BuilderResult<T extends Geo3 = any> {
+export class BuilderResultGroup<G extends Geo3 = Geo3> implements ToJson {
 
     constructor(
-        readonly object: T,
-        readonly architectRandom: Record<string, ArchitectRandom>,
+        readonly style: ArchitectStyle,
+        readonly result: BuilderResult<G>,
+    ) { }
+
+    static fromJson(json: any): BuilderResultGroup {
+        return new BuilderResultGroup(ArchitectStyle.fromJson(json.style), BuilderResult.fromJson(json.result))
+    }
+
+    toJson(): {} {
+        return {
+            style: this.style.toJson(),
+            result: this.result.toJson()
+        }
+    }
+}
+
+export class BuilderResult<G extends Geo3 = Geo3> implements ToJson {
+
+    constructor(
+        readonly object: G,
+        readonly architectRandom: Record<string, Option>,
         readonly children: BuilderResult[] = [],
+        readonly groups: string[]
     ) { }
 
     static fromJson(json: any): BuilderResult {
@@ -90,7 +122,7 @@ export class BuilderResult<T extends Geo3 = any> {
             case 'object': object = Object3.fromJson(json.object); break
             default: throw new Error(`BuilderResult: invalid type while parsing json: ${json.type}`)
         }
-        return new BuilderResult(object, recordFromJson(json.architectRandom, ArchitectRandom.fromJson), json.children.map((child: any) => BuilderResult.fromJson(child)))
+        return new BuilderResult(object, recordFromJson(json.architectRandom, Option.fromJson), json.children.map((child: any) => BuilderResult.fromJson(child)), json.groups)
     }
 
     toJson(): {} {
@@ -98,7 +130,8 @@ export class BuilderResult<T extends Geo3 = any> {
             type: this.object.type,
             object: this.object.toJson(),
             architectRandom: recordToJson(this.architectRandom),
-            children: this.children.map((child) => child.toJson())
+            children: this.children.map((child) => child.toJson()),
+            groups: this.groups
         }
     }
 }

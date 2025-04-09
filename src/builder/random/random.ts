@@ -1,11 +1,15 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { NameNotRegistered } from "../../connection/errors";
 import type { ToJson } from "../../util/util";
-import { Vec2, Vec3, Vec4 } from "../../world/vector";
-import { ConstantEnum } from "./enum";
-import { ConstantNumber } from "./number";
-import { ConstantVec2 } from "./vec/vec2";
-import { ConstantVec3 } from "./vec/vec3";
-import { ConstantVec4 } from "./vec/vec4";
 
 export class Seed {
 
@@ -22,22 +26,6 @@ export class Seed {
 		this.seed = (this.seed * 16807) % 2147483647
 		return (this.seed - 1) / 2147483646
 	}
-}
-
-export class RandomType<T = any> {
-
-	constructor(
-		readonly id: string,
-		readonly defaultRandom: () => Random<T>
-	) { }
-}
-
-export const randomTypes: Record<string, RandomType> = {
-	number: new RandomType('number', () => new ConstantNumber(1)),
-	string: new RandomType('string', () => new ConstantEnum('?')),
-	vec2: new RandomType('vec2', () => new ConstantVec2(Vec2.UNIT)),
-	vec3: new RandomType('vec3', () => new ConstantVec3(Vec3.UNIT)),
-	vec4: new RandomType('vec4', () => new ConstantVec4(Vec4.UNIT))
 }
 
 export const namedRandom: Map<string, RandomFunction> = new Map()
@@ -82,6 +70,10 @@ export abstract class Random<T = any> implements ToJson {
 }
 
 export abstract class ConstantRandom<T = any> extends Random<T> {
+
+	static fromJson(json: any): ConstantRandom {
+		return Random.fromJson(json) as ConstantRandom
+	}
 
 	abstract get value(): T
 

@@ -62,6 +62,9 @@ export class Project {
         public dependencies: Project[]
     ) { }
 
+    /**
+     * Generates new project with all his necessary resources
+     */
     static async create(dir: string, data: ProjectData, architect: ArchitectData): Promise<Project> {
         const project = new Project(
             dir,
@@ -115,6 +118,9 @@ export class Project {
         return project
     }
 
+    /**
+     * Initializes the Project and load all his files
+     */
     private async init() {
         this._dataPack = await DataPack.load(this.identifier)
     }
@@ -135,6 +141,10 @@ export class Project {
             dependencies: [] // TODO
         }
     }
+
+    /**
+     * Use this methods to read and write files instead of package fs
+     */
 
     read(relPath: string): any {
         return JSON.parse(fs.readFileSync(this.getAndCheckFilePath(relPath), 'utf8'))
@@ -192,14 +202,6 @@ export class Project {
 }
 
 export type FileNode = { name: string, path: string, children?: FileNode[] }
-
-export enum ProjectType {
-    WORLD = 'world',
-    STRUCTURE = 'structure',
-    TERRAIN = 'terrain',
-    BIOME = 'biome',
-    DATA_PACK = 'data_pack'
-}
 
 export function registerProjectMessages(onMessage: OnMessage) {
     onMessage.set('get', (data, client, id) => {

@@ -11,14 +11,20 @@
 import fs from 'fs'
 import path from 'path'
 import { Project, type ProjectData, registerProjectMessages, Version } from "./project/project.js"
-import { registerStyleMessages } from './engineer/data-pack/style/messages.js'
 import { type OnMessage, server, type ServerOnMessage } from './connection/server.js'
 import { registerDirectorMessages } from './connection/director.js'
-import { commander, getProject, setArchitect, setLocalUser, users } from './instance.js'
+import { commander, getProject, setArchitect, users } from './instance.js'
 import { type ArchitectData, loadArchitect } from './project/architect.js'
 import { registerEnStructureMessages } from './engineer/data-pack/structure/messages.js'
 import { registerEditorMessages } from './engineer/editor.js'
+import { identifierToLabel, labelToId } from './util/form.js'
+import { userInfo } from 'os'
+import { User } from './connection/user.js'
 
+/**
+ * Improvement of the console logs
+ * To print in console without the decorators use console.debug
+ */
 const log = console.log
 console.log = (...args) => {
     log('\x1b[90m[     Server     ]', ...args, '\x1b[0m')
@@ -46,23 +52,27 @@ console.error = (...args) => {
  * Import all Builders here
  * so you make sure they are registered
  */
-import './builder/surface/rect.js'
-import './builder/surface/to-prism.js'
-import './builder/object/prism/stack.js'
-import './builder/object/prism/flex.js'
-import { identifierToLabel, labelToId } from './util/form.js'
-import { userInfo } from 'os'
-import { LocalUser, User } from './connection/user.js'
+import './builder/collective.js'
+import './builder/random/type.js'
 
+/**
+ * Server environmental variables taken from file .env
+ */
 const identifier = process.env.IDENTIFIER ?? `${labelToId(userInfo().username)}.project`
 const port = process.env.PORT ? Number(process.env.PORT) : 8224
 const isPublic = process.env.IS_PUBLIC === 'true'
-const dir = process.env.DIR ?? __dirname
+const dir = process.env.DIR ?? path.join(__dirname, 'project')
 
 console.info(`Starting local project Server '${identifier}' on port ${port} ${isPublic ? '[PUBLIC]' : ''}...`)
 
+/**
+ * Starts the integrated console to execute any command registered with all permissions
+ */
 commander.open()
 
+/**
+ * Load or generate project resources
+ */
 let projectData: ProjectData
 let architectData: ArchitectData
 if(fs.existsSync(dir)) {
@@ -90,21 +100,26 @@ Object.entries(getProject().read('users.json')).map(([id, user]) => {
     users.set(id, User.fromJson(user))
 })
 
-console.log(`Launching Architect ${architectData.name}...`)
-const architectSide = await loadArchitect(architectData, projectData.identifier)
-console.info(`Loaded Architect ${architectSide.architect.name} [${architectData.identifier}]`)
-
-setArchitect(architectSide)
-
+/**
+ * Registration of all server messages and opening of the WebSocket server
+ */
 const onServerMessage: ServerOnMessage = new Map()
 registerProjectMessages(onServerMessage as OnMessage)
 registerDirectorMessages(onServerMessage)
-registerStyleMessages(onServerMessage)
 registerEnStructureMessages(onServerMessage)
 registerEditorMessages(onServerMessage)
 
 const url = await server.open(port, isPublic, onServerMessage)
 console.info(`Opened Project Server '${identifier}' on ${url ?? `port ${port}`}`)
+
+/**
+ * Launch architect installed on ./project$dir/architect/architect.exe
+ * and wait its setup
+ */
+console.log(`Launching Architect ${architectData.name}...`)
+const architectSide = await loadArchitect(architectData, projectData.identifier)
+setArchitect(architectSide)
+console.info(`Loaded Architect ${architectSide.architect.name} [${architectData.identifier}]`)
 
 /*
 // Testing

@@ -1,5 +1,15 @@
-import type { Builder } from "../../../builder/builder"
-import { builderFromJson } from "../../../builder/collective-decorator"
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
+import { Builder } from "../../../builder/builder"
+import { builderFromJson } from "../../../builder/collective"
 import { EmptyBuilder } from "../../../builder/generic/empty"
 import type { ClientDirector } from "../../../connection/director"
 import { getProject } from "../../../instance"
@@ -21,7 +31,7 @@ export class Component extends Engineer {
 
     constructor(
         ref: ResourceReference<Component>,
-        readonly builder: Builder = new EmptyBuilder(),
+        readonly builder: Builder = EmptyBuilder.VOID,
         readonly parameters: Map<string, string> = new Map()
     ) {
         super(ref)

@@ -1,3 +1,13 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 export interface ToJson {
 
     toJson(): {}
@@ -41,6 +51,10 @@ export function mapFromJson<T>(json: any, itemFromJson: (json: any) => T): Map<s
 }
 
 // Record
+
+export function parseRecord<T, R>(record: Record<any, T>, parse: (value: T) => R): Record<any, R> {
+    return Object.fromEntries(Object.entries(record).map(([key, value]) => [key, parse(value)]))
+}
 
 export function recordToJson<T extends ToJson>(record: Record<string, T>): Record<string, {}> {
     return Object.fromEntries(Object.entries(record).map(([key, item]) => [key, item.toJson()]))

@@ -22,6 +22,6 @@ export class Structure {
     ) { }
 
     build(style: GenerationStyle, seed: Seed): BuilderResult {
-        return this.engineer.builder.build(this.base, style, seed)
+        return this.engineer.builder.build(this.base, style, new GenerationStyle({}), seed)
     }
 }

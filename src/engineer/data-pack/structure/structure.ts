@@ -9,7 +9,7 @@
 //      ##    \__|__/
 
 import { Builder } from "../../../builder/builder.js";
-import { builderFromJson } from "../../../builder/collective-decorator.js";
+import { builderFromJson } from "../../../builder/collective.js";
 import { BuilderDirective, CheckUpdate, ObjectUpdate } from "../../../connection/directives/update.js";
 import { ClientDirector } from "../../../connection/director.js";
 import type { Side } from "../../../connection/sides.js";
@@ -39,35 +39,14 @@ export class StructureEngineer extends Engineer {
 
     builder: Builder
 
-    constructor(ref: ResourceReference<StructureEngineer>, dependency: StyleDependency, builder: Builder) {
-        super(ref, dependency)
+    constructor(ref: ResourceReference<StructureEngineer>, builder: Builder) {
+        super(ref)
         this.builder = builder
     }
 
-    buildDependency(): void {
-        this._dependency = StyleDependency.empty()
-        this.refreshBuilderDependency(this.builder)
-    }
-
-    protected refreshBuilderDependency(builder: Builder) {
-        builder.materials.list.forEach((material) => {
-            if(material.isReference()) {
-                this.dependency.materials.add({ id: material.getRef()! })
-            }
-            Object.entries(builder.options).forEach(([id, option]) => {
-                if(option.isReference()) {
-                    this.dependency.options.add({ id: option.getRef()! })
-                }
-            })
-            builder.children.forEach((child) => {
-                Object.entries(child.options).forEach(([id, option]) => {
-                    if(option.isReference()) {
-                        this.dependency.options.add({ id: option.getRef()! })
-                    }
-                })
-                this.refreshBuilderDependency(child.builder)
-            })
-        })
+    // TODO
+    buildDependency(): StyleDependency {
+        return StyleDependency.empty()
     }
 
     setBuilder(director: ClientDirector, builder: Builder) {
@@ -82,7 +61,6 @@ export class StructureEngineer extends Engineer {
     static loadFromRef(ref: ResourceReference<StructureEngineer>): StructureEngineer {
         const data = getProject(ref.pack).read(ref.path)
         return new StructureEngineer(ref,
-            StyleDependency.fromJson(data.dependency),
             builderFromJson(data.builder)
         )
     }
