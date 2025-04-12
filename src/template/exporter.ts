@@ -25,6 +25,6 @@ export function templateStructureExport(structure: Structure, style: Style) {
     
     const result = structure.build(style.toGenerationStyle(seed), seed)
     
-    const exporter = new Exporter(seed, result, style.toArchitectStyle())
-    exporter.exportToArchitect((data) => console.debug('Update', data))
+    const exporter = new Exporter(seed, result)
+    exporter.exportToArchitect((data) => console.log('Update exporting:', data))
 }

@@ -8,13 +8,13 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { GenerationStyle } from "../../engineer/data-pack/style/style.js";
+import type { GenerationStyle } from "../../engineer/data-pack/style/rule.js";
 import { NodeTypedBuilder } from "../../engineer/editors/rete/nodes/builder.js";
 import { Rect2 } from "../../world/bi-geo/plane.js";
 import { Plane3 } from "../../world/geo/surface.js";
 import { Vec2, Vec4 } from "../../world/vector.js";
 import { Builder, BuilderResult, SurfaceBuilder } from "../builder.js";
-import { builderFromJson } from "../collective.js";
+import { builderFromJson, optionsFromJson } from "../collective.js";
 import { Option } from "../option.js";
 import { ConstantSquareEnum } from "../random/enum.js";
 import type { Seed } from "../random/random.js";
@@ -35,7 +35,7 @@ export enum GridAxisAlignment {
     outputs: {
         child: { object: Rect2, getChildren: (builder) => [builder.child] }
     },
-    get: (getChild, getChildren, getOption, materials) => new GridRectBuilder(getChildren('child')[0], {})
+    get: (getChild, getChildren, getOption) => new GridRectBuilder(getChildren('child')[0], {})
 })
 export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>, {
     alignment: Option<[GridAxisAlignmentValue, GridAxisAlignmentValue] | undefined>
@@ -66,12 +66,7 @@ export class GridRectBuilder extends SurfaceBuilder<Plane3<Rect2>, {
     static fromJson(json: any): GridRectBuilder {
         return new GridRectBuilder(
             builderFromJson(json.child),
-            {
-                alignment: Option.fromJson(json.alignment),
-                cell: Option.fromJson(json.cell),
-                gap: Option.fromJson(json.gap),
-                padding: Option.fromJson(json.padding)
-            }
+            optionsFromJson(json.options)
         )
     }
 

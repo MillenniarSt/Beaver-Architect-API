@@ -9,7 +9,9 @@
 //      ##    \__|__/
 
 import { IdNotExists, InternalServerError } from "../connection/errors.js";
-import { GenerationStyle } from "../engineer/data-pack/style/style.js";
+import { StyleDependency, type WithDependency } from "../engineer/data-pack/style/dependency.js";
+import type { GenerationStyle } from "../engineer/data-pack/style/rule.js";
+import { getProject } from "../instance.js";
 import { Random, Seed } from "./random/random.js";
 
 export class Option<T = any> {
@@ -107,5 +109,30 @@ export class Option<T = any> {
             paramRef: this.paramRef,
             styleRef: this.styleRef
         }
+    }
+}
+
+export class OptionWithDependency<T = any> extends Option<T> implements WithDependency {
+
+    declare protected random: (Random<T> & WithDependency)| undefined
+
+    protected constructor(
+        random: (Random<T> & WithDependency) | undefined,
+        styleRef: string | undefined,
+        paramRef: string | undefined
+    ) {
+        super(random, styleRef, paramRef)
+    }
+
+    getStyleDependency(): StyleDependency {
+        if(this.random) {
+            return this.random.getStyleDependency()
+        } else if(this.styleRef) {
+            const rule = getProject().dataPack.getRequiredStyleRule(this.styleRef)
+            if(!rule) {
+                return StyleDependency.empty()
+            }
+        }
+        throw new InternalServerError('Option broken: all of the references are undefined')
     }
 }

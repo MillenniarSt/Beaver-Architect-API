@@ -11,10 +11,11 @@
 import path from "path"
 import { getProject } from "../../instance.js"
 import { type FileNode } from "../../project/project.js"
-import { Engineer, type ReferenceData } from "../engineer.js"
+import { Engineer, ResourceReference, type ReferenceData } from "../engineer.js"
 import { StructureEngineer, StructureReference } from "./structure/structure.js"
 import { Style, StyleReference } from "./style/style.js"
 import { Component, ComponentReference } from "./component/component.js"
+import { StyleRule, StyleRules } from "./style/rule.js"
 
 export const loadedDataPacks = new Map<string, DataPack>()
 
@@ -23,7 +24,9 @@ export class DataPack {
     constructor(
         readonly styles: Map<string, Style>,
         readonly components: Map<string, Component>,
-        readonly structures: Map<string, StructureEngineer>
+        readonly structures: Map<string, StructureEngineer>,
+
+        readonly requiredStyles: StyleReference[]
     ) { }
 
     static async create(pack: string): Promise<DataPack> {
@@ -32,6 +35,8 @@ export class DataPack {
         project.mkDir(path.join('data_pack', 'styles'))
         project.mkDir(path.join('data_pack', 'components'))
         project.mkDir(path.join('data_pack', 'structures'))
+
+        project.write(path.join('data_pack', 'required_styles.json'), [])
         return await DataPack.load(pack)
     }
 
@@ -48,7 +53,9 @@ export class DataPack {
             await this.loadEngineers<StructureEngineer>(pack,
                 getProject(pack).mapDir(path.join('data_pack', 'structures')),
                 (ref) => StructureEngineer.loadFromRef(new StructureReference(ref))
-            )
+            ),
+
+            getProject(pack).read(path.join('data_pack', 'required_styles.json')).map((ref: string) => new StyleReference(ref))
         )
     }
 
@@ -71,5 +78,15 @@ export class DataPack {
                 await this.loadEngineer(pack, map, node.children[i], load, `${location}/${node.children[i].name}`)
             }
         }
+    }
+
+    getRequiredStyleRules(): StyleRules {
+        const rules = new StyleRules()
+        this.requiredStyles.forEach((style) => rules.join(style.get().getAllRules()))
+        return rules
+    }
+
+    getRequiredStyleRule(id: string): StyleRule | undefined {
+        return this.getRequiredStyleRules().get(id)
     }
 }

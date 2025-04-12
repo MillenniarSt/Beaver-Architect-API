@@ -8,7 +8,6 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { GenerationStyle } from "../../../engineer/data-pack/style/style.js";
 import { Seed } from "../../random/random.js";
 import { Plane2, Rect2 } from "../../../world/bi-geo/plane.js";
 import { Prism } from "../../../world/geo/object.js";
@@ -18,6 +17,7 @@ import { Vec2, Vec3 } from "../../../world/vector.js";
 import { Builder, BuilderResult, ObjectBuilder, SurfaceBuilder } from "../../builder.js";
 import { EmptyBuilder } from "../../generic/empty.js";
 import { builderFromJson } from "../../collective.js";
+import type { GenerationStyle } from "../../../engineer/data-pack/style/rule.js";
 
 export class ToFacesPrismBuilder<P extends Plane2> extends ObjectBuilder<Prism<P>, {}> {
 

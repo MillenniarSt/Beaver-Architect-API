@@ -15,7 +15,7 @@ import { registerProjectMessages } from '../project/project.js';
 import { ArchitectSide } from '../connection/sides.js';
 import { type OnMessage, toSocketError } from '../connection/server.js';
 import { PermissionLevel, PERMISSIONS } from '../connection/permission.js';
-import { closeExceptArchitect, getProject } from '../instance.js';
+import { close, getProject } from '../instance.js';
 import { ConstantRandom, Random } from '../builder/random/random.js';
 import { ArchitectConstant, ArchitectRandom } from '../builder/random/architect.js';
 import { RandomType } from '../builder/random/type.js';
@@ -71,9 +71,9 @@ export interface ArchitectData {
 
 export async function loadArchitect(data: ArchitectData, projectIdentifier: string): Promise<ArchitectSide> {
     const exePath = path.join(getProject().dir, 'architect', 'architect.exe')
-    if(!getProject().exists(exePath)) {
+    if(!getProject().exists(path.join('architect', 'architect.exe'))) {
         console.error(`Missing Architect: install an architect in '${exePath}'`)
-        closeExceptArchitect()
+        close()
     }
 
     /**
@@ -99,11 +99,12 @@ export async function loadArchitect(data: ArchitectData, projectIdentifier: stri
         })
 
         architectProcess.stderr.on('data', (data) => {
-            console.error(`${data}`.trim())
+            console.debug(`${data}`.trim())
         })
 
         architectProcess.on('exit', (code) => {
             console.error(`Closed Architect [Exit code: ${code}]`)
+            close()
         })
     })
     process.stdout!.removeAllListeners('data')
@@ -168,7 +169,7 @@ export async function loadArchitect(data: ArchitectData, projectIdentifier: stri
      *  - @param constant: json convertible to a registered ConstantRandom
      *  - @param randoms: record of possibles random creations, values must be convertible to Random
      */
-    const architectRandomTypes: { id: string, constant: any, randoms: Record<string, any> }[] = await side.request('random/get')
+    const architectRandomTypes: { id: string, constant: any, randoms: Record<string, any> }[] = await side.request('random/get-types')
     architectRandomTypes.forEach((randomType) => RandomType.register(
         randomType.id, 
         () => new ArchitectConstant(randomType.id, ConstantRandom.fromJson(randomType.constant)),
@@ -181,7 +182,7 @@ export async function loadArchitect(data: ArchitectData, projectIdentifier: stri
      *  - @param id: unique type id of BuilderType
      *  - @param options: options supported by the builder, values are types of RandomType
      */
-    const architectBuilderTypes: { id: string, options: Record<string, string> }[] = await side.request('builder/get')
+    const architectBuilderTypes: { id: string, options: Record<string, string> }[] = await side.request('builder/get-types')
     architectBuilderTypes.forEach((builderType) => {
         BuilderType.register(new BuilderType(
             builderType.id, 

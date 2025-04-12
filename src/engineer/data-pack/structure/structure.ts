@@ -12,7 +12,6 @@ import { Builder } from "../../../builder/builder.js";
 import { builderFromJson } from "../../../builder/collective.js";
 import { BuilderDirective, CheckUpdate, ObjectUpdate } from "../../../connection/directives/update.js";
 import { ClientDirector } from "../../../connection/director.js";
-import type { Side } from "../../../connection/sides.js";
 import { getProject } from "../../../instance.js";
 import { Engineer, ResourceReference } from "../../engineer.js";
 import { StyleDependency } from "../style/dependency.js";
@@ -45,7 +44,7 @@ export class StructureEngineer extends Engineer {
     }
 
     // TODO
-    buildDependency(): StyleDependency {
+    getStyleDependency(): StyleDependency {
         return StyleDependency.empty()
     }
 
@@ -67,7 +66,6 @@ export class StructureEngineer extends Engineer {
 
     toJson(): {} {
         return {
-            dependency: this.dependency.toJson(),
             builder: this.builder.toJson()
         }
     }

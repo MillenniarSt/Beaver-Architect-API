@@ -24,7 +24,7 @@ export class RandomType<T = any> {
         readonly id: string,
         readonly constant: () => ConstantRandom<T>,
         readonly randoms: Record<string, () => Random<T>>,
-        readonly isArchitectGeneration: boolean
+        readonly isArchitect: boolean
     ) { }
 
     static get(type: string): RandomType {

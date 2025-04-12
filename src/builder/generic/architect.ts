@@ -8,7 +8,7 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import type { GenerationStyle } from "../../engineer/data-pack/style/style";
+import type { GenerationStyle } from "../../engineer/data-pack/style/rule";
 import { recordFromJson, recordToJson } from "../../util/util";
 import type { Geo3 } from "../../world/geo";
 import { Builder, BuilderResult } from "../builder";
@@ -16,7 +16,7 @@ import { builderFromJson } from "../collective";
 import { Option } from "../option";
 import type { Seed } from "../random/random";
 
-export class ArchitectBuilder extends Builder<Geo3, {}> {
+export class ArchitectBuilder<G extends Geo3 = any> extends Builder<G, {}> {
 
     public get type(): string {
         return this._type

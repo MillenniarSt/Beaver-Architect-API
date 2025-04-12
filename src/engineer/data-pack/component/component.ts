@@ -13,6 +13,7 @@ import { builderFromJson } from "../../../builder/collective"
 import { EmptyBuilder } from "../../../builder/generic/empty"
 import type { ClientDirector } from "../../../connection/director"
 import { getProject } from "../../../instance"
+import { mapToRecord } from "../../../util/util"
 import { Engineer, ResourceReference } from "../../engineer"
 import { StyleDependency } from "../style/dependency"
 
@@ -41,8 +42,8 @@ export class Component extends Engineer {
         throw new Error("Method not implemented.")
     }
 
-    buildDependency(): StyleDependency {
-        throw new Error("Method not implemented.")
+    getStyleDependency(): StyleDependency {
+        return new StyleDependency(mapToRecord(this.parameters, (type) => type))
     }
 
     static loadFromRef(ref: ResourceReference<Component>): Component {
@@ -55,7 +56,6 @@ export class Component extends Engineer {
 
     toJson(): {} {
         return {
-            dependency: this.dependency.toJson(),
             builder: this.builder.toJson(),
             parameters: Object.fromEntries(Object.entries(this.parameters.values()))
         }

@@ -13,18 +13,14 @@ import { ClientDirector } from '../connection/director.js'
 import { SaveDirective } from '../connection/directives/save.js'
 import { idToLabel } from '../util/form.js'
 import { getProject } from '../instance.js'
-import type { StyleDependency } from './data-pack/style/dependency.js'
+import type { StyleDependency, WithDependency } from './data-pack/style/dependency.js'
 import { InternalServerError } from '../connection/errors.js'
 
-export abstract class Engineer<Resource extends Engineer<Resource> = any> {
-
-    protected _dependency: StyleDependency
+export abstract class Engineer<Resource extends Engineer<Resource> = any> implements WithDependency {
 
     constructor(
         readonly reference: ResourceReference<Resource>
-    ) {
-        this._dependency = this.buildDependency()
-    }
+    ) { }
 
     get pack(): string {
         return this.reference.pack
@@ -32,10 +28,6 @@ export abstract class Engineer<Resource extends Engineer<Resource> = any> {
 
     get name(): string {
         return this.reference.name
-    }
-
-    get dependency(): StyleDependency {
-        return this._dependency
     }
 
     save() {
@@ -52,11 +44,7 @@ export abstract class Engineer<Resource extends Engineer<Resource> = any> {
 
     abstract update(director: ClientDirector, update: {}): void
 
-    repair() {
-        this._dependency = this.buildDependency()
-    }
-
-    abstract buildDependency(): StyleDependency
+    abstract getStyleDependency(): StyleDependency
 }
 
 export type ReferenceData = { pack?: string, location: string } | string
@@ -124,15 +112,15 @@ export abstract class ResourceReference<E extends Engineer = Engineer> {
     }
 
     toJson(): string {
+        return this.toString()
+    }
+
+    toString(): string {
         if (getProject().identifier === this.pack) {
             return this.location
         } else {
             return `${this.pack}:${this.location}`
         }
-    }
-
-    toString(): string {
-        return this.toJson()
     }
 }
 

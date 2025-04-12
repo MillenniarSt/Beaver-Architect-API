@@ -9,6 +9,7 @@
 //      ##    \__|__/
 
 import { NameNotRegistered } from "../../connection/errors";
+import type { StyleDependency } from "../../engineer/data-pack/style/dependency";
 import type { ToJson } from "../../util/util";
 
 export class Seed {

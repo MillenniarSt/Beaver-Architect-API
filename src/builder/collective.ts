@@ -8,7 +8,7 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { recordFromJson } from "../util/util";
+import { parseRecord, recordFromJson } from "../util/util";
 import type { Builder, BuilderChild, BuilderFunction } from "./builder";
 import { EmptyBuilder } from "./generic/empty";
 import { FlexPrismBuilder } from "./object/prism/flex";
@@ -45,11 +45,15 @@ export function builderFromJson(json: any): Builder {
     return BuilderType.get(json.type).fromJson(json)
 }
 
+export function optionsFromJson(json: Record<string, any>): Record<string, Option> {
+    return recordFromJson(json.options, Option.fromJson)
+}
+
 export function childrenFromJson(json: { builder: any, options: any }[]): BuilderChild<Builder>[] {
     return json.map((child) => {
         return {
             builder: builderFromJson(child.builder),
-            options: recordFromJson(child.options, Option.fromJson)
+            options: optionsFromJson(child.options)
         }
     })
 }

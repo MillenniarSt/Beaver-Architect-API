@@ -17,6 +17,7 @@ import { StyleDependency } from "./dependency.js";
 import { IdAlreadyExists, IdNotExists, InternalServerError } from "../../../connection/errors.js";
 import { mapFromJson, mapToJson, recordFromJson, recordToJson, type ToJson } from "../../../util/util.js";
 import { RandomType } from "../../../builder/random/type.js";
+import { StyleRules, GenerationStyle, StyleRule, DefinedStyleRule } from "./rule.js";
 
 export type StyleUpdate = {
     isAbstract?: boolean
@@ -57,39 +58,33 @@ export class Style extends Engineer<Style> {
         ref: ResourceReference<Style>,
         public isAbstract: boolean = false,
         readonly implementations: ResourceReference<Style>[] = [],
-        readonly rules: Map<string, StyleRule> = new Map()
+        readonly rules: StyleRules = new StyleRules()
     ) {
         super(ref)
     }
 
     toGenerationStyle(seed: Seed): GenerationStyle {
-        return new GenerationStyle(Object.fromEntries(this.completeRules.filter(([key, rule]) => !RandomType.get(rule.type).isArchitectGeneration).map(([key, item]) => {
-            const random = item.getGenerationRandom(seed)
-            if(!random)
-                throw new StyleRandomNotDefined(this.reference, key)
-            return [key, random]
-        })))
+        if(this.rules.isAbstract())
+            throw new AbstractStyleNotPermitted(this.reference)
+        return this.rules.toGenerationStyle(seed)
     }
 
-    toArchitectStyle(): ArchitectStyle {
-        return new ArchitectStyle(Object.fromEntries(this.completeRules.filter(([key, rule]) => RandomType.get(rule.type).isArchitectGeneration).map(([key, item]) => {
-            if(!item.random)
-                throw new StyleRandomNotDefined(this.reference, key)
-            return [key, item]
-        })))
-    }
-
-    buildDependency(): StyleDependency {
-        return new StyleDependency(Object.fromEntries(this.completeRules.filter(([key, rule]) => rule.random === null).map(([key, rule]) => [key, rule.type])))
+    getStyleDependency(): StyleDependency {
+        return this.getAllRules().getStyleDependency()
     }
 
     get completeRules(): [string, StyleRule][] {
+        console.debug(this)
         let entries: [string, StyleRule][] = []
         this.implementations.forEach((implementation) => {
             entries.push(...implementation.get().completeRules)
         })
         entries.push(...Object.entries(this.rules))
         return entries
+    }
+
+    getAllRules(): StyleRules {
+        return new StyleRules(new Map(this.completeRules))
     }
 
     containsImplementation(implementation: ResourceReference<Style>): boolean {
@@ -133,7 +128,7 @@ export class Style extends Engineer<Style> {
         } else {
             implementation.get().completeRules.forEach(([id, rule]) => {
                 if (rule.isAbstract() && !this.rules.has(id)) {
-                    this.pushRule(director, id, new StyleRule(rule.type, RandomType.get(rule.type).constant(), rule.generationConstant))
+                    this.pushRule(director, id, new DefinedStyleRule(rule.type, RandomType.get(rule.type).constant(), rule.generationConstant))
                 }
             })
             this.implementations.push(implementation)
@@ -212,7 +207,7 @@ export class Style extends Engineer<Style> {
         return new Style(ref,
             data.isAbstract,
             data.implementations.map((implementation: string) => new StyleReference(implementation)),
-            mapFromJson(data.rules, StyleRule.fromJson)
+            StyleRules.fromJson(data.rules)
         )
     }
 
@@ -220,83 +215,14 @@ export class Style extends Engineer<Style> {
         return {
             isAbstract: this.isAbstract,
             implementations: this.implementations.map((implementation) => implementation.toJson()),
-            rules: mapToJson(this.rules)
+            rules: this.rules.toJson()
         }
     }
 }
 
-export class StyleRule<T = any> implements ToJson {
+export class AbstractStyleNotPermitted extends InternalServerError {
 
-    constructor(
-        readonly type: string,
-        readonly random: Random<T> | null,
-        public generationConstant: boolean = false
-    ) { }
-
-    static fromJson<T = any>(json: any): StyleRule<T> {
-        return new StyleRule(json.type, json.random ? Random.fromJson(json.random) : null, json.generationConstant)
-    }
-
-    isAbstract(): boolean {
-        return this.random === null
-    }
-
-    getGenerationRandom(seed: Seed): Random<T> | null {
-        return this.generationConstant ? this.random?.toConstant(seed) ?? null : this.random
-    }
-
-    toJson() {
-        return {
-            type: this.type,
-            random: this.random?.toNamedJson(),
-            generationConstant: this.generationConstant
-        }
-    }
-}
-
-export class GenerationStyle {
-
-    constructor(
-        readonly randoms: Record<string, Random>
-    ) { }
-}
-
-export class ArchitectStyle implements ToJson {
-
-    constructor(
-        readonly rules: Record<string, StyleRule>
-    ) { }
-
-    toGenerationStyle(seed: Seed): GenerationStyle {
-        return new GenerationStyle(Object.fromEntries(Object.entries(this.rules).map(([key, rule]) => {
-            const random = rule.getGenerationRandom(seed)
-            if(!random)
-                throw new RandomNotDefined(key)
-            return [key, random]
-        })))
-    }
-
-    static fromJson(json: any): ArchitectStyle {
-        return new ArchitectStyle(recordFromJson(json.rules, StyleRule.fromJson))
-    }
-
-    toJson(): {} {
-        return {
-            rules: recordToJson(this.rules)
-        }
-    }
-}
-
-export class StyleRandomNotDefined extends InternalServerError {
-
-    constructor(readonly styleRef: ResourceReference<Style>, readonly id: string) {
-        super(`Can not get random from style ${styleRef.toString()} [${id}]: it is abstract`)
-    }
-}
-
-export class RandomNotDefined extends InternalServerError {
-
-    constructor(readonly id: string) {
-        super(`Can not get random from rule [${id}]: it is abstract`)
+    constructor(readonly styleRef: ResourceReference<Style>) {
+        super(`Can not use style ${styleRef.toString()} as defined: it is abstract`)
     }
 }

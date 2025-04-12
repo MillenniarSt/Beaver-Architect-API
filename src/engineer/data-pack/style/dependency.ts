@@ -32,3 +32,8 @@ export class StyleDependency {
         }
     }
 }
+
+export interface WithDependency {
+
+	getStyleDependency(): StyleDependency
+}

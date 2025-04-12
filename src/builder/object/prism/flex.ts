@@ -8,7 +8,7 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { GenerationStyle } from "../../../engineer/data-pack/style/style.js";
+import type { GenerationStyle } from "../../../engineer/data-pack/style/rule.js";
 import { Plane2 } from "../../../world/bi-geo/plane.js";
 import { Prism } from "../../../world/geo/object.js";
 import { Vec3 } from "../../../world/vector.js";

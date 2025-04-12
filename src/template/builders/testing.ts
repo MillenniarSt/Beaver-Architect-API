@@ -8,25 +8,29 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
+import { ArchitectBuilder } from "../../builder/generic/architect.js";
 import { EmptyBuilder } from "../../builder/generic/empty.js";
+import { RepetitionMode, StackPrismBuilder, type RepetitionModeValue } from "../../builder/object/prism/stack.js";
 import { ToFacesPrismBuilder } from "../../builder/object/prism/to-faces.js";
 import { Option } from "../../builder/option.js";
-import { ConstantSquareEnum } from "../../builder/random/enum.js";
+import { ConstantEnum, ConstantSquareEnum } from "../../builder/random/enum.js";
 import { ConstantNumber, RandomNumber } from "../../builder/random/number.js";
 import { ConstantVec2, type RandomVec2 } from "../../builder/random/vec/vec2.js";
-import { GridAxisAlignment, GridAxisAlignmentValue, GridRectBuilder } from "../../builder/surface/rect.js";
+import { GridAxisAlignment, type GridAxisAlignmentValue, GridRectBuilder } from "../../builder/surface/rect.js";
 import { SurfaceToPrismBuilder } from "../../builder/surface/to-prism.js";
 import { Vec2 } from "../../world/vector.js";
 
 /**
- * Use Styles in '../styles/testing.ts' for the Build
+ * Use Template Styles in [ ex. '../styles/minecraft.ts' ] for the Build
  */
+const materialRandomType: string = 'block'
+const materialBuilderType: string = 'material'
 
 export const templateTestBuilders = {
 
     gridPrisms: (cell?: RandomVec2, gap?: RandomVec2, height?: RandomNumber) => new GridRectBuilder(
         new SurfaceToPrismBuilder(
-            new EmptyBuilder(new RandomList([MaterialReference.ref('primary')])),
+            new ArchitectBuilder(materialBuilderType, EmptyBuilder.VOID, { [materialRandomType]: Option.style('primary') }),
             {
                 height: Option.random(height ?? new RandomNumber(2, 6))
             }
@@ -38,10 +42,25 @@ export const templateTestBuilders = {
         }
     ),
 
+    flatBlock: (height?: RandomNumber, childHeight?: RandomNumber) => new SurfaceToPrismBuilder(
+        new StackPrismBuilder(
+            [{ 
+                builder: new ArchitectBuilder(materialBuilderType, EmptyBuilder.VOID, { [materialRandomType]: Option.style('primary') }), 
+                options: { height: Option.random(childHeight ?? new ConstantNumber(3)) } 
+            }],
+            {
+                repeat: Option.random(new ConstantEnum<RepetitionModeValue[]>(RepetitionMode.BLOCK))
+            }
+        ),
+        {
+            height: Option.random(height ?? new ConstantNumber(20))
+        }
+    ),
+
     borderPrism: (height?: RandomNumber) => new SurfaceToPrismBuilder(
         new ToFacesPrismBuilder({
-            base: new SurfaceToPrismBuilder(new EmptyBuilder(new RandomList([MaterialReference.ref('primary')]))),
-            ceil: new SurfaceToPrismBuilder(new EmptyBuilder(new RandomList([MaterialReference.ref('primary')]))),
+            base: new SurfaceToPrismBuilder(new ArchitectBuilder(materialBuilderType, EmptyBuilder.VOID, { [materialRandomType]: Option.style('primary') })),
+            ceil: new SurfaceToPrismBuilder(new ArchitectBuilder(materialBuilderType, EmptyBuilder.VOID, { [materialRandomType]: Option.style('primary') })),
         }),
         {
             height: Option.random(height ?? new ConstantNumber(6))

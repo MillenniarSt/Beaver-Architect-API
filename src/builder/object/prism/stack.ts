@@ -8,12 +8,12 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { GenerationStyle } from '../../../engineer/data-pack/style/style.js';
+import type { GenerationStyle } from '../../../engineer/data-pack/style/rule.js';
 import { Plane2 } from '../../../world/bi-geo/plane.js';
 import { Prism } from '../../../world/geo/object.js';
 import { Vec2, Vec3 } from '../../../world/vector.js';
 import { type BuilderChild, BuilderResult, ObjectBuilder } from '../../builder.js';
-import { childrenFromJson } from '../../collective.js';
+import { childrenFromJson, optionsFromJson } from '../../collective.js';
 import { Option } from '../../option.js';
 import { ConstantEnum } from '../../random/enum.js';
 import { ConstantNumber } from '../../random/number.js';
@@ -66,12 +66,7 @@ export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<
     static fromJson(json: any): StackPrismBuilder {
         return new StackPrismBuilder(
             childrenFromJson(json.children),
-            {
-                alignment: Option.fromJson(json.alignment),
-                repeat: Option.fromJson(json.repeat),
-                gap: Option.fromJson(json.gap),
-                padding: Option.fromJson(json.padding)
-            }
+            optionsFromJson(json.options)
         )
     }
 

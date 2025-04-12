@@ -10,9 +10,9 @@
 
 import { BuilderResult } from "../builder/builder.js";
 import type { StructureEngineer } from "../engineer/data-pack/structure/structure.js";
-import { GenerationStyle } from "../engineer/data-pack/style/style.js";
 import { Seed } from "../builder/random/random.js";
 import { type Geo3 } from "../world/geo.js";
+import { GenerationStyle } from "../engineer/data-pack/style/rule.js";
 
 export class Structure {
 

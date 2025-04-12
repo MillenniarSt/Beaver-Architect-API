@@ -9,14 +9,12 @@
 //      ##    \__|__/
 
 import { Builder } from "../../../../builder/builder.js"
+import type { Option } from "../../../../builder/option.js"
 import { ObjectUpdate, VarUpdate } from "../../../../connection/directives/update.js"
 import { InternalServerError } from "../../../../connection/errors.js"
 import { idToLabel } from "../../../../util/form.js"
-import { Option } from "../../../../util/option.js"
-import { RandomList } from "../../../../builder/random/random.js"
 import { type Geo3Function, isGeoCompatible } from "../../../../world/geo.js"
 import { Vec2 } from "../../../../world/vector.js"
-import { MaterialReference } from "../../../data-pack/style/material.js"
 import { ReteNode, type ReteNodeUpdate } from "../rete.js"
 
 const typedBuilders: Map<string, NodeBuilderType<any>> = new Map()
@@ -52,7 +50,7 @@ export type BuilderTypeOutput<B extends Builder = Builder> = {
     getChildren: (builder: B) => Builder[]
 }
 
-export type NodeBuilderGetter<B extends Builder = Builder> = (getChild: (output: string) => Builder, getChildren: (output: string) => Builder[], getOption: (id: string) => Option | null, materials: RandomList<MaterialReference>) => B
+export type NodeBuilderGetter<B extends Builder = Builder> = (getChild: (output: string) => Builder, getChildren: (output: string) => Builder[], getOption: (id: string) => Option | null) => B
 
 export class NodeBuilderType<B extends Builder = Builder> {
 

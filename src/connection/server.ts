@@ -126,6 +126,19 @@ export class Server {
         })
     }
 
+    close(): Promise<void> {
+        return new Promise((resolve) => {
+            if(this._wss) {
+                this._wss.close(() => {
+                    console.info('[ Socket ] | CLOSE  | Closed WebSocket Server')
+                    resolve()
+                })
+            } else {
+                resolve()
+            }
+        })
+    }
+
     get wss(): WebSocketServer {
         return this._wss!
     }

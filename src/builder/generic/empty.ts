@@ -8,10 +8,10 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { GenerationStyle } from "../../engineer/data-pack/style/style.js";
 import { Seed } from "../random/random.js";
 import { type Geo3 } from "../../world/geo.js";
 import { Builder, BuilderResult } from "../builder.js";
+import type { GenerationStyle } from "../../engineer/data-pack/style/rule.js";
 
 export class EmptyBuilder<G extends Geo3 = any> extends Builder<G, {}> {
 

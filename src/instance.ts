@@ -10,6 +10,7 @@
 
 import { commands } from './command/commands.js';
 import { ConsoleCommander } from './command/console.js';
+import { server } from './connection/server.js';
 import { ArchitectSide, ServerSide } from './connection/sides.js';
 import type { LocalUser, User } from './connection/user.js';
 import { Architect } from './project/architect.js';
@@ -95,12 +96,14 @@ export function getProjectOrNull(identifier: string): Project | null {
     return loadedProjects[identifier]
 }
 
-export function close() {
-    getArchitect().process.kill()
-    closeExceptArchitect()
-}
+export async function close() {
+    console.info('Closing Beaver Architect Server...')
 
-export function closeExceptArchitect() {
     commander.close()
+    if(_architectSide) {
+        getArchitect().process.kill()
+    }
+    await server.close()
+
     process.exit()
 }

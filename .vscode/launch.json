@@ -1,36 +1,37 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
+    "console": "integratedTerminal",
     "configurations": [
         {
             "type": "bun",
-            "internalConsoleOptions": "neverOpen",
             "request": "launch",
-            "name": "Debug File",
+            "name": "Debug File with Bun",
             "program": "${file}",
             "cwd": "${workspaceFolder}",
             "stopOnEntry": false,
-            "watchMode": false
+            "watchMode": false,
+            "internalConsoleOptions": "neverOpen",
+            "runtimeArgs": [
+                "--inspect"
+            ]
         },
         {
             "type": "bun",
-            "internalConsoleOptions": "neverOpen",
             "request": "launch",
             "name": "Run File",
             "program": "${file}",
             "cwd": "${workspaceFolder}",
             "noDebug": true,
-            "watchMode": false
+            "watchMode": false,
+            "internalConsoleOptions": "neverOpen"
         },
         {
             "type": "bun",
-            "internalConsoleOptions": "neverOpen",
             "request": "attach",
             "name": "Attach Bun",
             "url": "ws://localhost:6499/",
-            "stopOnEntry": false
+            "stopOnEntry": false,
+            "internalConsoleOptions": "neverOpen"
         }
     ]
 }

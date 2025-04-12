@@ -25,8 +25,7 @@ import { RandomReteNode, randomReteNodeUpdate, type RandomReteNodeUpdate } from 
 import { StructureEngineerReteNode, structureEngineerReteNodeUpdate, type StructureEngineerReteNodeUpdate } from "../../../../editors/rete/nodes/engineer.js";
 import { BuilderReteNode, builderReteNodeUpdate, type BuilderReteNodeUpdate, getBuilderReteType, IncompatibleReteBuilderTypes } from "../../../../editors/rete/nodes/builder.js";
 import { ReteMultiplePortSocket, ReteMultipleSocket, RetePortSocket } from "../../../../editors/rete/sockets/base.js";
-import { RandomList } from "../../../../../builder/random/random.js";
-import { Option } from "../../../../../util/option.js";
+import { Option } from "../../../../../builder/option.js";
 
 export type StructureReteEditorUpdate = {
     base?: StructureEngineerReteNodeUpdate
@@ -136,8 +135,7 @@ export class StructureReteEditor extends ReteEditor<StructureEngineer> {
         return node.type.get(
             (output) => this.createBuilder(this.getBuilder(this.builderConnections.getByParent(new ReteMultiplePortSocket(node.id, output, 0))!.id)),
             (output) => this.builderConnections.getAllParents().filter((parent) => parent.id === node.id && parent.port === output).map((parent) => this.createBuilder(this.getBuilder(this.builderConnections.getByParent(parent)!.id))),
-            (output) => new Option('TODO'),
-            new RandomList()
+            (output) => Option.style('TODO')
         )
     }
 

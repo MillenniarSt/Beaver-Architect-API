@@ -8,15 +8,15 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { GenerationStyle } from "../../engineer/data-pack/style/style.js";
 import { Seed } from "../random/random.js";
 import { Plane2 } from "../../world/bi-geo/plane.js";
 import { Prism } from "../../world/geo/object.js";
 import { Plane3 } from "../../world/geo/surface.js";
-import { Builder, BuilderResult, ObjectBuilder, SurfaceBuilder } from "../builder.js";
+import { BuilderResult, ObjectBuilder, SurfaceBuilder } from "../builder.js";
 import { ConstantNumber } from "../random/number.js";
 import { Option } from "../option.js";
-import { builderFromJson } from "../collective.js";
+import { builderFromJson, optionsFromJson } from "../collective.js";
+import type { GenerationStyle } from "../../engineer/data-pack/style/rule.js";
 
 export class SurfaceToPrismBuilder<P extends Plane2 = Plane2> extends SurfaceBuilder<Plane3<P>> {
 
@@ -36,9 +36,7 @@ export class SurfaceToPrismBuilder<P extends Plane2 = Plane2> extends SurfaceBui
     static fromJson(json: any): SurfaceToPrismBuilder {
         return new SurfaceToPrismBuilder(
             builderFromJson(json.child),
-            {
-                height: Option.fromJson(json.height)
-            }
+            optionsFromJson(json.options)
         )
     }
 
