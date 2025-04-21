@@ -11,7 +11,7 @@
 import fs from 'fs'
 import path from 'path'
 import { Project, type ProjectData, registerProjectMessages, Version } from "./project/project.js"
-import { type OnMessage, server, type ServerOnMessage } from './connection/server.js'
+import { getFreePort, type OnMessage, server, type ServerOnMessage } from './connection/server.js'
 import { registerDirectorMessages } from './connection/director.js'
 import { close, commander, getProject, setArchitect, users } from './instance.js'
 import { type ArchitectData, loadArchitect } from './project/architect.js'
@@ -48,10 +48,25 @@ console.error = (...args) => {
     server.sendAll('message', { severity: 'error', summary: 'Server Error', detail: args.join(' ') })
 }
 
-process.on('SIGINT', close)
-process.on('SIGTERM', close)
+['SIGINT', 'SIGTERM', 'SIGHUP'].forEach((signal) => {
+    process.on(signal, () => {
+        console.info(`Signal '${signal}' received`)
+        close()
+    })
+})
+
+process.on('exit', (code) => {
+    console.info(`Process exited with code: ${code}`)
+    close()
+})
+
 process.on('uncaughtException', (err) => {
-    console.error(err)
+    console.error('Uncaught exception:\n', err)
+    close()
+})
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled rejection:\n', reason)
     close()
 })
 
@@ -62,30 +77,26 @@ process.on('uncaughtException', (err) => {
 import './builder/collective.js'
 import './builder/random/type.js'
 import { simpleGrid } from './template/testing.js'
-
-/**
- * Server environmental variables taken from file .env
- */
-/*
-const identifier = process.env.IDENTIFIER ?? `${labelToId(userInfo().username)}.project`
-const port = process.env.PORT ? Number(process.env.PORT) : 8224
-const isPublic = process.env.IS_PUBLIC === 'true'
-const dir = process.env.DIR ?? path.join(__dirname, 'project')
-*/
-
-const port = process.argv[2]! ? Number(process.argv[2]!) : 8224
-const isPublic = process.argv[3]! === 'true'
-const dir = process.env.DEV_ENV === 'true' ?
-    path.join(path.dirname(__dirname), 'build', 'project') :
-    process.argv[4]! ?? path.join(path.dirname(process.execPath), 'project')
-
-console.info(`Starting local project Server on port ${port} ${isPublic ? '[PUBLIC]' : ''} on '${dir}'...`)
+import { PermissionLevel } from './connection/permission.js'
+import { registerStyleMessages } from './engineer/data-pack/style/messages.js'
 
 start()
-    // Testing Generation
-    .then(simpleGrid)
+
+// Testing Generation
+// .then(simpleGrid)
 
 async function start() {
+    /**
+    * Server arguments
+    */
+    const port = process.argv[2] && process.argv[2] !== 'any' ? Number(process.argv[2]) : await getFreePort()
+    const isPublic = process.argv[3] === 'true'
+    const dir = process.env.DEV_ENV === 'true' ?
+        path.join(path.dirname(__dirname), 'run') :
+        process.argv[4]! ?? path.join(path.dirname(process.execPath), 'project')
+
+    console.info(`Starting local project Server on port ${port} ${isPublic ? '[PUBLIC]' : ''} on '${dir}'...`)
+
     /**
     * Starts the integrated console to execute any command registered with all permissions
     */
@@ -113,13 +124,13 @@ async function start() {
             version: new Version('1.0.0').toJson(),
             dependencies: []
         }
-        architectData = { identifier: 'minecraft', version: new Version('1.0.0-1.20.1').toJson(), port: 8225, name: 'Minecraft' }
+        architectData = { identifier: 'minecraft', version: new Version('1.0.0').toJson(), name: 'Minecraft' }
 
         await Project.create(dir, projectData, architectData)
     }
 
-    Object.entries(getProject().read('users.json')).map(([id, user]) => {
-        users.set(id, User.fromJson(user))
+    Object.entries(getProject().readOrCreate('users.json', [])).map(([id, level]) => {
+        users.set(id, PermissionLevel.fromJson(level))
     })
 
     /**
@@ -128,6 +139,7 @@ async function start() {
     const onServerMessage: ServerOnMessage = new Map()
     registerProjectMessages(onServerMessage as OnMessage)
     registerDirectorMessages(onServerMessage)
+    registerStyleMessages(onServerMessage)
     registerEnStructureMessages(onServerMessage)
     registerEditorMessages(onServerMessage)
 

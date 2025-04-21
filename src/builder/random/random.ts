@@ -62,6 +62,10 @@ export abstract class Random<T = any> implements ToJson {
 
 	abstract toJson(): {}
 
+	toClient() {
+		return this.toNamedJson()
+	}
+
 	toNamedJson() {
         return {
             name: this.constructor.name,

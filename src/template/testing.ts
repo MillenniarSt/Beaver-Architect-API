@@ -9,7 +9,7 @@ import { templateMinecraftStyles } from '../template/styles/minecraft.js'
 
 export function simpleGrid() {
     const base = new Plane3(new Rect2(Vec2.ZERO, new Vec2(40, 6)), 0, new Rotation3(Quaternion.UP))
-    templateBuilderExport(templateTestBuilders.gridPrisms(new ConstantVec2(new Vec2(1, 1)) as any, new ConstantVec2(new Vec2(1, 1)) as any), base, templateMinecraftStyles.simple())
+    templateBuilderExport(templateTestBuilders.gridPrisms(new ConstantVec2(new Vec2(1, 1)), new ConstantVec2(new Vec2(1, 1))), base, templateMinecraftStyles.simple())
 }
 
 export function simpleBlockOfFlat() {

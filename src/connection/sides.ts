@@ -15,7 +15,7 @@ import { Editor } from "../engineer/editor.js"
 import { ResourceReference } from "../engineer/engineer.js"
 import { Permission, PermissionLevel } from "./permission.js"
 import { PermissionDenided } from "./errors.js"
-import type { AbstractUser, User } from "./user.js"
+import type { User } from "./user.js"
 import type { Architect } from "../project/architect.js"
 
 export abstract class Side {
@@ -129,7 +129,7 @@ export class ClientSide extends SocketSide {
     protected history: ClientHistoryDo[] = []
     protected historyIndex = 0
 
-    constructor(readonly user: AbstractUser, socket: WebSocket) {
+    constructor(readonly user: User, socket: WebSocket) {
         super(socket)
     }
 

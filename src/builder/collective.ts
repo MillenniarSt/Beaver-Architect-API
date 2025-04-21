@@ -8,7 +8,7 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { parseRecord, recordFromJson } from "../util/util";
+import { recordFromJson } from "../util/util";
 import type { Builder, BuilderChild, BuilderFunction } from "./builder";
 import { EmptyBuilder } from "./generic/empty";
 import { FlexPrismBuilder } from "./object/prism/flex";

@@ -44,47 +44,6 @@ export class UpdateDirective<T> extends AbstractUpdateDirective<T> {
     }
 }
 
-export type BuilderDirectiveValue<T> = {
-    ref: ResourceReference<any>
-    update?: T
-}
-
-export class BuilderDirective<T> extends AbstractUpdateDirective<T> {
-
-    constructor(
-        path: string,
-        update: Update<T>,
-        readonly builders: BuilderDirectiveValue<T>[]
-    ) {
-        super(path, update)
-    }
-
-    static update<T>(path: string, ref: ResourceReference<any>, update: Update<T>, data?: T): BuilderDirective<T> {
-        return new BuilderDirective(path, update, [{ ref: ref, update: data }])
-    }
-
-    async override(directive: BuilderDirective<T>): Promise<void> {
-        for(let i = 0; i < directive.builders.length; i++) {
-            const builder = directive.builders[i]
-            const existing = this.builders.find((b) => b.ref.equals(builder.ref))
-            if (existing) {
-                existing.update = await this.update.update(existing.update, builder.update)
-            } else {
-                this.builders.push(builder)
-            }
-        }
-    }
-
-    protected get data(): {} {
-        return this.builders.map((builder) => {
-            return {
-                ref: builder.ref.toJson(),
-                update: builder.update
-            }
-        })
-    }
-}
-
 export type EditorDirectiveValue<T> = {
     ref: ResourceReference<any>
     update?: T

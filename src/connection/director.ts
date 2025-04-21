@@ -9,10 +9,11 @@
 //      ##    \__|__/
 
 import { Directive } from "./directives/directive.js";
-import { type ServerOnMessage } from "./server.js";
-import { ClientSide, ServerSide, Side } from "./sides.js";
+import { ServerProblem } from "./errors.js";
+import { toSocketError, type ServerOnMessage } from "./server.js";
+import { ClientSide, Side } from "./sides.js";
 
-export abstract class Director<S extends Side> {
+export class Director<S extends Side = Side> {
 
     protected readonly directives: Map<string, Directive> = new Map()
 
@@ -28,7 +29,7 @@ export abstract class Director<S extends Side> {
 
     async addDirective(directive: Directive) {
         const existing = this.directives.get(directive.path)
-        if(existing) {
+        if (existing) {
             await existing.override(directive)
         } else {
             this.directives.set(directive.path, directive)
@@ -60,8 +61,12 @@ export class ClientDirector<T = any> extends Director<ClientSide> {
 
     public static async execute<T>(side: ClientSide, exe: ClientDirectorExe<T>, undo: ClientDirectorUndo<T>) {
         const director = new ClientDirector(side, exe, undo)
-        await director.do()
-        director.send()
+        try {
+            await director.do()
+            director.send()
+        } catch (error) {
+            director.sender.respond(null, {}, error instanceof ServerProblem ? error.toSocketError() : toSocketError(error))
+        }
     }
 
     async do(): Promise<T> {
@@ -78,10 +83,6 @@ export class ClientDirector<T = any> extends Director<ClientSide> {
         })
         return this.exeData
     }
-}
-
-export class HiddenDirector extends Director<ServerSide> {
-
 }
 
 export function registerDirectorMessages(onMessage: ServerOnMessage) {

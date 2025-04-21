@@ -15,7 +15,7 @@ import type { Side } from '../connection/sides'
 export abstract class Commander {
 
     protected opened: boolean = false
-    protected readonly commands: Map<string, AbstractCommand>
+    readonly commands: Map<string, AbstractCommand>
 
     constructor(
         readonly side: Side,

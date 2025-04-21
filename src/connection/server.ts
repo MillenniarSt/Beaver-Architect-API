@@ -8,14 +8,14 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { WebSocketServer } from "ws"
+import WebSocket, { WebSocketServer } from "ws"
 import { ArchitectSide, ClientSide, Side } from "./sides.js"
 import localtunnel from 'localtunnel'
 import * as http from 'http'
 import { ServerProblem } from "./errors.js"
-import { Permission, PermissionLevel } from "./permission.js"
+import * as net from 'net'
 import { User } from "./user.js"
-import { getLocalUser } from "../instance.js"
+import { Permission, PermissionLevel } from "./permission.js"
 
 export type WebSocketMessage = {
     path: string,
@@ -48,24 +48,28 @@ export type ArchitectOnMessage = Map<string, MessageFunction<ArchitectSide>>
 export class Server {
 
     private _wss: WebSocketServer | null = null
+    private _server: http.Server | null = null
 
     readonly clients: ClientSide[] = []
 
     async open(port: number, isPublic: boolean, onMessage: ServerOnMessage): Promise<string | undefined> {
-        const server = http.createServer()
+        this._server = http.createServer()
 
-        this._wss = new WebSocketServer({ server })
+        this._wss = new WebSocketServer({ server: this.server })
 
         console.log(`[ Socket ] |  OPEN  | WebSocketServer opening on port ${port}...`)
 
-        server.on('upgrade', (req, socket, head) => {
+        this.server.on('upgrade', (req, socket, head) => {
             console.log(`[ Socket ] | TUNNEL | Upgrade from: ${req.headers.host}`);
         })
         this._wss.on('connection', (ws, req) => {
             console.info(`[ Socket ] |  JOIN  | Client ${req.socket.remoteAddress} Connected on port ${port}`)
 
             // TODO set a security algorith for external clients
-            const client = new ClientSide(getLocalUser(), ws)
+            const client = new ClientSide(new User('guest', {
+                name: 'Guest',
+                bio: 'TODO: add users sync in the server'
+            }, new PermissionLevel(Permission.owner())), ws)
             this.clients.push(client)
 
             ws.on('message', (data) => {
@@ -95,19 +99,24 @@ export class Server {
                     client.send('error', toSocketError(error))
                 }
             })
+
+            ws.on('close', (ws: WebSocket, code: number, reason: Buffer) => {
+                console.info(`[ Socket ] | CLOSE  | Connection closed: ${reason} [code ${code}]`)
+                this.clients.splice(this.clients.findIndex((c) => c.user.id === client.user.id), 1)
+            })
         })
         this._wss.on('error', (err) => {
             console.error('[ Socket ] |  ERR   |', err)
         })
 
         return await new Promise((resolve) => {
-            server.listen(port, async () => {
+            this.server.listen(port, async () => {
                 console.info(`[ Socket ] |  OPEN  | Server opened on port: ${port}`)
                 if (isPublic) {
                     const tunnel = await localtunnel({ port })
-        
+
                     console.info(`[ Socket ] | TUNNEL | Tunnel opened with url: ${tunnel.url}`)
-        
+
                     tunnel.on('close', () => {
                         console.warn('[ Socket ] | TUNNEL | Tunnel closed')
                     })
@@ -128,7 +137,13 @@ export class Server {
 
     close(): Promise<void> {
         return new Promise((resolve) => {
-            if(this._wss) {
+            if (this._wss) {
+                this._wss.clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.close(1001, 'Server shutting down')
+                    }
+                })
+
                 this._wss.close(() => {
                     console.info('[ Socket ] | CLOSE  | Closed WebSocket Server')
                     resolve()
@@ -141,6 +156,10 @@ export class Server {
 
     get wss(): WebSocketServer {
         return this._wss!
+    }
+
+    get server(): http.Server {
+        return this._server!
     }
 }
 
@@ -155,4 +174,22 @@ export function toSocketError(err: any): WebSocketError {
         errno: err.errno,
         syscall: err.syscall
     }
+}
+
+export function getFreePort(): Promise<number> {
+    return new Promise((resolve, reject) => {
+        const server = net.createServer()
+
+        server.listen(0, () => {
+            const address = server.address()
+            if (address && typeof address === 'object') {
+                const port = address.port;
+                server.close(() => resolve(port))
+            } else {
+                reject(new Error('Impossibile ottenere la porta libera'))
+            }
+        })
+
+        server.on('error', reject)
+    });
 }

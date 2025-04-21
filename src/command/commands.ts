@@ -9,30 +9,32 @@
 //      ##    \__|__/
 
 import { EmptyBuilder } from "../builder/generic/empty"
+import { Director } from "../connection/director"
 import { PERMISSIONS } from "../connection/permission"
 import { server } from "../connection/server"
 import { StructureEngineer, StructureReference } from "../engineer/data-pack/structure/structure"
-import { StyleDependency } from "../engineer/data-pack/style/dependency"
 import { Style, StyleReference } from "../engineer/data-pack/style/style"
-import { close, getProject } from "../instance"
+import { close } from "../instance"
 import { AbstractCommand, Command, CommandArgs, CommandParent } from "./commander"
 
 export const commands: AbstractCommand[] = [
+    new Command('help', CommandArgs.empty(), (commander) => {
+        commander.info(`Commands: ${commander.commands.entries().toArray().map(([key, command]) => key).join(', ')}`)
+    }),
+
     new CommandParent('new', [
         new Command('style', new CommandArgs(['ref']), (commander, args) => {
             commander.side.ensurePermission(PERMISSIONS.MANAGE_STYLE)
             const ref = new StyleReference(args[0])
             const style = new Style(ref)
-            getProject(ref.pack).dataPack.styles.set(style.reference.location, style)
-            style.save()
+            Style.create(new Director(commander.side), style)
             commander.info(`Created new style '${ref.toString()}'`)
         }),
         new Command('structure', new CommandArgs(['ref']), (commander, args) => {
             commander.side.ensurePermission(PERMISSIONS.MANAGE_STRUCTURE_ENGINEER)
             const ref = new StructureReference(args[0])
             const structure = new StructureEngineer(ref, EmptyBuilder.VOID)
-            getProject(ref.pack).dataPack.structures.set(structure.reference.location, structure)
-            structure.save()
+            StructureEngineer.create(new Director(commander.side), structure)
             commander.info(`Created new structure engineer '${ref.toString()}'`)
         })
     ]),

@@ -15,6 +15,7 @@ import { ToFacesPrismBuilder } from "../../builder/object/prism/to-faces.js";
 import { Option } from "../../builder/option.js";
 import { ConstantEnum, ConstantSquareEnum } from "../../builder/random/enum.js";
 import { ConstantNumber, RandomNumber } from "../../builder/random/number.js";
+import type { Random } from "../../builder/random/random.js";
 import { ConstantVec2, type RandomVec2 } from "../../builder/random/vec/vec2.js";
 import { GridAxisAlignment, type GridAxisAlignmentValue, GridRectBuilder } from "../../builder/surface/rect.js";
 import { SurfaceToPrismBuilder } from "../../builder/surface/to-prism.js";
@@ -28,7 +29,7 @@ const materialBuilderType: string = 'material'
 
 export const templateTestBuilders = {
 
-    gridPrisms: (cell?: RandomVec2, gap?: RandomVec2, height?: RandomNumber) => new GridRectBuilder(
+    gridPrisms: (cell?: Random<Vec2>, gap?: Random<Vec2>, height?: Random<number>) => new GridRectBuilder(
         new SurfaceToPrismBuilder(
             new ArchitectBuilder(materialBuilderType, EmptyBuilder.VOID, { [materialRandomType]: Option.style('primary') }),
             {
@@ -42,7 +43,7 @@ export const templateTestBuilders = {
         }
     ),
 
-    flatBlock: (height?: RandomNumber, childHeight?: RandomNumber) => new SurfaceToPrismBuilder(
+    flatBlock: (height?: Random<number>, childHeight?: Random<number>) => new SurfaceToPrismBuilder(
         new StackPrismBuilder(
             [{ 
                 builder: new ArchitectBuilder(materialBuilderType, EmptyBuilder.VOID, { [materialRandomType]: Option.style('primary') }), 
@@ -57,7 +58,7 @@ export const templateTestBuilders = {
         }
     ),
 
-    borderPrism: (height?: RandomNumber) => new SurfaceToPrismBuilder(
+    borderPrism: (height?: Random<number>) => new SurfaceToPrismBuilder(
         new ToFacesPrismBuilder({
             base: new SurfaceToPrismBuilder(new ArchitectBuilder(materialBuilderType, EmptyBuilder.VOID, { [materialRandomType]: Option.style('primary') })),
             ceil: new SurfaceToPrismBuilder(new ArchitectBuilder(materialBuilderType, EmptyBuilder.VOID, { [materialRandomType]: Option.style('primary') })),

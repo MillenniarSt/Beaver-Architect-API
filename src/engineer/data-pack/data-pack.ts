@@ -11,7 +11,7 @@
 import path from "path"
 import { getProject } from "../../instance.js"
 import { type FileNode } from "../../project/project.js"
-import { Engineer, ResourceReference, type ReferenceData } from "../engineer.js"
+import { Engineer, type ReferenceData } from "../engineer.js"
 import { StructureEngineer, StructureReference } from "./structure/structure.js"
 import { Style, StyleReference } from "./style/style.js"
 import { Component, ComponentReference } from "./component/component.js"
@@ -43,23 +43,26 @@ export class DataPack {
     static async load(pack: string): Promise<DataPack> {
         return new DataPack(
             await this.loadEngineers<Style>(pack,
-                getProject(pack).mapDir(path.join('data_pack', 'styles')),
+                path.join('data_pack', 'styles'),
                 (ref) => Style.loadFromRef(new StyleReference(ref))
             ),
             await this.loadEngineers<Component>(pack,
-                getProject(pack).mapDir(path.join('data_pack', 'components')),
+                path.join('data_pack', 'components'),
                 (ref) => Component.loadFromRef(new ComponentReference(ref))
             ),
             await this.loadEngineers<StructureEngineer>(pack,
-                getProject(pack).mapDir(path.join('data_pack', 'structures')),
+                path.join('data_pack', 'structures'),
                 (ref) => StructureEngineer.loadFromRef(new StructureReference(ref))
             ),
 
-            getProject(pack).read(path.join('data_pack', 'required_styles.json')).map((ref: string) => new StyleReference(ref))
+            getProject(pack).readOrCreate(path.join('data_pack', 'required_styles.json'), []).map((ref: string) => new StyleReference(ref))
         )
     }
 
-    protected static async loadEngineers<E extends Engineer>(pack: string, fileNodes: FileNode[], load: (ref: ReferenceData) => E): Promise<Map<string, E>> {
+    protected static async loadEngineers<E extends Engineer>(pack: string, folder: string, load: (ref: ReferenceData) => E): Promise<Map<string, E>> {
+        getProject(pack).ensureDir(folder)
+        const fileNodes = getProject(pack).mapDir(folder)
+
         const map = new Map<string, E>()
         for (let i = 0; i < fileNodes.length; i++) {
             await this.loadEngineer(pack, map, fileNodes[i], load, fileNodes[i].name)

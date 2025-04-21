@@ -8,7 +8,9 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
+import { NameNotRegistered } from "../../connection/errors";
 import { Vec2, Vec3, Vec4 } from "../../world/vector";
+import { ConstantBoolean, RandomBoolean } from "./boolean";
 import { ConstantEnum, ConstantSquareEnum, RandomEnum, RandomSquareEnum } from "./enum";
 import { ConstantNumber, RandomNumber, RandomStepNumber } from "./number";
 import type { ConstantRandom, Random } from "./random";
@@ -28,14 +30,32 @@ export class RandomType<T = any> {
     ) { }
 
     static get(type: string): RandomType {
-        return randomTypes[type]
+        const randomType = randomTypes[type]
+        if(!randomType)
+            throw new NameNotRegistered(type, 'RandomType')
+        return randomType
     }
 
     static register<T>(id: string, constant: () => ConstantRandom<T>, randoms: Record<string, () => Random<T>>, isArchitectGeneration: boolean = false) {
         randomTypes[id] = new RandomType<T>(id, constant, randoms, isArchitectGeneration)
     }
+
+    getRandom(key: string): Random<T> {
+        if(key === 'constant') {
+            return this.constant()
+        }
+
+        const random = this.randoms[key]
+        if(!random)
+            throw new NameNotRegistered(key, 'RandomType', 'randoms')
+
+        return random()
+    }
 }
 
+RandomType.register('boolean', () => new ConstantBoolean(false), {
+    generic: () => new RandomBoolean(0.5)
+})
 RandomType.register('number', () => new ConstantNumber(1), {
     generic: () => new RandomNumber(0, 10),
     step: () => new RandomStepNumber(0, 10)

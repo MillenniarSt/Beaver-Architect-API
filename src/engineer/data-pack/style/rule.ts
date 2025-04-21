@@ -8,7 +8,7 @@ export abstract class StyleRule<T = any> implements ToJson {
 
     constructor(
         readonly type: string,
-        public generationConstant: boolean = false
+        readonly constant: boolean = false
     ) { }
 
     static fromJson<T = any>(json: any): StyleRule<T> {
@@ -22,14 +22,14 @@ export abstract class StyleRule<T = any> implements ToJson {
     }
 
     getGenerationRandom(seed: Seed): Random<T> | null {
-        return this.generationConstant ? this.random?.toConstant(seed) ?? null : this.random
+        return this.constant ? this.random?.toConstant(seed) ?? null : this.random
     }
 
     toJson() {
         return {
             type: this.type,
             random: this.random?.toNamedJson(),
-            generationConstant: this.generationConstant
+            constant: this.constant
         }
     }
 }
@@ -39,13 +39,13 @@ export class DefinedStyleRule<T = any> extends StyleRule<T> {
     constructor(
         type: string,
         readonly random: Random<T>,
-        generationConstant: boolean = false
+        constant: boolean = false
     ) {
-        super(type, generationConstant)
+        super(type, constant)
     }
 
     static fromJson<T = any>(json: any): StyleRule<T> {
-        return new DefinedStyleRule(json.type, Random.fromJson(json.random), json.generationConstant)
+        return new DefinedStyleRule(json.type, Random.fromJson(json.random), json.constant)
     }
 }
 
@@ -53,9 +53,9 @@ export class AbstractStyleRule<T = any> extends StyleRule<T> {
 
     constructor(
         type: string,
-        generationConstant: boolean = false
+        constant: boolean = false
     ) {
-        super(type, generationConstant)
+        super(type, constant)
     }
 
     get random(): null {
@@ -63,7 +63,7 @@ export class AbstractStyleRule<T = any> extends StyleRule<T> {
     }
 
     static fromJson<T = any>(json: any): AbstractStyleRule<T> {
-        return new AbstractStyleRule(json.type, json.generationConstant)
+        return new AbstractStyleRule(json.type, json.constant)
     }
 }
 
@@ -79,6 +79,10 @@ export class StyleRules implements ToJson, WithDependency {
 
     get(id: string): StyleRule | undefined {
         return this.rules.get(id)
+    }
+
+    getAll(): [string, StyleRule][] {
+        return mapToEntries(this.rules)
     }
 
     set(id: string, rule: StyleRule) {

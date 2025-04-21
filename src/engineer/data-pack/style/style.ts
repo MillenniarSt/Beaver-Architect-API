@@ -8,27 +8,23 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { BuilderDirective, ListUpdate, ObjectUpdate, VarUpdate, type ListUpdateObject } from "../../../connection/directives/update.js";
-import { ClientDirector } from "../../../connection/director.js";
-import { Engineer, ResourceReference } from "../../engineer.js";
+import { ListUpdate, ObjectUpdate, Update, VarUpdate, type ListUpdateObject } from "../../../connection/directives/update.js";
+import { ClientDirector, Director } from "../../../connection/director.js";
+import { Engineer, EngineerDirective, ResourceReference } from "../../engineer.js";
 import { getProject } from "../../../instance.js";
-import { Random, Seed } from "../../../builder/random/random.js";
+import { Seed } from "../../../builder/random/random.js";
 import { StyleDependency } from "./dependency.js";
 import { IdAlreadyExists, IdNotExists, InternalServerError } from "../../../connection/errors.js";
-import { mapFromJson, mapToJson, recordFromJson, recordToJson, type ToJson } from "../../../util/util.js";
 import { RandomType } from "../../../builder/random/type.js";
 import { StyleRules, GenerationStyle, StyleRule, DefinedStyleRule } from "./rule.js";
 
 export type StyleUpdate = {
     isAbstract?: boolean
-    implementations?: ListUpdateObject<{
-        pack?: string,
-        location: string
-    }>[]
+    implementations?: ListUpdateObject<void>[]
     rules?: ListUpdateObject<{
         type: string,
         random: any,
-        generationConstant: boolean
+        constant: boolean
     }>[]
 }
 
@@ -44,15 +40,14 @@ export class StyleReference extends ResourceReference<Style> {
         return 'data_pack\\styles'
     }
 
-    protected _get(): Style | undefined {
-        return getProject(this.pack).dataPack.styles.get(this.location)
+    getMap(): Map<string, Style> {
+        return getProject(this.pack).dataPack.styles
     }
 }
 
 export type StyleChanges = { isAbstract?: boolean }
-export type MaterialChanges = { id?: string }
 
-export class Style extends Engineer<Style> {
+export class Style extends Engineer<Style, StyleUpdate> {
 
     constructor(
         ref: ResourceReference<Style>,
@@ -64,7 +59,7 @@ export class Style extends Engineer<Style> {
     }
 
     toGenerationStyle(seed: Seed): GenerationStyle {
-        if(this.rules.isAbstract())
+        if (this.rules.isAbstract())
             throw new AbstractStyleNotPermitted(this.reference)
         return this.rules.toGenerationStyle(seed)
     }
@@ -74,12 +69,11 @@ export class Style extends Engineer<Style> {
     }
 
     get completeRules(): [string, StyleRule][] {
-        console.debug(this)
         let entries: [string, StyleRule][] = []
         this.implementations.forEach((implementation) => {
             entries.push(...implementation.get().completeRules)
         })
-        entries.push(...Object.entries(this.rules))
+        entries.push(...this.rules.getAll())
         return entries
     }
 
@@ -108,7 +102,7 @@ export class Style extends Engineer<Style> {
         return implementations
     }
 
-    edit(director: ClientDirector, changes: StyleChanges): StyleChanges {
+    edit(director: Director, changes: StyleChanges): StyleChanges {
         const undoChanges: StyleChanges = {}
         if (changes.isAbstract !== undefined) {
             undoChanges.isAbstract = this.isAbstract
@@ -120,7 +114,7 @@ export class Style extends Engineer<Style> {
         return undoChanges
     }
 
-    pushImplementation(director: ClientDirector, implementation: ResourceReference<Style>) {
+    pushImplementation(director: Director, implementation: ResourceReference<Style>) {
         if (this.containsImplementation(implementation)) {
             throw new IdAlreadyExists(implementation.toString(), this.constructor.name, 'implementations', this.reference.toString()).warn()
         } else if (implementation.get().containsImplementation(this.reference as ResourceReference<Style>)) {
@@ -128,7 +122,7 @@ export class Style extends Engineer<Style> {
         } else {
             implementation.get().completeRules.forEach(([id, rule]) => {
                 if (rule.isAbstract() && !this.rules.has(id)) {
-                    this.pushRule(director, id, new DefinedStyleRule(rule.type, RandomType.get(rule.type).constant(), rule.generationConstant))
+                    this.pushRule(director, id, new DefinedStyleRule(rule.type, RandomType.get(rule.type).constant(), rule.constant))
                 }
             })
             this.implementations.push(implementation)
@@ -136,15 +130,14 @@ export class Style extends Engineer<Style> {
             this.update(director, {
                 implementations: [{
                     id: implementation.toString(),
-                    mode: 'push',
-                    data: { pack: implementation.relativePack, location: implementation.location }
+                    mode: 'push'
                 }]
             })
             this.saveDirector(director)
         }
     }
 
-    deleteImplementation(director: ClientDirector, implementation: ResourceReference<Style>) {
+    deleteImplementation(director: Director, implementation: ResourceReference<Style>) {
         const index = this.implementations.findIndex((imp) => imp.equals(implementation))
         if (index >= 0) {
             this.implementations.splice(index, 1)
@@ -169,7 +162,7 @@ export class Style extends Engineer<Style> {
         return rule
     }
 
-    pushRule(director: ClientDirector, id: string, rule: StyleRule) {
+    pushRule(director: Director, id: string, rule: StyleRule) {
         if (this.rules.has(id)) {
             throw new IdAlreadyExists(id, this.constructor.name, 'rules', this.reference.toString())
         } else {
@@ -185,7 +178,7 @@ export class Style extends Engineer<Style> {
         }
     }
 
-    deleteRule(director: ClientDirector, id: string): StyleRule {
+    deleteRule(director: Director, id: string): StyleRule {
         const rule = this.getRule(id)
         this.rules.delete(id)
         this.update(director, {
@@ -198,8 +191,18 @@ export class Style extends Engineer<Style> {
         return rule
     }
 
-    update(director: ClientDirector, update: StyleUpdate) {
-        director.addDirective(BuilderDirective.update('data-pack/styles/update', this.reference, styleUpdate, update))
+    protected get updatePath(): string {
+        return 'data-pack/style/update'
+    }
+
+    protected get updateInstance(): Update<{}> {
+        return styleUpdate
+    }
+
+    static create(director: Director, style: Style): void {
+        getProject(style.reference.pack).dataPack.styles.set(style.reference.location, style)
+        style.save()
+        director.addDirective(EngineerDirective.push(style.updatePath, style.reference, style.updateInstance))
     }
 
     static loadFromRef(ref: ResourceReference<Style>): Style {

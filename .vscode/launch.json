@@ -1,37 +1,27 @@
 {
     "version": "0.2.0",
-    "console": "integratedTerminal",
     "configurations": [
         {
             "type": "bun",
             "request": "launch",
-            "name": "Debug File with Bun",
-            "program": "${file}",
+            "name": "Debug",
+            "program": "${workspaceFolder}/src/index.ts",
             "cwd": "${workspaceFolder}",
-            "stopOnEntry": false,
-            "watchMode": false,
             "internalConsoleOptions": "neverOpen",
-            "runtimeArgs": [
-                "--inspect"
-            ]
+            "args": ["8225", "false", "\"C:\\Users\\Ange\\Desktop\\Developing\\JavaScript\\Beaver Architect\\server\\run\""]
         },
         {
-            "type": "bun",
+            "type": "node",
             "request": "launch",
-            "name": "Run File",
-            "program": "${file}",
+            "name": "Debug with ts-node",
+            "runtimeArgs": [
+              "-r", "ts-node/register"
+            ],
+            "args": ["8225", "false", "\"C:\\Users\\Ange\\Desktop\\Developing\\JavaScript\\Beaver Architect\\server\\run\""],
+            "program": "${workspaceFolder}/build/index.cjs",
             "cwd": "${workspaceFolder}",
-            "noDebug": true,
-            "watchMode": false,
-            "internalConsoleOptions": "neverOpen"
-        },
-        {
-            "type": "bun",
-            "request": "attach",
-            "name": "Attach Bun",
-            "url": "ws://localhost:6499/",
-            "stopOnEntry": false,
-            "internalConsoleOptions": "neverOpen"
-        }
+            "console": "integratedTerminal",
+            "skipFiles": ["<node_internals>/**"]
+          }
     ]
 }

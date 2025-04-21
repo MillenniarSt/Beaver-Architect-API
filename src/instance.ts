@@ -10,9 +10,9 @@
 
 import { commands } from './command/commands.js';
 import { ConsoleCommander } from './command/console.js';
+import type { PermissionLevel } from './connection/permission.js';
 import { server } from './connection/server.js';
 import { ArchitectSide, ServerSide } from './connection/sides.js';
-import type { LocalUser, User } from './connection/user.js';
 import { Architect } from './project/architect.js';
 import { Project } from './project/project.js';
 import readline from 'readline';
@@ -34,20 +34,7 @@ export const commander = new ConsoleCommander(
 
 // Users
 
-let _localUser: LocalUser | undefined
-export const users: Map<string, User> = new Map()
-
-export function setLocalUser(localUser: LocalUser) {
-    if (_localUser === undefined) {
-        _localUser = localUser
-    } else {
-        console.error('Local User already set')
-    }
-}
-
-export function getLocalUser(): LocalUser {
-    return _localUser!
-}
+export const users: Map<string, PermissionLevel> = new Map()
 
 // Architect
 
@@ -88,6 +75,10 @@ export function loadProject(project: Project) {
     Object.defineProperty(loadedProjects, project.identifier, { value: project, writable: false })
 }
 
+export function getAllProjects(): Project[] {
+    return Object.entries(loadedProjects).map(([id, project]) => project)
+}
+
 export function getProject(identifier?: string): Project {
     return identifier ? loadedProjects[identifier] : _project!
 }
@@ -96,7 +87,12 @@ export function getProjectOrNull(identifier: string): Project | null {
     return loadedProjects[identifier]
 }
 
+let isShuttingDown = false
+
 export async function close() {
+    if (isShuttingDown) return
+    isShuttingDown = true
+
     console.info('Closing Beaver Architect Server...')
 
     commander.close()

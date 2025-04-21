@@ -11,9 +11,9 @@
 import { ChildProcess, spawn } from 'child_process';
 import path from 'path';
 import { WebSocket } from 'ws';
-import { registerProjectMessages } from '../project/project.js';
+import { registerProjectMessages, Version } from '../project/project.js';
 import { ArchitectSide } from '../connection/sides.js';
-import { type OnMessage, toSocketError } from '../connection/server.js';
+import { getFreePort, type OnMessage, toSocketError } from '../connection/server.js';
 import { PermissionLevel, PERMISSIONS } from '../connection/permission.js';
 import { close, getProject } from '../instance.js';
 import { ConstantRandom, Random } from '../builder/random/random.js';
@@ -28,9 +28,8 @@ import { Option } from '../builder/option.js';
 export class Architect {
 
     readonly identifier: string
-    readonly version: string
+    readonly version: Version
     readonly name: string
-    readonly port: number
 
     settings = new Map<string, any>()
 
@@ -43,21 +42,15 @@ export class Architect {
     ) {
         this.identifier = data.identifier
         this.name = data.name
-        this.version = data.version
-        this.port = data.port
+        this.version = new Version(data.version)
         this.permissions = permissions
     }
 
-    get icon(): string {
-        return path.join(getProject().dir, 'architect', 'resources', 'icon.svg')
-    }
-
-    get clientData(): {} {
+    toJson() {
         return {
             identifier: this.identifier,
-            name: this.name,
-            port: this.port,
-            icon: this.icon
+            version: this.version.toJson(),
+            name: this.name
         }
     }
 }
@@ -65,7 +58,6 @@ export class Architect {
 export interface ArchitectData {
     identifier: string,
     version: string,
-    port: number,
     name: string
 }
 
@@ -76,6 +68,8 @@ export async function loadArchitect(data: ArchitectData, projectIdentifier: stri
         close()
     }
 
+    const port = await getFreePort()
+
     /**
      * Open architect as a different process controlled by the server
      * and wait its setup
@@ -83,7 +77,7 @@ export async function loadArchitect(data: ArchitectData, projectIdentifier: stri
     const process: ChildProcess = await new Promise((resolve) => {
         const architectProcess = spawn(exePath, [
             projectIdentifier,
-            `${data.port}`,
+            `${port}`,
             'false'
         ], {
             detached: true,
@@ -118,10 +112,10 @@ export async function loadArchitect(data: ArchitectData, projectIdentifier: stri
      * Create Architect Side and connect to Architect Websocket server
      */
     const side = await new Promise<ArchitectSide>((resolve) => {
-        const ws = new WebSocket(`ws://localhost:${data.port}`)
+        const ws = new WebSocket(`ws://localhost:${port}`)
 
         ws.onopen = () => {
-            console.log(`Project Server Connected to WebSocketServer ws://localhost:${data.port}`)
+            console.log(`Project Server Connected to WebSocketServer ws://localhost:${port}`)
             resolve(new ArchitectSide(architect, ws))
         }
 

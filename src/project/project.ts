@@ -59,7 +59,8 @@ export class Project {
         public name: string,
         public authors: string,
         public description: string,
-        public dependencies: Project[]
+        public dependencies: Project[],
+        public info: string
     ) { }
 
     /**
@@ -69,7 +70,7 @@ export class Project {
         const project = new Project(
             dir,
             new Version(data.version),
-            data.identifier, data.name, data.authors, data.description, []
+            data.identifier, data.name, data.authors, data.description, [], ''
         )
 
         fs.mkdirSync(project.dir)
@@ -93,6 +94,9 @@ export class Project {
             return loaded
         }
 
+        if(!fs.existsSync(path.join(dir, 'dependences'))) {
+            fs.mkdirSync(path.join(dir, 'dependences'))
+        }
         const dependencies: Project[] = []
         for (let i = 0; i < data.dependencies.length; i++) {
             const identifier = data.dependencies[i].identifier
@@ -104,11 +108,20 @@ export class Project {
             dependencies.push(await Project.load(dependeciesDir, JSON.parse(fs.readFileSync(path.join(dependeciesDir, 'project.json'), 'utf-8')), false))
         }
 
+        let info: string
+        if(fs.existsSync(path.join(dir, 'info.html'))) {
+            info = fs.readFileSync(path.join(dir, 'info.html'), 'utf-8')
+        } else {
+            info = ''
+            fs.writeFileSync(path.join(dir, 'info.html'), '', 'utf-8')
+        }
+
         const project = new Project(
             dir,
             new Version(data.version),
             data.identifier, data.name, data.authors, data.description,
-            dependencies
+            dependencies,
+            info
         )
         loadProject(project)
         if (isMain) {
@@ -154,17 +167,34 @@ export class Project {
         return fs.readFileSync(this.getAndCheckFilePath(relPath), 'utf8')
     }
 
+    readOrCreate(relPath: string, data: {}): any {
+        if(this.exists(relPath)) {
+            return this.read(relPath)
+        }
+        this.write(relPath, data)
+        return data
+    }
+
     write(relPath: string, json: {}) {
-        fs.writeFileSync(this.getFilePath(relPath), JSON.stringify(json))
+        const filePath = this.getFilePath(relPath)
+        this.ensureDir(path.dirname(relPath))
+        fs.writeFileSync(filePath, JSON.stringify(json))
     }
 
     writeText(relPath: string, text: string) {
-        fs.writeFileSync(this.getFilePath(relPath), text)
+        const filePath = this.getFilePath(relPath)
+        this.ensureDir(path.dirname(relPath))
+        fs.writeFileSync(filePath, text)
     }
 
     exists(relPath: string): boolean {
-        
         return fs.existsSync(this.getFilePath(relPath))
+    }
+
+    ensureDir(relPath: string) {
+        if(!this.exists(relPath)) {
+            this.mkDir(relPath)
+        }
     }
 
     mkDir(relPath: string) {
@@ -172,20 +202,54 @@ export class Project {
     }
 
     readDir(relPath: string, recursive: boolean = false): string[] | Buffer[] {
-        
         return fs.readdirSync(this.getAndCheckFilePath(relPath), { recursive: recursive })
     }
 
-    mapDir(relPath: string, dir: string = this.getAndCheckFilePath(relPath)): FileNode[] {
-        
-        return fs.readdirSync(dir, { withFileTypes: true }).map((entry) => {
-            const relFilePath = path.join(relPath, entry.name)
+    mapDir(relPath: string): FileNode[] {
+        return fs.readdirSync(this.getAndCheckFilePath(relPath), { withFileTypes: true }).map((entry) => {
+            const filePath = path.join(relPath, entry.name)
             return {
                 name: entry.name,
-                path: relFilePath,
-                children: entry.isDirectory() ? this.mapDir(path.join(dir, entry.name), relFilePath) : undefined
+                path: filePath,
+                children: entry.isDirectory() ? this.mapDir(filePath) : undefined
             }
         })
+    }
+
+    rename(relPath: string, newRelPath: string) {
+        const newFilePath = this.getFilePath(newRelPath)
+        this.ensureDir(path.dirname(newRelPath))
+        fs.renameSync(this.getAndCheckFilePath(relPath), newFilePath)
+    }
+
+    cleanDir(relPath: string, baseDir: string = '') {
+        if(relPath !== baseDir && this.readDir(relPath).length === 0) {
+            this.removeDir(relPath)
+            this.cleanDir(path.dirname(relPath))
+        }
+    }
+
+    renameAndClean(relPath: string, newRelPath: string, baseDir?: string) {
+        this.rename(relPath, newRelPath)
+        this.cleanDir(path.dirname(relPath), baseDir)
+    }
+
+    remove(relPath: string) {
+        fs.rmSync(this.getAndCheckFilePath(relPath))
+    }
+
+    removeAndClean(relPath: string, baseDir?: string) {
+        this.remove(relPath)
+        this.cleanDir(path.dirname(relPath), baseDir)
+    }
+
+    removeDir(relPath: string) {
+        fs.rmdirSync(this.getAndCheckFilePath(relPath))
+    }
+
+    removeDirAndClean(relPath: string, baseDir?: string) {
+        this.removeDir(relPath)
+        this.cleanDir(path.dirname(relPath), baseDir)
     }
 
     protected getAndCheckFilePath(relPath: string): string {
@@ -208,11 +272,16 @@ export function registerProjectMessages(onMessage: OnMessage) {
         const project = getProject(data.identifier)
         client.respond(id, {
             identifier: project.identifier,
+            version: project.version.toJson(),
+            dependencies: project.dependencies.map((dependency) => dependency.identifier),
             name: project.name,
             authors: project.authors,
             description: project.description,
-            architect: getArchitect().clientData
+            info: project.info
         })
+    })
+    onMessage.set('get-architect', (data, client, id) => {
+        client.respond(id, getArchitect().toJson())
     })
 
     // File Manager

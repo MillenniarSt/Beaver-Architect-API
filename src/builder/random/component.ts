@@ -21,7 +21,7 @@ export class ConstantComponent extends ConstantRandom<ResourceReference<Componen
     }
 
     getStyleDependency(): StyleDependency {
-        return this.value.get().dependency
+        return this.value.get().getStyleDependency()
     }
 
     toJson(): {} {

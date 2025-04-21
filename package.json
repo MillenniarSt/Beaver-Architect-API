@@ -4,18 +4,17 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "serve": "bun run src/index.ts",
-    "build": "bun build src/index.ts --outfile build/index.js --target=node --format=cjs && pkg start.js --targets node18-win-x64 --output \"build/Beaver Architect.exe\""
+    "build": "bun build src/index.ts --outfile build/index.js --target=node --format=cjs && pkg start.js --targets node18-win-x64 --output \"build/Beaver Architect.exe\"",
+    "serve": "bun run src/index.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/localtunnel": "^2.0.4",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.0",
-    "pkg": "^5.8.1"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
+    "pkg": "^5.8.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   },
   "dependencies": {
     "appdata-path": "^1.0.0",
