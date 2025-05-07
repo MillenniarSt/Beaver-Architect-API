@@ -8,13 +8,15 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
+import { RandomTypeRegistry } from "../../../register/random";
 import { Vec2 } from "../../../world/vector";
-import { ConstantRandom, NamedRandom, Random, Seed } from "../random";
+import { ConstantRandom, Random, Seed } from "../random";
 
-@NamedRandom()
 export class ConstantVec2 extends ConstantRandom<Vec2> {
 
-    readonly type = 'vec2'
+    get type(): string {
+        return 'c_vec2'
+    }
 
     constructor(
         public value: Vec2
@@ -26,15 +28,16 @@ export class ConstantVec2 extends ConstantRandom<Vec2> {
         return new ConstantVec2(Vec2.fromJson(json))
     }
 
-    toJson(): {} {
+    toData(): {} {
         return this.value.toJson()
     }
 }
 
-@NamedRandom()
 export class RandomVec2 extends Random<Vec2> {
 
-    readonly type = 'vec2'
+    get type(): string {
+        return 'vec2'
+    }
 
     constructor(
         public x: Random<number>,
@@ -44,21 +47,21 @@ export class RandomVec2 extends Random<Vec2> {
     }
 
     static fromJson(json: any): RandomVec2 {
-        return new RandomVec2(Random.fromJson(json.x), Random.fromJson(json.y))
+        return new RandomVec2(RandomTypeRegistry.NUMBER.randomFromJson(json.x), RandomTypeRegistry.NUMBER.randomFromJson(json.y))
     }
 
-    toConstant(seed: Seed): ConstantRandom<Vec2> {
-        return new ConstantVec2(this.seeded(seed))
+    edit(data: any): void {
+        
     }
 
     seeded(seed: Seed): Vec2 {
         return new Vec2(this.x.seeded(seed), this.y.seeded(seed))
     }
 
-    toJson(): {} {
+    toData(): {} {
         return {
-            x: this.x.toNamedJson(),
-            y: this.y.toNamedJson()
+            x: this.x.toJson(),
+            y: this.y.toJson()
         }
     }
 }

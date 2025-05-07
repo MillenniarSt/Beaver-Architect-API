@@ -16,10 +16,8 @@ import { registerDirectorMessages } from './connection/director.js'
 import { close, commander, getProject, setArchitect, users } from './instance.js'
 import { type ArchitectData, loadArchitect } from './project/architect.js'
 import { registerEnStructureMessages } from './engineer/data-pack/structure/messages.js'
-import { registerEditorMessages } from './engineer/editor.js'
 import { identifierToLabel, labelToId } from './util/form.js'
 import { userInfo } from 'os'
-import { User } from './connection/user.js'
 
 /**
  * Improvement of the console logs
@@ -74,11 +72,13 @@ process.on('unhandledRejection', (reason, promise) => {
  * Import all Builders here
  * so you make sure they are registered
  */
-import './builder/collective.js'
-import './builder/random/type.js'
-import { simpleGrid } from './template/testing.js'
 import { PermissionLevel } from './connection/permission.js'
 import { registerStyleMessages } from './engineer/data-pack/style/messages.js'
+import { registerComponentMessages } from './engineer/data-pack/component/messages.js'
+import { GEO_FORMS, GEOS } from './register/geo.js'
+import { boxes, registerRegisterMessages } from './register/register.js'
+import { RANDOM_TYPES, RANDOMS } from './register/random.js'
+import { BUILDERS } from './register/builder.js'
 
 start()
 
@@ -111,7 +111,7 @@ async function start() {
         projectData = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf8'))
         architectData = JSON.parse(fs.readFileSync(path.join(dir, 'architect.json'), 'utf8'))
 
-        await Project.load(dir, projectData)
+        Project.load(dir, projectData)
     } else {
         console.info(`Generating default resources for new project...`)
         const identifier = `${labelToId(userInfo().username)}.project`
@@ -126,7 +126,7 @@ async function start() {
         }
         architectData = { identifier: 'minecraft', version: new Version('1.0.0').toJson(), name: 'Minecraft' }
 
-        await Project.create(dir, projectData, architectData)
+        Project.create(dir, projectData, architectData)
     }
 
     Object.entries(getProject().readOrCreate('users.json', [])).map(([id, level]) => {
@@ -138,10 +138,11 @@ async function start() {
      */
     const onServerMessage: ServerOnMessage = new Map()
     registerProjectMessages(onServerMessage as OnMessage)
+    registerRegisterMessages(onServerMessage as OnMessage)
     registerDirectorMessages(onServerMessage)
     registerStyleMessages(onServerMessage)
+    registerComponentMessages(onServerMessage)
     registerEnStructureMessages(onServerMessage)
-    registerEditorMessages(onServerMessage)
 
     const url = await server.open(port, isPublic, onServerMessage)
     console.info(`Opened Project Server '${getProject().identifier}' on ${url ?? `port ${port}`}`)
@@ -154,4 +155,20 @@ async function start() {
     const architectSide = await loadArchitect(architectData, projectData.identifier)
     setArchitect(architectSide)
     console.info(`Loaded Architect ${architectSide.architect.name} [${architectData.identifier}]`)
+
+    /**
+     * Initialization of Registers and their Registries
+     */
+    boxes['geo_forms'] = GEO_FORMS
+    boxes['geos'] = GEOS
+    boxes['randoms'] = RANDOMS
+    boxes['random_types'] = RANDOM_TYPES
+    boxes['builders'] = BUILDERS
+
+    /**
+     * Initialize Project and its Dependencies
+     */
+    await getProject().init()
+
+    console.log(`Started Project ${getProject().name} [${getProject().identifier}]`)
 }

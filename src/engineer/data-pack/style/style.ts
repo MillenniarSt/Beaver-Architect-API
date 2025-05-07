@@ -9,22 +9,24 @@
 //      ##    \__|__/
 
 import { ListUpdate, ObjectUpdate, Update, VarUpdate, type ListUpdateObject } from "../../../connection/directives/update.js";
-import { ClientDirector, Director } from "../../../connection/director.js";
+import { Director } from "../../../connection/director.js";
 import { Engineer, EngineerDirective, ResourceReference } from "../../engineer.js";
 import { getProject } from "../../../instance.js";
 import { Seed } from "../../../builder/random/random.js";
 import { StyleDependency } from "./dependency.js";
 import { IdAlreadyExists, IdNotExists, InternalServerError } from "../../../connection/errors.js";
-import { RandomType } from "../../../builder/random/type.js";
-import { StyleRules, GenerationStyle, StyleRule, DefinedStyleRule } from "./rule.js";
+import { StyleRules, GenerationStyle, StyleRule, DefinedStyleRule, AbstractStyleRule } from "./rule.js";
+import type { StyleRuleChanges } from "./messages.js";
+import { RANDOM_TYPES } from "../../../register/random.js";
 
 export type StyleUpdate = {
     isAbstract?: boolean
     implementations?: ListUpdateObject<void>[]
     rules?: ListUpdateObject<{
-        type: string,
-        random: any,
-        constant: boolean
+        type?: string,
+        random?: any,
+        fixed?: boolean,
+        fromImplementations?: string[]
     }>[]
 }
 
@@ -93,18 +95,29 @@ export class Style extends Engineer<Style, StyleUpdate> {
         return false
     }
 
-    implementationsOfrule(id: string, includeSelf: boolean = false): ResourceReference<Style>[] {
+    implementationsOfRule(id: string, includeSelf: boolean = false): ResourceReference<Style>[] {
         let implementations: ResourceReference<Style>[] = []
         if (this.rules.has(id) && includeSelf) {
             implementations.push(this.reference as ResourceReference<Style>)
         }
-        this.implementations.forEach((implementation) => implementations.push(...implementation.get().implementationsOfrule(id, true)))
+        this.implementations.forEach((implementation) => implementations.push(...implementation.get().implementationsOfRule(id, true)))
         return implementations
+    }
+
+    isRuleDependency(id: string): boolean {
+        return this.implementationsOfRule(id).length > 0
     }
 
     edit(director: Director, changes: StyleChanges): StyleChanges {
         const undoChanges: StyleChanges = {}
-        if (changes.isAbstract !== undefined) {
+        if (changes.isAbstract !== undefined && changes.isAbstract !== this.isAbstract) {
+            if (this.isAbstract) {
+                this.rules.getAll().forEach(([id, rule]) => {
+                    if (rule instanceof AbstractStyleRule) {
+                        this.pushRule(director, id, rule.generateDefined())
+                    }
+                })
+            }
             undoChanges.isAbstract = this.isAbstract
             this.isAbstract = changes.isAbstract
             this.update(director, { isAbstract: changes.isAbstract })
@@ -120,11 +133,13 @@ export class Style extends Engineer<Style, StyleUpdate> {
         } else if (implementation.get().containsImplementation(this.reference as ResourceReference<Style>)) {
             throw new InternalServerError(`Can not push implementation ${implementation}: it contains ${this.reference.toString()}`).warn()
         } else {
-            implementation.get().completeRules.forEach(([id, rule]) => {
-                if (rule.isAbstract() && !this.rules.has(id)) {
-                    this.pushRule(director, id, new DefinedStyleRule(rule.type, RandomType.get(rule.type).constant(), rule.constant))
-                }
-            })
+            if (!this.isAbstract) {
+                implementation.get().completeRules.forEach(([id, rule]) => {
+                    if (rule instanceof AbstractStyleRule && !this.rules.has(id)) {
+                        this.pushRule(director, id, rule.generateDefined())
+                    }
+                })
+            }
             this.implementations.push(implementation)
 
             this.update(director, {
@@ -154,6 +169,10 @@ export class Style extends Engineer<Style, StyleUpdate> {
         }
     }
 
+    hasRule(id: string): boolean {
+        return this.rules.has(id)
+    }
+
     getRule(id: string): StyleRule {
         const rule = this.rules.get(id)
         if (!rule) {
@@ -163,23 +182,25 @@ export class Style extends Engineer<Style, StyleUpdate> {
     }
 
     pushRule(director: Director, id: string, rule: StyleRule) {
-        if (this.rules.has(id)) {
+        if (this.hasRule(id)) {
             throw new IdAlreadyExists(id, this.constructor.name, 'rules', this.reference.toString())
-        } else {
-            this.rules.set(id, rule)
-            this.update(director, {
-                rules: [{
-                    id: id,
-                    mode: 'push',
-                    data: rule.toJson()
-                }]
-            })
-            this.saveDirector(director)
         }
+        this.rules.set(id, rule)
+        this.update(director, {
+            rules: [{
+                id: id,
+                mode: 'push',
+                data: { type: rule.type.id, random: rule.random?.toJson() ?? null, fixed: rule.fixed, fromImplementations: this.implementationsOfRule(id).map((ref) => ref.toString()) }
+            }]
+        })
+        this.saveDirector(director)
     }
 
     deleteRule(director: Director, id: string): StyleRule {
         const rule = this.getRule(id)
+        if (this.isRuleDependency(id)) {
+            throw new Error('Can not delete a Dependency Style Rule')
+        }
         this.rules.delete(id)
         this.update(director, {
             rules: [{
@@ -189,6 +210,70 @@ export class Style extends Engineer<Style, StyleUpdate> {
         })
         this.saveDirector(director)
         return rule
+    }
+
+    renameRule(director: Director, id: string, newId: string) {
+        const rule = this.getRule(id)
+        if (this.hasRule(id)) {
+            throw new IdAlreadyExists(id, this.constructor.name, 'rules', this.reference.toString())
+        }
+        this.deleteRule(director, id)
+        this.pushRule(director, newId, rule)
+    }
+
+    editRule(director: Director, id: string, changes: StyleRuleChanges): StyleRuleChanges {
+        const rule = this.getRule(id)
+        const undoChanges: StyleRuleChanges = {
+            isAbstract: changes.isAbstract ? rule.isAbstract() : undefined,
+            type: changes.type ? rule.type.id : undefined,
+            fixed: changes.fixed ? rule.fixed : undefined,
+            random: changes.random ? rule.random?.type : undefined
+        }
+
+        let newRule: StyleRule
+        if ((changes.isAbstract !== undefined ? changes.isAbstract : rule.isAbstract()) && this.isAbstract) {
+            newRule = new AbstractStyleRule(changes.type ? RANDOM_TYPES.get(changes.type) : rule.type, changes.fixed ?? rule.fixed)
+        } else if (!changes.random && (!changes.type || changes.type === rule.type.id) && rule.random) {
+            newRule = new DefinedStyleRule(changes.type ? RANDOM_TYPES.get(changes.type) : rule.type, rule.random, changes.fixed ?? rule.fixed)
+        } else {
+            const randomType = changes.type ? RANDOM_TYPES.get(changes.type) : rule.type
+            newRule = new DefinedStyleRule(randomType, changes.random ? randomType.getRandom(changes.random).generate() : randomType.constant.generate(), changes.fixed ?? rule.fixed)
+        }
+        this.rules.set(id, newRule)
+        this.update(director, {
+            rules: [{
+                id: id,
+                data: {
+                    type: newRule.type.id,
+                    random: newRule.random?.toJson() ?? null,
+                    fixed: newRule.fixed,
+                    fromImplementations: this.implementationsOfRule(id).map((ref) => ref.toJson())
+                }
+            }]
+        })
+        this.saveDirector(director)
+
+        return undoChanges
+    }
+
+    editRuleRandom(director: Director, id: string, data: any): any {
+        const rule = this.getRule(id)
+        if (rule.random) {
+            let oldData = rule.random.toJson()
+            rule.random.edit(data)
+            this.update(director, {
+                rules: [{
+                    id: id,
+                    data: {
+                        random: rule.random.toJson()
+                    }
+                }]
+            })
+            this.saveDirector(director)
+            return oldData
+        } else {
+            throw new Error(`Can not edit random of Style Rule ${data.id}: it is an abstract`)
+        }
     }
 
     protected get updatePath(): string {

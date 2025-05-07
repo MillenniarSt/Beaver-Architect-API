@@ -1,9 +1,10 @@
-import { ConstantRandom, NamedRandom, Random, Seed } from "./random"
+import { ConstantRandom, Random, Seed } from "./random"
 
-@NamedRandom()
 export class ConstantBoolean extends ConstantRandom<boolean> {
 
-    readonly type = 'boolean'
+    get type(): string {
+        return 'C_boolean'
+    }
     
     constructor(public value: boolean) {
         super()
@@ -12,16 +13,13 @@ export class ConstantBoolean extends ConstantRandom<boolean> {
     static fromJson(json: any): ConstantBoolean {
         return new ConstantBoolean(json)
     }
-
-    toJson(): {} {
-        return this.value
-    }
 }
 
-@NamedRandom()
 export class RandomBoolean extends Random<boolean> {
 
-    readonly type = 'boolean'
+    get type(): string {
+        return 'boolean'
+    }
     
     constructor(public probability: number) {
         super()
@@ -31,15 +29,15 @@ export class RandomBoolean extends Random<boolean> {
         return new RandomBoolean(json)
     }
 
+    edit(data: any): void {
+        this.probability = data ?? this.probability
+    }
+
     seeded(seed: Seed): boolean {
         return seed.next() < this.probability
     }
 
-    toConstant(seed: Seed): ConstantRandom<boolean> {
-        return new ConstantBoolean(this.seeded(seed))
-    }
-
-    toJson(): {} {
+    toData(): {} {
         return this.probability
     }
 }

@@ -8,13 +8,13 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { ClientDirector } from "../connection/director.js";
-import { NameNotRegistered } from "../connection/errors.js";
-import { type MessageFunction, type ServerOnMessage } from "../connection/server.js";
-import { ClientSide, Side } from "../connection/sides.js";
-import { getProject } from "../instance.js";
-import { type ToJson } from "../util/util.js";
-import { Engineer, ResourceReference } from "./engineer.js";
+import { ClientDirector } from "../src/connection/director.js";
+import { KeyNotRegistered } from "../src/connection/errors.js";
+import { type MessageFunction, type ServerOnMessage } from "../src/connection/server.js";
+import { ClientSide, Side } from "../src/connection/sides.js";
+import { getProject } from "../src/instance.js";
+import { type ToJson } from "../src/util/util.js";
+import { Engineer, ResourceReference } from "../src/engineer/engineer.js";
 
 export const namedEditors: Map<string, EditorFunction> = new Map()
 
@@ -48,7 +48,7 @@ export abstract class Editor<E extends Engineer = Engineer> implements ToJson {
     static get(ref: ResourceReference, extension: string): Editor {
         const factory = namedEditors.get(extension)
         if(!factory) {
-            throw new NameNotRegistered(extension, 'Editor')
+            throw new KeyNotRegistered(extension, 'Editor')
         }
         const engineer = ref.get()
         try {

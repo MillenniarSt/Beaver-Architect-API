@@ -8,9 +8,7 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { NameNotRegistered } from "../../connection/errors";
-import type { StyleDependency } from "../../engineer/data-pack/style/dependency";
-import type { ToJson } from "../../util/util";
+import { RegistryChild } from "../../register/register";
 
 export class Seed {
 
@@ -29,64 +27,28 @@ export class Seed {
 	}
 }
 
-export const namedRandom: Map<string, RandomFunction> = new Map()
+export abstract class Random<T extends {} = any> extends RegistryChild {
 
-export function NamedRandom() {
-	return function (constructor: RandomFunction) {
-		namedRandom.set(constructor.name, constructor)
-	}
-}
-
-export interface RandomFunction extends Function {
-
-	new(...args: any[]): Random
-
-	fromJson(json: any): Random
-}
-
-export abstract class Random<T = any> implements ToJson {
-
-	static fromJson(json: any): Random {
-		const factory = namedRandom.get(json.name)?.fromJson
-		if (!factory) {
-			throw new NameNotRegistered(json.name, 'Random')
-		}
-		return factory(json.data)
-	}
-
-	abstract get type(): string
+	abstract edit(data: any): void
 
 	abstract seeded(seed: Seed): T
-
-	abstract toConstant(seed: Seed): ConstantRandom<T>
-
-	abstract toJson(): {}
-
-	toClient() {
-		return this.toNamedJson()
-	}
-
-	toNamedJson() {
-        return {
-            name: this.constructor.name,
-            data: this.toJson()
-        }
-    }
 }
 
-export abstract class ConstantRandom<T = any> extends Random<T> {
-
-	static fromJson(json: any): ConstantRandom {
-		return Random.fromJson(json) as ConstantRandom
-	}
+export abstract class ConstantRandom<T extends {} = any> extends Random<T> {
 
 	abstract get value(): T
+
+	abstract set value(newValue: T)
+
+	edit(data: T | undefined) {
+		this.value = data ?? this.value
+	}
 
 	seeded(seed: Seed): T {
 		return this.value
 	}
 
-	toConstant(seed: Seed): ConstantRandom<T> {
-		return this
+	toData(): {} {
+		return this.value
 	}
 }

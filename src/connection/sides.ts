@@ -11,16 +11,15 @@
 import { v4 } from "uuid"
 import { WebSocket } from "ws"
 import { type WebSocketError, type WebSocketResponse } from "./server.js"
-import { Editor } from "../engineer/editor.js"
 import { ResourceReference } from "../engineer/engineer.js"
 import { Permission, PermissionLevel } from "./permission.js"
-import { PermissionDenided } from "./errors.js"
+import { PermissionDenied } from "./errors.js"
 import type { User } from "./user.js"
 import type { Architect } from "../project/architect.js"
 
 export abstract class Side {
 
-    abstract get identfier(): string
+    abstract get identifier(): string
 
     abstract get permissions(): PermissionLevel
 
@@ -40,9 +39,15 @@ export abstract class Side {
 
     abstract closeChannel(id: string): void
 
+    abstract info(...message: string[]): void
+
+    abstract warn(...message: string[]): void
+
+    abstract error(...message: string[]): void
+
     ensurePermission(permission: Permission) {
         if(!this.permissions.hasPermission(permission)) {
-            throw new PermissionDenided(this, permission)
+            throw new PermissionDenied(this, permission)
         }
     }
 }
@@ -133,7 +138,7 @@ export class ClientSide extends SocketSide {
         super(socket)
     }
 
-    get identfier(): string {
+    get identifier(): string {
         return `$${this.user.id}`
     }
 
@@ -163,39 +168,16 @@ export class ClientSide extends SocketSide {
         }
     }
 
-    info(message: string) {
-        this.send('message', { severity: 'info', summary: 'Info', detail: message })
+    info(...message: string[]) {
+        this.send('message', { severity: 'info', summary: 'Info', detail: message.join(' ') })
     }
 
-    warn(message: string) {
-        this.send('message', { severity: 'warn', summary: 'Warn', detail: message })
+    warn(...message: string[]) {
+        this.send('message', { severity: 'warn', summary: 'Warn', detail: message.join(' ') })
     }
 
-    error(message: string) {
-        this.send('message', { severity: 'error', summary: 'Error', detail: message })
-    }
-
-    protected editors: Map<string, Editor> = new Map()
-
-    openEditor(ref: ResourceReference, extension: string): Editor {
-        let editor = this.getEditor(ref, extension)
-        if(!editor) {
-            editor = Editor.get(ref, extension)
-            this.editors.set(this.getUniqueEditorId(ref, extension), editor)
-        }
-        return editor
-    }
-
-    getEditor(ref: ResourceReference, extension: string): Editor | undefined {
-        return this.editors.get(this.getUniqueEditorId(ref, extension))
-    }
-
-    closeEditor(ref: ResourceReference, extension: string) {
-        this.editors.delete(this.getUniqueEditorId(ref, extension))
-    }
-
-    protected getUniqueEditorId(ref: ResourceReference, extension: string): string {
-        return `${ref.toString()}$${extension}`
+    error(...message: string[]) {
+        this.send('message', { severity: 'error', summary: 'Error', detail: message.join(' ') })
     }
 }
 
@@ -205,20 +187,26 @@ export class ArchitectSide extends SocketSide {
         super(socket)
     }
 
-    get identfier(): string {
+    get identifier(): string {
         return 'architect'
     }
 
     get permissions(): PermissionLevel {
         return this.architect.permissions
     }
+
+    info(message: string): void { }
+
+    warn(message: string): void { }
+
+    error(message: string): void { }
 }
 
 export class ServerSide extends Side {
 
     private static readonly PERMISSIONS = new PermissionLevel(Permission.owner())
 
-    get identfier(): string {
+    get identifier(): string {
         return 'server'
     }
 
@@ -255,5 +243,17 @@ export class ServerSide extends Side {
 
     closeChannel(id: string): void {
         console.warn('A Server Side can not close Channels')
+    }
+
+    info(...message: string[]): void {
+        console.info(...message)
+    }
+
+    warn(...message: string[]): void {
+        console.warn(...message)
+    }
+
+    error(...message: string[]): void {
+        console.error(...message)
     }
 }

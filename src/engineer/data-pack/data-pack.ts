@@ -29,18 +29,13 @@ export class DataPack {
         readonly requiredStyles: StyleReference[]
     ) { }
 
-    static async create(pack: string): Promise<DataPack> {
+    static async load(pack: string): Promise<DataPack> {
         const project = getProject(pack)
         
-        project.mkDir(path.join('data_pack', 'styles'))
-        project.mkDir(path.join('data_pack', 'components'))
-        project.mkDir(path.join('data_pack', 'structures'))
+        project.ensureDir(path.join('data_pack', 'styles'))
+        project.ensureDir(path.join('data_pack', 'components'))
+        project.ensureDir(path.join('data_pack', 'structures'))
 
-        project.write(path.join('data_pack', 'required_styles.json'), [])
-        return await DataPack.load(pack)
-    }
-
-    static async load(pack: string): Promise<DataPack> {
         return new DataPack(
             await this.loadEngineers<Style>(pack,
                 path.join('data_pack', 'styles'),
@@ -73,9 +68,13 @@ export class DataPack {
     protected static async loadEngineer<E extends Engineer>(pack: string, map: Map<string, E>, node: FileNode, load: (ref: ReferenceData) => E, location: string) {
         if (node.children === undefined) {
             location = location.substring(0, location.lastIndexOf('.'))
-            const engineer = load({ pack: pack, location: location })
-            await engineer.init()
-            map.set(location, engineer)
+            try {
+                const engineer = load({ pack: pack, location: location })
+                await engineer.init()
+                map.set(location, engineer)
+            } catch(error) {
+                console.error(`Error while loading Data Pack Engineer ${location} in ${pack}\n`, error)
+            }
         } else {
             for (let i = 0; i < node.children.length; i++) {
                 await this.loadEngineer(pack, map, node.children[i], load, `${location}/${node.children[i].name}`)

@@ -52,8 +52,8 @@ export function mapFromJson<T>(json: any, itemFromJson: (json: any) => T): Map<s
 
 // Record
 
-export function parseRecord<T, R>(record: Record<any, T>, parse: (value: T) => R): Record<any, R> {
-    return Object.fromEntries(Object.entries(record).map(([key, value]) => [key, parse(value)]))
+export function parseRecord<T, R>(record: Record<any, T>, parse: (value: T, key: string) => R): Record<any, R> {
+    return Object.fromEntries(Object.entries(record).map(([key, value]) => [key, parse(value, key)]))
 }
 
 export function recordToJson<T extends ToJson>(record: Record<string, T>): Record<string, {}> {

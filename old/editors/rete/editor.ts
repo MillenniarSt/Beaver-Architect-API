@@ -16,7 +16,7 @@ import { v4 } from "uuid";
 import { Vec2 } from "../../../../../world/vector.js";
 import { ClientSide } from "../../../../../connection/sides.js";
 import { EditorDirective, ListUpdate, type ListUpdateObject, ObjectUpdate, VarUpdate } from "../../../../../connection/directives/update.js";
-import { NamedEditor } from "../../../../editor.js";
+import { NamedEditor } from "../../../../../../temp/editor.js";
 import { IdAlreadyExists, IdNotExists } from "../../../../../connection/errors.js";
 import { type MessageFunction } from "../../../../../connection/server.js";
 import { reteEngineerStructureMessages } from "./messages.js";

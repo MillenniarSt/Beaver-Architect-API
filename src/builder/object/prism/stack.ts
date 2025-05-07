@@ -12,52 +12,47 @@ import type { GenerationStyle } from '../../../engineer/data-pack/style/rule.js'
 import { Plane2 } from '../../../world/bi-geo/plane.js';
 import { Prism } from '../../../world/geo/object.js';
 import { Vec2, Vec3 } from '../../../world/vector.js';
-import { type BuilderChild, BuilderResult, ObjectBuilder } from '../../builder.js';
+import { Builder, type BuilderChild, BuilderResult, BuilderType } from '../../builder.js';
 import { childrenFromJson, optionsFromJson } from '../../collective.js';
 import { Option } from '../../option.js';
-import { ConstantEnum } from '../../random/enum.js';
+import { ConstantEnum, type Align, type RepetitionMode } from '../../random/enum.js';
 import { ConstantNumber } from '../../random/number.js';
 import type { Seed } from '../../random/random.js';
+import { RandomType } from '../../random/type.js';
 import { ConstantVec2 } from '../../random/vec/vec2.js';
 
-export type StackAlignmentValue = 'start' | 'center' | 'end' | 'fill'
-export enum StackAlignment {
-    START = 'start',
-    CENTER = 'center',
-    END = 'end',
-    FILL = 'fill'
-}
-
-export type RepetitionModeValue = 'none' | 'block' | 'builder'
-export enum RepetitionMode {
-    NONE = 'none',
-    BLOCK = 'block',
-    BUILDER = 'builder'
-}
-
-export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<Prism<P>, {
-    alignment: Option<StackAlignmentValue | undefined>
-    repeat: Option<RepetitionModeValue | undefined>
+export class StackPrismBuilder<P extends Plane2 = Plane2> extends Builder<Prism<P>, {
+    alignment: Option<Align | undefined>
+    repeat: Option<RepetitionMode | undefined>
     gap: Option<number>
     padding: Option<Vec2>
 }> {
 
-    static readonly type = 'stackPrism'
+    static readonly type = new BuilderType('stackPrism', Prism.type, [
+        { id: 'children', geo: Prism.type, options: [
+            { id: 'height', type: RandomType.NUMBER }
+        ], multiple: true }
+    ], [
+        { id: 'alignment', type: RandomType.ALIGN },
+        { id: 'repeat', type: RandomType.REPETITION },
+        { id: 'gap', type: RandomType.NUMBER },
+        { id: 'padding', type: RandomType.VEC2 }
+    ])
 
     constructor(
-        public children: BuilderChild<ObjectBuilder<Prism<P>>, {
+        public children: BuilderChild<Builder<Prism<P>>, {
             height: Option<number>
         }>[],
         options: {
-            alignment?: Option<StackAlignmentValue | undefined>
-            repeat?: Option<RepetitionModeValue | undefined>
+            alignment?: Option<Align | undefined>
+            repeat?: Option<RepetitionMode | undefined>
             gap?: Option<number>
             padding?: Option<Vec2>
         } = {}
     ) {
         super({
-            alignment: options.alignment ?? Option.random(new ConstantEnum<StackAlignmentValue[]>(StackAlignment.START)),
-            repeat: options.repeat ?? Option.random(new ConstantEnum<RepetitionModeValue[]>(RepetitionMode.NONE)),
+            alignment: options.alignment ?? Option.random(new ConstantEnum<Align[]>('start')),
+            repeat: options.repeat ?? Option.random(new ConstantEnum<RepetitionMode[]>('none')),
             gap: options.gap ?? Option.random(new ConstantNumber(0)),
             padding: options.padding ?? Option.random(new ConstantVec2(Vec2.ZERO))
         })
@@ -94,11 +89,11 @@ export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<
         }
 
         let repetitions = this.children.length
-        if (repeat === RepetitionMode.BLOCK || repeat === RepetitionMode.BUILDER) {
+        if (repeat === 'block' || repeat === 'every') {
             repetitions = Math.floor(size / childrenHeight) * this.children.length
             childrenHeight = childrenHeight * (repetitions / this.children.length) + gap * (repetitions - 1)
         }
-        if (repeat === RepetitionMode.BUILDER) {
+        if (repeat === 'every') {
             for (let i = 0; i < this.children.length; i++) {
                 if (childrenHeight + childrenHeights[i] <= size) {
                     repetitions++
@@ -109,7 +104,7 @@ export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<
             }
         }
 
-        if (alignment === StackAlignment.FILL) {
+        if (alignment === 'fill') {
             const stretch = (size - childrenHeight) / repetitions
 
             let results: BuilderResult[] = []
@@ -124,11 +119,11 @@ export class StackPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<
         } else {
             let z: number = 0
             switch (alignment) {
-                case StackAlignment.START:
+                case 'start':
                     z = base; break
-                case StackAlignment.END:
+                case 'end':
                     z = base + size - childrenHeight; break
-                case StackAlignment.CENTER:
+                case 'center':
                     z = base + (size - childrenHeight) / 2; break
             }
 

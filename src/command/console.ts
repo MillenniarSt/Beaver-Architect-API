@@ -42,7 +42,6 @@ export class ConsoleCommander extends Commander {
     }
 
     _close() {
-        this.opened = false
         this.rl.close()
     }
 }

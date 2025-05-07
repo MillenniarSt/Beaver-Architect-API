@@ -21,7 +21,7 @@ import { StructureEngineer, StructureReference } from "./structure.js";
  * Sum up messages paths and their data types required
  */
 type MessagesStructure = {
-    'create': MessageFunction<ClientSide, { ref: string, abstract?: boolean }>
+    'create': MessageFunction<ClientSide, { ref: string }>
     'delete': MessageFunction<ClientSide, { ref: string }>
 
     'get-all': MessageFunction<ClientSide, { project?: string }>

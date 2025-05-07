@@ -12,17 +12,23 @@ import type { GenerationStyle } from "../../../engineer/data-pack/style/rule.js"
 import { Plane2 } from "../../../world/bi-geo/plane.js";
 import { Prism } from "../../../world/geo/object.js";
 import { Vec3 } from "../../../world/vector.js";
-import { type BuilderChild, BuilderResult, ObjectBuilder } from "../../builder.js";
+import { Builder, type BuilderChild, BuilderResult, BuilderType } from "../../builder.js";
 import { childrenFromJson } from "../../collective.js";
 import type { Option } from "../../option.js";
 import type { Seed } from "../../random/random.js";
+import { RandomType } from "../../random/type.js";
 
-export class FlexPrismBuilder<P extends Plane2 = Plane2> extends ObjectBuilder<Prism<P>, {}> {
+export class FlexPrismBuilder<P extends Plane2 = Plane2> extends Builder<Prism<P>, {}> {
 
-    static readonly type = 'flexPrism'
+    static readonly type = new BuilderType('flexPrism', Prism.type, [
+        { id: 'children', geo: Prism.type, options: [
+            { id: 'isStatic', type: RandomType.BOOLEAN },
+            { id: 'weight', type: RandomType.NUMBER }
+        ], multiple: true }
+    ], [])
 
     constructor(
-        public children: BuilderChild<ObjectBuilder<Prism<P>>, {
+        public children: BuilderChild<Builder<Prism<P>>, {
             isStatic: Option<boolean>,
             weight: Option<number>
         }>[]

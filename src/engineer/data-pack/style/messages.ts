@@ -8,14 +8,14 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { RandomType } from "../../../builder/random/type.js"
 import { ClientDirector } from "../../../connection/director.js"
 import { PERMISSIONS } from "../../../connection/permission.js"
 import { type MessageFunction, type ServerOnMessage } from "../../../connection/server.js"
 import type { ClientSide } from "../../../connection/sides.js"
 import { getAllProjects, getProject } from "../../../instance.js"
+import { RANDOM_TYPES } from "../../../register/random.js"
 import { joinBiLists } from "../../../util/util.js"
-import { AbstractStyleRule, DefinedStyleRule, StyleRule } from "./rule.js"
+import { AbstractStyleRule, DefinedStyleRule } from "./rule.js"
 import { Style, StyleReference, type StyleChanges } from "./style.js"
 
 /**
@@ -38,10 +38,12 @@ type MessagesStructure = {
     'get-rule': MessageFunction<ClientSide, { ref: string, id: string }>
     'create-rule': MessageFunction<ClientSide, { ref: string, id: string, type: string, isAbstract?: boolean }>
     'delete-rule': MessageFunction<ClientSide, { ref: string, id: string }>
-    'edit-rule': MessageFunction<ClientSide, { ref: string, id: string, changes: RuleChanges }>
+    'rename-rule': MessageFunction<ClientSide, { ref: string, id: string, newId: string }>
+    'edit-rule': MessageFunction<ClientSide, { ref: string, id: string, changes: StyleRuleChanges }>
+    'edit-rule-random': MessageFunction<ClientSide, { ref: string, id: string, data: any }>
 }
 
-export type RuleChanges = { id?: string, isAbstract?: boolean, type?: string, constant?: boolean, random?: string }
+export type StyleRuleChanges = { isAbstract?: boolean, type?: string, fixed?: boolean, random?: string }
 
 export function registerStyleMessages(onMessage: ServerOnMessage) {
     Object.entries(styleMessages()).forEach(([key, f]) => onMessage.set(`data-pack/style/${key}`, f))
@@ -75,7 +77,7 @@ function styleMessages(): MessagesStructure {
                 isAbstract: style.isAbstract,
                 implementations: style.implementations.map((implementation) => implementation.toJson()),
                 rules: Object.fromEntries(style.rules.getAll().map(([id, rule]) => {
-                    return [id, { type: rule.type, constant: rule.constant }]
+                    return [id, { type: rule.type, random: rule.random?.toJson(), fixed: rule.fixed, fromImplementations: style.implementationsOfRule(id).map((ref) => ref.toString()) }]
                 }))
             })
         }),
@@ -113,16 +115,17 @@ function styleMessages(): MessagesStructure {
             const rule = style.getRule(data.id)
             client.respond(id, {
                 type: rule.type,
-                constant: rule.constant,
-                random: rule.random?.toClient()
+                fixed: rule.fixed,
+                random: rule.random?.toJson(),
+                fromImplementations: style.implementationsOfRule(data.id).map((ref) => ref.toJson())
             })
         }),
         'create-rule': simpleEdit(
             async (director, style, data) => {
-                const type = RandomType.get(data.type)
+                const type = RANDOM_TYPES.get(data.type)
                 style.pushRule(director, data.id, data.isAbstract && style.isAbstract ?
-                    new AbstractStyleRule(data.type) :
-                    new DefinedStyleRule(data.type, type.constant()))
+                    new AbstractStyleRule(type) :
+                    new DefinedStyleRule(type, type.constant.generate()))
             },
             async (director, style, result, data) => style.deleteRule(director, data.id)
         ),
@@ -130,29 +133,28 @@ function styleMessages(): MessagesStructure {
             async (director, style, data) => style.deleteRule(director, data.id),
             async (director, style, result, data) => style.pushRule(director, data.id, result)
         ),
+        'rename-rule': simpleEdit(
+            async (director, style, data) => style.renameRule(director, data.id, data.newId),
+            async (director, style, result, data) => style.renameRule(director, data.newId, data.id)
+        ),
         'edit-rule': simpleEdit(
             async (director, style, data) => {
-                const changes = data.changes
                 const rule = style.getRule(data.id)
-
-                let newRule: StyleRule
-                if (changes.isAbstract) {
-                    newRule = new AbstractStyleRule(changes.type ?? rule.type, changes.constant ?? rule.constant)
-                } else if (!changes.random && (!changes.type || changes.type === rule.type) && rule.random) {
-                    newRule = new DefinedStyleRule(changes.type ?? rule.type, rule.random, changes.constant ?? rule.constant)
-                } else {
-                    const randomType = RandomType.get(changes.type ?? rule.type)
-                    newRule = new DefinedStyleRule(changes.type ?? rule.type, changes.random ? randomType.getRandom(changes.random) : randomType.constant(), changes.constant ?? rule.constant)
+                return {
+                    changes: style.editRule(director, data.id, data.changes),
+                    randomData: rule.random?.toJson()
                 }
-                style.deleteRule(director, data.id)
-                style.pushRule(director, data.changes.id ?? data.id, newRule)
-
-                return rule
             },
             async (director, style, result, data) => {
-                style.deleteRule(director, data.changes.id ?? data.id)
-                style.pushRule(director, data.id, result)
+                style.editRule(director, data.id, result.changes)
+                if(result.randomData) {
+                    style.editRuleRandom(director, data.id, result.randomData)
+                }
             }
+        ),
+        'edit-rule-random': simpleEdit(
+            async (director, style, data) => style.editRuleRandom(director, data.id, data.data),
+            async (director, style, result, data) => style.editRuleRandom(director, data.id, result)
         )
     }
 }

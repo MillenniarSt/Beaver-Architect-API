@@ -11,19 +11,19 @@
 import type { GenerationStyle } from "../../engineer/data-pack/style/rule";
 import { recordFromJson, recordToJson } from "../../util/util";
 import type { Geo3 } from "../../world/geo";
-import { Builder, BuilderResult } from "../builder";
+import { Builder, BuilderResult, BuilderType } from "../builder";
 import { builderFromJson } from "../collective";
 import { Option } from "../option";
 import type { Seed } from "../random/random";
 
 export class ArchitectBuilder<G extends Geo3 = any> extends Builder<G, {}> {
-
-    public get type(): string {
-        return this._type
+    
+    public get type(): BuilderType {
+        return this._type;
     }
 
     constructor(
-        private readonly _type: string,
+        private readonly _type: BuilderType,
         readonly child: Builder,
         architectOptions: Record<string, Option>
     ) {

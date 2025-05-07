@@ -8,46 +8,28 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { NameNotRegistered } from "../../connection/errors.js";
+import { GeoRegistry } from "../../register/geo.js";
 import { Plane2, Rect2 } from "../bi-geo/plane.js";
-import { type Geo3, type Geo3Function, Geo3Type } from "../geo.js";
+import { Geo3 } from "../geo.js";
 import { Quaternion, Rotation3 } from "../quaternion.js";
 import { Vec2, Vec3 } from "../vector.js";
-import { Plane3, Surface } from "./surface.js";
+import { Plane3 } from "./surface.js";
 
-export const namedObjects: Map<string, Geo3Function<Object3>> = new Map()
+export abstract class Object3 extends Geo3 {
 
-export function NamedObject<G extends Object3>() {
-    return function (constructor: Geo3Function<G>) {
-        namedObjects.set(constructor.name, constructor)
-    }
-}
-
-export abstract class Object3 implements Geo3 {
-
-    get type(): Geo3Type {
-        return Geo3Type.OBJECT
+    get form(): string {
+        return 'object'
     }
 
     abstract get vertices(): Vec3[]
 
     abstract get triangles(): [number, number, number][]
 
-    abstract move(vec: Vec3): Object3
-
-    abstract rotate(rotation: Rotation3): Object3
-
-    abstract toNamedJson(): {}
-
-    static fromJson(json: any): Object3 {
-        const factory = namedObjects.get(json.name)?.fromJson
-        if (!factory) {
-            throw new NameNotRegistered(json.name, 'Object3')
-        }
-        return factory(json)
+    static fromUniversalJson(json: any): GeneralObject3 {
+        return new GeneralObject3(json.vertices.map((vertex: any) => Vec3.fromJson(vertex)), json.triangles)
     }
 
-    toJson() {
+    toUniversalData() {
         return {
             vertices: this.vertices.map(v => v.toJson()),
             triangles: this.triangles
@@ -55,10 +37,11 @@ export abstract class Object3 implements Geo3 {
     }
 }
 
-@NamedObject()
 export class GeneralObject3 extends Object3 {
 
-    static readonly parents = null
+    get type(): string {
+        return 'object3'
+    }
 
     constructor(
         readonly vertices: Vec3[],
@@ -79,19 +62,19 @@ export class GeneralObject3 extends Object3 {
         return new GeneralObject3(this.vertices.map((v) => rotation.getVec(v)), this.triangles)
     }
 
-    toNamedJson(): {} {
+    toData(): {} {
         return {
-            name: this.constructor.name,
             vertices: this.vertices.map(v => v.toJson()),
             triangles: this.triangles
         }
     }
 }
 
-@NamedObject()
 export class Prism<P extends Plane2 = Plane2> extends Object3 {
 
-    static readonly parents: Geo3Function[] = [GeneralObject3]
+    get type(): string {
+        return 'prism'
+    }
 
     constructor(
         readonly base: Plane3<P>,
@@ -101,7 +84,7 @@ export class Prism<P extends Plane2 = Plane2> extends Object3 {
     }
 
     static fromJson(json: any): Prism {
-        return new Prism(Surface.fromJson(json.base) as Plane3, json.height)
+        return new Prism(GeoRegistry.PLANE3.fromJson(json.base), json.height)
     }
 
     move(vec: Vec3): Prism<P> {
@@ -114,7 +97,7 @@ export class Prism<P extends Plane2 = Plane2> extends Object3 {
 
     get vertices(): Vec3[] {
         return [
-            ...this.base.vertices, 
+            ...this.base.vertices,
             ...this.base.plane.vertices.map(v => this.base.rotation.getVec(v.toVec3(this.height)))
         ]
     }
@@ -137,20 +120,19 @@ export class Prism<P extends Plane2 = Plane2> extends Object3 {
         return triangles
     }
 
-    toNamedJson(): {} {
+    toData(): {} {
         return {
-            name: this.constructor.name,
-            base: this.base.toNamedJson(),
+            base: this.base.toJson(),
             height: this.height
         }
     }
 }
 
-@NamedObject()
 export class Rect3 extends Prism<Rect2> {
 
-    static readonly parents: Geo3Function[] = [Prism]
-
+    get type(): string {
+        return 'rect3'
+    }
 
     constructor(
         readonly pos: Vec3,
@@ -172,9 +154,8 @@ export class Rect3 extends Prism<Rect2> {
         return new Rect3(this.pos, this.size, this.rotation.add(rotation))
     }
 
-    toNamedJson(): {} {
+    toData(): {} {
         return {
-            name: this.constructor.name,
             pos: this.pos.toJson(),
             size: this.size.toJson(),
             rotation: this.rotation.toJson()

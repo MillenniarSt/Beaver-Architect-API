@@ -9,12 +9,11 @@
 //      ##    \__|__/
 
 import { IdNotExists, InternalServerError } from "../connection/errors.js";
-import { StyleDependency, type WithDependency } from "../engineer/data-pack/style/dependency.js";
 import type { GenerationStyle } from "../engineer/data-pack/style/rule.js";
-import { getProject } from "../instance.js";
+import { RandomTypeRegistry } from "../register/random.js";
 import { Random, Seed } from "./random/random.js";
 
-export class Option<T = any> {
+export class Option<T extends {} = {}> {
 
     protected constructor(
         protected random: Random<T> | undefined,
@@ -22,20 +21,20 @@ export class Option<T = any> {
         protected paramRef: string | undefined
     ) { }
 
-    static random<T>(random: Random<T>): Option<T> {
+    static random<T extends {} = {}>(random: Random<T>): Option<T> {
         return new Option(random, undefined, undefined)
     }
 
-    static style<T>(ref: string): Option<T> {
+    static style<T extends {} = {}>(ref: string): Option<T> {
         return new Option(undefined, ref, undefined)
     }
 
-    static param<T>(ref: string): Option<T> {
+    static param<T extends {} = {}>(ref: string): Option<T> {
         return new Option(undefined, undefined, ref)
     }
 
-    static fromJson(json: any): Option {
-        return new Option(json.random ? Random.fromJson(json) : undefined, json.paramRef, json.styleRef)
+    static fromJson<T extends {} = {}>(json: any, type: RandomTypeRegistry<T>): Option<T> {
+        return new Option(json.random ? type.randomFromJson(json.random) : undefined, json.paramRef, json.styleRef)
     }
 
     isDefined(): boolean {
@@ -105,34 +104,9 @@ export class Option<T = any> {
 
     toJson() {
         return {
-            random: this.random?.toNamedJson(),
+            random: this.random?.toJson(),
             paramRef: this.paramRef,
             styleRef: this.styleRef
         }
-    }
-}
-
-export class OptionWithDependency<T = any> extends Option<T> implements WithDependency {
-
-    declare protected random: (Random<T> & WithDependency)| undefined
-
-    protected constructor(
-        random: (Random<T> & WithDependency) | undefined,
-        styleRef: string | undefined,
-        paramRef: string | undefined
-    ) {
-        super(random, styleRef, paramRef)
-    }
-
-    getStyleDependency(): StyleDependency {
-        if(this.random) {
-            return this.random.getStyleDependency()
-        } else if(this.styleRef) {
-            const rule = getProject().dataPack.getRequiredStyleRule(this.styleRef)
-            if(!rule) {
-                return StyleDependency.empty()
-            }
-        }
-        throw new InternalServerError('Option broken: all of the references are undefined')
     }
 }

@@ -8,8 +8,6 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { Editor } from "../../engineer/editor.js";
-import { ResourceReference } from "../../engineer/engineer.js";
 import { server } from "../server.js";
 import { Directive } from "./directive.js";
 
@@ -41,47 +39,6 @@ export class UpdateDirective<T> extends AbstractUpdateDirective<T> {
 
     async override(directive: UpdateDirective<T>): Promise<void> {
         this.data = await this.update.update(this.data, directive.data)
-    }
-}
-
-export type EditorDirectiveValue<T> = {
-    ref: ResourceReference<any>
-    update?: T
-}
-
-export class EditorDirective<T> extends AbstractUpdateDirective<T> {
-
-    constructor(
-        extension: string,
-        update: Update<T>,
-        readonly editors: EditorDirectiveValue<T>[]
-    ) {
-        super(`editor/${extension}`, update)
-    }
-
-    static update<T>(editor: Editor, update: Update<T>, data?: T): EditorDirective<T> {
-        return new EditorDirective(editor.extension, update, [{ ref: editor.engineer.reference, update: data }])
-    }
-
-    async override(directive: EditorDirective<T>): Promise<void> {
-        for (let i = 0; i < directive.editors.length; i++) {
-            const editor = directive.editors[i]
-            const existing = this.editors.find((b) => b.ref.equals(editor.ref))
-            if (existing) {
-                existing.update = await this.update.update(existing.update, editor.update)
-            } else {
-                this.editors.push(editor)
-            }
-        }
-    }
-
-    protected get data(): {} {
-        return this.editors.map((editor) => {
-            return {
-                ref: editor.ref.toJson(),
-                update: editor.update
-            }
-        })
     }
 }
 

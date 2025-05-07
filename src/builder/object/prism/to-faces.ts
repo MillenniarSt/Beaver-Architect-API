@@ -14,24 +14,28 @@ import { Prism } from "../../../world/geo/object.js";
 import { Plane3 } from "../../../world/geo/surface.js";
 import { Quaternion, Rotation2, Rotation3 } from "../../../world/quaternion.js";
 import { Vec2, Vec3 } from "../../../world/vector.js";
-import { Builder, BuilderResult, ObjectBuilder, SurfaceBuilder } from "../../builder.js";
+import { Builder, BuilderResult, BuilderType } from "../../builder.js";
 import { EmptyBuilder } from "../../generic/empty.js";
 import { builderFromJson } from "../../collective.js";
 import type { GenerationStyle } from "../../../engineer/data-pack/style/rule.js";
 
-export class ToFacesPrismBuilder<P extends Plane2> extends ObjectBuilder<Prism<P>, {}> {
+export class ToFacesPrismBuilder<P extends Plane2> extends Builder<Prism<P>, {}> {
 
-    static readonly type = 'prismToFaces'
+    static readonly type = new BuilderType('prismToFaces', Prism.type, [
+        { id: 'base', geo: Plane3.type, options: [], multiple: false },
+        { id: 'ceil', geo: Plane3.type, options: [], multiple: false },
+        { id: 'side', geo: Rect2.type, options: [], multiple: false }
+    ], [])
 
-    protected base: SurfaceBuilder<Plane3<P>>
-    protected ceil: SurfaceBuilder<Plane3<P>>
-    protected side: SurfaceBuilder<Plane3<Rect2>>
+    protected base: Builder<Plane3<P>>
+    protected ceil: Builder<Plane3<P>>
+    protected side: Builder<Plane3<Rect2>>
 
     constructor(
         children: {
-            base?: SurfaceBuilder<Plane3<P>>
-            ceil?: SurfaceBuilder<Plane3<P>>
-            side?: SurfaceBuilder<Plane3<Rect2>>
+            base?: Builder<Plane3<P>>
+            ceil?: Builder<Plane3<P>>
+            side?: Builder<Plane3<Rect2>>
         }
     ) {
         super({})

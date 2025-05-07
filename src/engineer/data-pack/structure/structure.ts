@@ -9,10 +9,10 @@
 //      ##    \__|__/
 
 import { Builder } from "../../../builder/builder.js";
-import { builderFromJson } from "../../../builder/collective.js";
 import { CheckUpdate, ObjectUpdate, Update } from "../../../connection/directives/update.js";
-import { ClientDirector, Director } from "../../../connection/director.js";
+import { Director } from "../../../connection/director.js";
 import { getProject } from "../../../instance.js";
+import { BUILDERS } from "../../../register/builder.js";
 import { Engineer, EngineerDirective, ResourceReference } from "../../engineer.js";
 import { StyleDependency } from "../style/dependency.js";
 
@@ -70,7 +70,7 @@ export class StructureEngineer extends Engineer<StructureEngineer, EnStructureUp
     static loadFromRef(ref: ResourceReference<StructureEngineer>): StructureEngineer {
         const data = getProject(ref.pack).read(ref.path)
         return new StructureEngineer(ref,
-            builderFromJson(data.builder)
+            BUILDERS.get(data.builder.type).fromJson(data.builder)
         )
     }
 

@@ -9,14 +9,20 @@
 //      ##    \__|__/
 
 import { ListEmptyError } from "../../connection/errors";
-import { ConstantRandom, NamedRandom, Random, Seed } from "./random";
+import { ConstantRandom, Random, Seed } from "./random";
+
+export type Align = 'start' | 'center' | 'end' | 'fill'
+export type RepetitionMode = 'none' | 'block' | 'every'
+
+/* Abstract */
 
 export type RandomEnumValue<T extends string[]> = { id: T[number], weight: number }
 
-@NamedRandom()
-export class ConstantEnum<T extends string[] = string[]> extends ConstantRandom<T[number]> {
+export class ConstantEnum<T extends string[] = any[]> extends ConstantRandom<T[number]> {
 
-    readonly type = 'enum'
+    get type(): string {
+        return 'c_enum'
+    }
 
     constructor(public value: T[number]) {
         super()
@@ -25,98 +31,93 @@ export class ConstantEnum<T extends string[] = string[]> extends ConstantRandom<
     static fromJson(json: any): ConstantEnum {
         return new ConstantEnum(json)
     }
-
-    toJson(): {} {
-        return this.value
-    }
 }
 
-@NamedRandom()
-export class RandomEnum<T extends string[] = string[]> extends Random<T[number]> {
+export class RandomEnum<T extends string[] = any[]> extends Random<T[number]> {
 
-    readonly type = 'enum'
+    get type(): string {
+        return 'enum'
+    }
 
     constructor(public choices: RandomEnumValue<T>[]) {
         super()
     }
 
     static fromJson(json: any): RandomEnum {
-        return new RandomEnum(json.choices)
+        return new RandomEnum(json)
     }
 
-    toConstant(seed: Seed): ConstantEnum<T> {
-        return new ConstantEnum(this.seeded(seed))
+    edit(data: any): void {
+        this.choices = data ?? this.choices
     }
 
     seeded(seed: Seed): T[number] {
-        const randomWeight = seed.next() * this.choices.reduce((acc, chioce) => acc + chioce.weight, 0)
+        const randomWeight = seed.next() * this.choices.reduce((acc, choice) => acc + choice.weight, 0)
         let cumulative = 0
-        for (const chioce of this.choices) {
-            cumulative += chioce.weight
+        for (const choice of this.choices) {
+            cumulative += choice.weight
             if (randomWeight < cumulative) {
-                return chioce.id
+                return choice.id
             }
         }
 
         throw new ListEmptyError('RandomEnum/choices')
     }
 
-    toJson(): {} {
+    toData() {
         return this.choices
     }
 }
 
-@NamedRandom()
-export class ConstantSquareEnum<T extends string[] = string[]> extends ConstantRandom<[T[number], T[number]]> {
+export class ConstantSquareEnum<T extends string[] = any[]> extends ConstantRandom<[T[number], T[number]]> {
 
-    readonly type = 'square_enum'
+    get type(): string {
+        return 'c_square_enum'
+    }
 
     constructor(public value: [T[number], T[number]]) {
         super()
     }
 
-    static fromJson(json: any): ConstantEnum {
-        return new ConstantEnum(json)
-    }
-
-    toJson(): {} {
-        return this.value
+    static fromJson(json: any): ConstantSquareEnum {
+        return new ConstantSquareEnum(json)
     }
 }
 
 export type RandomSquareEnumValue<T extends string[]> = { id: [T[number], T[number]], weight: number }
 
-@NamedRandom()
-export class RandomSquareEnum<T extends string[] = string[]> extends Random<[T[number], T[number]]> {
+export class RandomSquareEnum<T extends string[] = any[]> extends Random<[T[number], T[number]]> {
 
-    readonly type = 'square_enum'
+    get type(): string {
+        return 'square_enum'
+    }
 
     constructor(public choices: RandomSquareEnumValue<T>[]) {
         super()
     }
 
-    static fromJson(json: any): RandomEnum {
-        return new RandomEnum(json.choices)
+    static fromJson(json: any): RandomSquareEnum {
+        return new RandomSquareEnum(json)
     }
 
-    toConstant(seed: Seed): ConstantSquareEnum<T> {
-        return new ConstantSquareEnum(this.seeded(seed))
+    edit(data: any): void {
+        this.choices = data ?? this.choices
     }
 
     seeded(seed: Seed): [T[number], T[number]] {
-        const randomWeight = seed.next() * this.choices.reduce((acc, chioce) => acc + chioce.weight, 0)
+        const randomWeight = seed.next() * this.choices.reduce((acc, choice) => acc + choice.weight, 0)
         let cumulative = 0
-        for (const chioce of this.choices) {
-            cumulative += chioce.weight
+        for (const choice of this.choices) {
+            cumulative += choice.weight
             if (randomWeight < cumulative) {
-                return chioce.id
+                return choice.id
             }
         }
 
         throw new ListEmptyError('RandomEnum/choices')
     }
 
-    toJson(): {} {
+    toData(): {} {
         return this.choices
     }
 }

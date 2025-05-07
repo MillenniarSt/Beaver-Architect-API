@@ -8,10 +8,12 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
+import type { RandomTypeRegistry } from "../../../register/random"
+
 export class StyleDependency {
 
     constructor(
-        readonly randoms: Record<string, string>
+        readonly randoms: Record<string, RandomTypeRegistry>
     ) { }
 
     static empty(): StyleDependency {

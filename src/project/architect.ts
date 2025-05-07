@@ -17,13 +17,11 @@ import { getFreePort, type OnMessage, toSocketError } from '../connection/server
 import { PermissionLevel, PERMISSIONS } from '../connection/permission.js';
 import { close, getProject } from '../instance.js';
 import { ConstantRandom, Random } from '../builder/random/random.js';
-import { ArchitectConstant, ArchitectRandom } from '../builder/random/architect.js';
-import { RandomType } from '../builder/random/type.js';
-import { BuilderType } from '../builder/collective.js';
 import { ArchitectBuilder } from '../builder/generic/architect.js';
 import { EmptyBuilder } from '../builder/generic/empty.js';
 import { parseRecord } from '../util/util.js';
 import { Option } from '../builder/option.js';
+import { RANDOM_TYPES, RandomTypeRegistry, type RandomTypeRegistryFromJson } from '../register/random.js';
 
 export class Architect {
 
@@ -158,16 +156,26 @@ export async function loadArchitect(data: ArchitectData, projectIdentifier: stri
     })
 
     /**
+     * Registration of custom Architect Registries
+     */
+
+    // Random Types
+    const architectRandomTypes: RandomTypeRegistryFromJson[] = await side.request('random/get-types')
+    architectRandomTypes.forEach((randomType) => RANDOM_TYPES.register(RandomTypeRegistry.fromJson(randomType)))
+
+    /*
+
+    /**
      * Architect Random registration
      *  - @param id: unique type id of RandomType
      *  - @param constant: json convertible to a registered ConstantRandom
      *  - @param randoms: record of possibles random creations, values must be convertible to Random
-     */
-    const architectRandomTypes: { id: string, constant: any, randoms: Record<string, any> }[] = await side.request('random/get-types')
+     *f/
+    const architectRandomTypes: { id: string, constant: { json: any }, randoms: Record<string, { json: any }> }[] = await side.request('random/get-types')
     architectRandomTypes.forEach((randomType) => RandomType.register(
         randomType.id, 
-        () => new ArchitectConstant(randomType.id, ConstantRandom.fromJson(randomType.constant)),
-        parseRecord(randomType.randoms, (random) => () => new ArchitectRandom(randomType.id, Random.fromJson(random))),
+        () => ConstantRandom.fromNamedJson(randomType.constant.json),
+        Object.fromEntries(Object.entries(randomType.randoms).map(([key, random]) => [key, () => Random.fromNamedJson(random.json)])),
         true
     ))
 
@@ -175,15 +183,17 @@ export async function loadArchitect(data: ArchitectData, projectIdentifier: stri
      * Architect Builders registration
      *  - @param id: unique type id of BuilderType
      *  - @param options: options supported by the builder, values are types of RandomType
-     */
+     *f/
     const architectBuilderTypes: { id: string, options: Record<string, string> }[] = await side.request('builder/get-types')
     architectBuilderTypes.forEach((builderType) => {
-        BuilderType.register(new BuilderType(
+        BuilderInstance.register(new BuilderInstance(
             builderType.id, 
             ArchitectBuilder.fromJson, 
             () => new ArchitectBuilder(builderType.id, EmptyBuilder.VOID, parseRecord(builderType.options, (random) => Option.random(RandomType.get(random).constant())))
         ))
     })
+
+    */
 
     return side
 }

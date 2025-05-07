@@ -1,17 +1,17 @@
 import { Random, type Seed } from "../../../builder/random/random"
-import { RandomType } from "../../../builder/random/type"
 import { InternalServerError } from "../../../connection/errors"
+import { RANDOM_TYPES, RandomTypeRegistry } from "../../../register/random"
 import { itemsOfMap, mapFromJson, mapToEntries, mapToJson, type ToJson } from "../../../util/util"
 import { StyleDependency, type WithDependency } from "./dependency"
 
-export abstract class StyleRule<T = any> implements ToJson {
+export abstract class StyleRule<T extends {} = {}> implements ToJson {
 
     constructor(
-        readonly type: string,
-        readonly constant: boolean = false
+        readonly type: RandomTypeRegistry<T>,
+        public fixed: boolean = false
     ) { }
 
-    static fromJson<T = any>(json: any): StyleRule<T> {
+    static fromJson<T extends {} = {}>(json: any): StyleRule<T> {
         return json.random ? DefinedStyleRule.fromJson(json) : AbstractStyleRule.fromJson(json)
     }
 
@@ -22,48 +22,53 @@ export abstract class StyleRule<T = any> implements ToJson {
     }
 
     getGenerationRandom(seed: Seed): Random<T> | null {
-        return this.constant ? this.random?.toConstant(seed) ?? null : this.random
+        return this.fixed ? (this.random ? this.type.toConstant(this.random, seed) : null) : this.random
     }
 
     toJson() {
         return {
-            type: this.type,
-            random: this.random?.toNamedJson(),
-            constant: this.constant
+            type: this.type.id,
+            random: this.random?.toJson(),
+            fixed: this.fixed
         }
     }
 }
 
-export class DefinedStyleRule<T = any> extends StyleRule<T> {
+export class DefinedStyleRule<T extends {} = {}> extends StyleRule<T> {
 
     constructor(
-        type: string,
+        type: RandomTypeRegistry<T>,
         readonly random: Random<T>,
-        constant: boolean = false
+        fixed: boolean = false
     ) {
-        super(type, constant)
+        super(type, fixed)
     }
 
-    static fromJson<T = any>(json: any): StyleRule<T> {
-        return new DefinedStyleRule(json.type, Random.fromJson(json.random), json.constant)
+    static fromJson<T extends {} = {}>(json: any): StyleRule<T> {
+        const type = RANDOM_TYPES.get(json.type)
+        return new DefinedStyleRule(type, type.randomFromJson(json.random), json.constant)
     }
 }
 
-export class AbstractStyleRule<T = any> extends StyleRule<T> {
+export class AbstractStyleRule<T extends {} = {}> extends StyleRule<T> {
 
     constructor(
-        type: string,
-        constant: boolean = false
+        type: RandomTypeRegistry<T>,
+        fixed: boolean = false
     ) {
-        super(type, constant)
+        super(type, fixed)
     }
 
     get random(): null {
         return null
     }
 
-    static fromJson<T = any>(json: any): AbstractStyleRule<T> {
-        return new AbstractStyleRule(json.type, json.constant)
+    static fromJson<T extends {} = {}>(json: any): AbstractStyleRule<T> {
+        return new AbstractStyleRule(RANDOM_TYPES.get(json.type), json.constant)
+    }
+
+    generateDefined(): DefinedStyleRule {
+        return new DefinedStyleRule(this.type, this.type.constant.generate(), this.fixed)
     }
 }
 
@@ -111,7 +116,7 @@ export class StyleRules implements ToJson, WithDependency {
     }
 
     filter(architect: boolean): StyleRules {
-        return new StyleRules(new Map(mapToEntries(this.rules).filter(([key, rule]) => RandomType.get(rule.type).isArchitect === architect)))
+        return new StyleRules(new Map(mapToEntries(this.rules).filter(([key, rule]) => rule.type.isArchitect === architect)))
     }
 
     toGenerationStyle(seed: Seed): GenerationStyle {

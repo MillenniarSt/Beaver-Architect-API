@@ -44,12 +44,12 @@ export const commands: AbstractCommand[] = [
             if(server.clients.length === 0) {
                 commander.info('No clients connected')
             } else {
-                commander.info(`Connected clients: ${server.clients.map((client) => client.identfier).join(', ')}`)
+                commander.info(`Connected clients: ${server.clients.map((client) => client.identifier).join(', ')}`)
             }
         }),
         new Command('close', new CommandArgs(['id']), (commander, args) => {
             commander.side.ensurePermission(PERMISSIONS.MANAGE_USER)
-            const client = server.clients.find((client) => client.identfier === args[0])
+            const client = server.clients.find((client) => client.identifier === args[0])
             if(client) {
                 client.socket.close()
                 commander.info(`Disonnected client ${args[0]}`)

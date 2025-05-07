@@ -8,45 +8,27 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { NameNotRegistered } from "../../connection/errors.js";
+import { GeoRegistry } from "../../register/geo.js";
 import { Plane2 } from "../bi-geo/plane.js";
-import { type Geo3, type Geo3Function, Geo3Type } from "../geo.js";
+import { Geo3 } from "../geo.js";
 import { Quaternion, Rotation3 } from "../quaternion.js";
 import { Vec3 } from "../vector.js";
 
-export const namedSurfaces: Map<string, Geo3Function<Surface>> = new Map()
+export abstract class Surface extends Geo3 {
 
-export function NamedSurface() {
-    return function (constructor: Geo3Function<Surface>) {
-        namedSurfaces.set(constructor.name, constructor)
-    }
-}
-
-export abstract class Surface implements Geo3 {
-
-    get type(): Geo3Type {
-        return Geo3Type.SURFACE
+    get form(): string {
+        return 'surface'
     }
 
     abstract get vertices(): Vec3[]
 
     abstract get triangles(): [number, number, number][]
 
-    abstract move(vec: Vec3): Surface
-
-    abstract rotate(rotation: Rotation3): Surface
-
-    abstract toNamedJson(): {}
-
-    static fromJson(json: any): Surface {
-        const factory = namedSurfaces.get(json.name)?.fromJson
-        if (!factory) {
-            throw new NameNotRegistered(json.name, 'Surface')
-        }
-        return factory(json)
+    static fromUniversalJson(json: any): GeneralSurface {
+        return new GeneralSurface(json.vertices.map((vertex: any) => Vec3.fromJson(vertex)), json.triangles)
     }
 
-    toJson() {
+    toUniversalData() {
         return {
             vertices: this.vertices.map((v) => v.toJson()),
             triangles: this.triangles
@@ -54,10 +36,11 @@ export abstract class Surface implements Geo3 {
     }
 }
 
-@NamedSurface()
 export class GeneralSurface extends Surface {
 
-    static readonly parents = null
+    get type(): string {
+        return 'surface'
+    }
 
     constructor(
         readonly vertices: Vec3[],
@@ -78,19 +61,19 @@ export class GeneralSurface extends Surface {
         return new GeneralSurface(this.vertices.map((v) => rotation.getVec(v)), this.triangles)
     }
 
-    toNamedJson(): {} {
+    toData(): {} {
         return {
-            name: this.constructor.name,
             vertices: this.vertices.map((v) => v.toJson()),
             triangles: this.triangles
         }
     }
 }
 
-@NamedSurface()
 export class Plane3<P extends Plane2 = Plane2> extends Surface {
 
-    static readonly parents: Geo3Function[] = [GeneralSurface]
+    get type(): string {
+        return 'plane3'
+    }
 
     constructor(
         readonly plane: P,
@@ -101,7 +84,7 @@ export class Plane3<P extends Plane2 = Plane2> extends Surface {
     }
 
     static fromJson(json: any): Plane3 {
-        return new Plane3(Plane2.fromJson(json.plane), json.y, Rotation3.fromJson(json.rotation))
+        return new Plane3(GeoRegistry.PLANE2.fromJson(json.plane), json.y, Rotation3.fromJson(json.rotation))
     }
 
     withPlane<P extends Plane2 = Plane2>(plane: P): Plane3<P> {
@@ -116,10 +99,9 @@ export class Plane3<P extends Plane2 = Plane2> extends Surface {
         return new Plane3(this.plane, this.z, this.rotation.add(rotation))
     }
 
-    toNamedJson() {
+    toData() {
         return {
-            name: this.constructor.name,
-            plane: this.plane.toNamedJson(),
+            plane: this.plane.toJson(),
             z: this.z,
             rotation: this.rotation.toJson()
         }

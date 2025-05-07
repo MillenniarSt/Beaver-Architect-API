@@ -8,29 +8,18 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { NameNotRegistered } from "../../connection/errors.js"
-import { type Geo2, type Geo2Function } from "../geo.js"
+import { Geo2 } from "../geo.js"
 import { Rotation2 } from "../quaternion.js"
 import { Vec2 } from "../vector.js"
 import { CloseLine2 } from "./line.js"
 
-export const namedPlanes: Map<string, Geo2Function<Plane2>> = new Map()
+export abstract class Plane2<Edge extends CloseLine2 = CloseLine2> extends Geo2 {
 
-export function NamedPlane() {
-    return function (constructor: Geo2Function<Plane2>) {
-        namedPlanes.set(constructor.name, constructor)
+    get form(): string {
+        return 'plane'
     }
-}
-
-export abstract class Plane2<Edge extends CloseLine2 = CloseLine2> implements Geo2 {
 
     abstract get edge(): Edge
-
-    abstract move(vec: Vec2): Plane2
-
-    abstract rotate(rotation: Rotation2): Plane2
-
-    abstract toNamedJson(): {}
 
     get vertices(): Vec2[] {
         return this.edge.vertices
@@ -45,23 +34,20 @@ export abstract class Plane2<Edge extends CloseLine2 = CloseLine2> implements Ge
         return triangles
     }
 
-    static fromJson(json: any): Plane2 {
-        const factory = namedPlanes.get(json.name)?.fromJson
-        if (!factory) {
-            throw new NameNotRegistered(json.name, 'Plane2')
-        }
-        return factory(json)
+    static fromUniversalJson(json: any): GeneralPlane2 {
+        return new GeneralPlane2(CloseLine2.fromJson(json))
     }
 
-    toJson(): {} {
-        return this.edge.toJson()
+    toUniversalData(): {} {
+        return this.edge.toData()
     }
 }
 
-@NamedPlane()
 export class GeneralPlane2 extends Plane2 {
 
-    static readonly parents = null
+    get type(): string {
+        return 'plane2'
+    }
 
     constructor(readonly edge: CloseLine2) {
         super()
@@ -79,21 +65,19 @@ export class GeneralPlane2 extends Plane2 {
         return new GeneralPlane2(this.edge.rotate(rotation))
     }
 
-    toNamedJson(): {} {
-        return {
-            name: this.constructor.name,
-            edge: this.edge.toJson()
-        }
+    toData(): {} {
+        return this.edge.toData()
     }
 }
 
-@NamedPlane()
 export class Rect2 extends Plane2 {
 
-    static readonly parents: Geo2Function[] = [GeneralPlane2]
+    get type(): string {
+        return 'rect2'
+    }
 
     constructor(
-        readonly pos: Vec2, 
+        readonly pos: Vec2,
         readonly size: Vec2,
         readonly rotation: Rotation2 = new Rotation2(0, Vec2.ZERO)
     ) {
@@ -121,9 +105,8 @@ export class Rect2 extends Plane2 {
         ]).rotate(this.rotation)
     }
 
-    toNamedJson() {
+    toData() {
         return {
-            name: this.constructor.name,
             pos: this.pos.toJson(),
             size: this.size.toJson(),
             rotation: this.rotation.toJson()

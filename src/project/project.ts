@@ -77,35 +77,34 @@ export class Project {
         fs.writeFileSync(path.join(project.dir, 'project.json'), JSON.stringify(project.toData()), 'utf-8')
         fs.writeFileSync(path.join(project.dir, 'info.html'), '', 'utf-8')
         fs.writeFileSync(path.join(project.dir, 'architect.json'), JSON.stringify(architect), 'utf-8')
-        fs.mkdirSync(path.join(project.dir, 'dependences'))
+        fs.mkdirSync(path.join(project.dir, 'dependencies'))
         fs.mkdirSync(path.join(project.dir, 'architect'))
         fs.writeFileSync(path.join(project.dir, 'users.json'), JSON.stringify({}), 'utf-8')
 
         loadProject(project)
         setMainProject(project)
-        project._dataPack = await DataPack.create(project.identifier)
 
         return project
     }
 
-    static async load(dir: string, data: ProjectData, isMain: boolean = true): Promise<Project> {
+    static load(dir: string, data: ProjectData, isMain: boolean = true): Project {
         const loaded = getProjectOrNull(data.identifier)
         if (loaded) {
             return loaded
         }
 
-        if(!fs.existsSync(path.join(dir, 'dependences'))) {
-            fs.mkdirSync(path.join(dir, 'dependences'))
+        if(!fs.existsSync(path.join(dir, 'dependencies'))) {
+            fs.mkdirSync(path.join(dir, 'dependencies'))
         }
         const dependencies: Project[] = []
         for (let i = 0; i < data.dependencies.length; i++) {
             const identifier = data.dependencies[i].identifier
             const version = new Version(data.dependencies[i].version)
-            const dependeciesDir = path.join(dir, 'dependences', `${identifier}:${version.toJson()}`)
-            if (!fs.existsSync(dependeciesDir)) {
+            const dependenciesDir = path.join(dir, 'dependencies', `${identifier}:${version.toJson()}`)
+            if (!fs.existsSync(dependenciesDir)) {
                 throw new Error(`Invalid dependency: ${identifier}:${version.toJson()} does not exists or it is not installed`)
             }
-            dependencies.push(await Project.load(dependeciesDir, JSON.parse(fs.readFileSync(path.join(dependeciesDir, 'project.json'), 'utf-8')), false))
+            dependencies.push(Project.load(dependenciesDir, JSON.parse(fs.readFileSync(path.join(dependenciesDir, 'project.json'), 'utf-8')), false))
         }
 
         let info: string
@@ -127,15 +126,18 @@ export class Project {
         if (isMain) {
             setMainProject(project)
         }
-        await project.init()
         return project
     }
 
     /**
      * Initializes the Project and load all his files
      */
-    private async init() {
+    async init() {
         this._dataPack = await DataPack.load(this.identifier)
+
+        for(let i = 0; i < this.dependencies.length; i++) {
+            await this.dependencies[i].init()
+        }
     }
 
     get dataPack(): DataPack {
@@ -302,7 +304,7 @@ function ensureReadAll(read: (project: Project, path: string, data: any) => any)
         switch(path.split('\\')[0]) {
             case 'datapack': client.ensurePermission(PERMISSIONS.ACCESS_DATAPACK); break;
             case 'architect': client.ensurePermission(PERMISSIONS.MANAGE_ARCHITECT_FILE); break;
-            case 'dependences': client.ensurePermission(PERMISSIONS.ACCESS_DEPENDENCES); break;
+            case 'dependences': client.ensurePermission(PERMISSIONS.ACCESS_DEPENDENCIES); break;
             default: client.ensurePermission(PERMISSIONS.READ_ALL_FILE)
         }
         client.respond(id, read(getProject(data.identifier), path, data))
@@ -315,7 +317,7 @@ function ensureWriteAll(write: (project: Project, path: string, data: any) => vo
         switch(path.split('\\')[0]) {
             case 'datapack': client.ensurePermission(PERMISSIONS.ACCESS_DATAPACK); break;
             case 'architect': client.ensurePermission(PERMISSIONS.MANAGE_ARCHITECT_FILE); break;
-            case 'dependences': client.ensurePermission(PERMISSIONS.MANAGE_DEPENDENCES); break;
+            case 'dependences': client.ensurePermission(PERMISSIONS.MANAGE_DEPENDENCIES); break;
             default: client.ensurePermission(PERMISSIONS.WRITE_ALL_FILE)
         }
         write(getProject(data.identifier), path, data.data)

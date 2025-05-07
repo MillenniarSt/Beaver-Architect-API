@@ -12,42 +12,36 @@ import { Seed } from "../random/random.js";
 import { Plane2 } from "../../world/bi-geo/plane.js";
 import { Prism } from "../../world/geo/object.js";
 import { Plane3 } from "../../world/geo/surface.js";
-import { BuilderResult, ObjectBuilder, SurfaceBuilder } from "../builder.js";
+import { Builder, BuilderResult, OneChildBuilder, type OneChildBuilderChildren } from "../builder.js";
 import { ConstantNumber } from "../random/number.js";
 import { Option } from "../option.js";
-import { builderFromJson, optionsFromJson } from "../collective.js";
 import type { GenerationStyle } from "../../engineer/data-pack/style/rule.js";
 
-export class SurfaceToPrismBuilder<P extends Plane2 = Plane2> extends SurfaceBuilder<Plane3<P>> {
+export type SurfaceToPrismBuilderOptions = {
+    height: Option<number>
+}
 
-    static readonly type = 'prismToFaces'
+export class SurfaceToPrismBuilder<P extends Plane2 = Plane2> extends OneChildBuilder<Plane3<P>, Prism<P>, SurfaceToPrismBuilderOptions> {
+
+    get type(): string {
+        return 'to_prism'
+    }
 
     constructor(
-        protected child: ObjectBuilder<Prism<P>>,
-        options: {
-            height?: Option<number>
-        } = {}
+        child: Builder<Prism<P>>,
+        options: Partial<SurfaceToPrismBuilderOptions> = {}
     ) {
-        super({
+        super(child, {
             height: options.height ?? Option.random(new ConstantNumber(1))
         })
     }
 
-    static fromJson(json: any): SurfaceToPrismBuilder {
-        return new SurfaceToPrismBuilder(
-            builderFromJson(json.child),
-            optionsFromJson(json.options)
-        )
+    static fromData(children: OneChildBuilderChildren<Prism>, options: SurfaceToPrismBuilderOptions): SurfaceToPrismBuilder {
+        return new SurfaceToPrismBuilder(children.child.builder, options)
     }
 
     protected buildChildren(context: Plane3<P>, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[] {
         const prism = new Prism(context, this.options.height.get(style, parameters, seed))
-        return [this.child.build(prism, style, parameters, seed)]
-    }
-
-    additionalJson() {
-        return {
-            child: this.child.toJson()
-        }
+        return [this.child.builder.build(prism, style, parameters, seed)]
     }
 }

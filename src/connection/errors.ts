@@ -47,10 +47,10 @@ export class InternalServerError extends ServerProblem {
 
 // Utils error classes
 
-export class PermissionDenided extends InternalServerError {
+export class PermissionDenied extends InternalServerError {
 
     constructor(readonly side: Side, readonly permission: Permission) {
-        super(`${side.identfier} has not the permission '${permission.id}'`)
+        super(`${side.identifier} has not the permission '${permission.id}'`)
     }
 }
 
@@ -68,10 +68,10 @@ export class IdAlreadyExists extends InternalServerError {
     }
 }
 
-export class NameNotRegistered extends InternalServerError {
+export class KeyNotRegistered extends InternalServerError {
 
-    constructor(readonly name: string, ...context: string[]) {
-        super(`Name '${name}' is not registered in ${context.join('/')}`)
+    constructor(readonly key: string, ...context: string[]) {
+        super(`Key '${key}' is not registered in ${context.join('/')}`)
     }
 }
 
