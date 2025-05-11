@@ -3,7 +3,7 @@ import { ConstantRandom, Random, Seed } from "./random"
 export class ConstantBoolean extends ConstantRandom<boolean> {
 
     get type(): string {
-        return 'C_boolean'
+        return 'c_boolean'
     }
     
     constructor(public value: boolean) {

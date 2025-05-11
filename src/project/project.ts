@@ -16,6 +16,7 @@ import { getArchitect, getProject, getProjectOrNull, loadProject, setMainProject
 import { Structure } from "./structure.js"
 import type { ArchitectData } from "./architect.js"
 import { PERMISSIONS } from "../connection/permission.js"
+import type { JsonFormat } from "../util/util.js"
 
 /**
 * @param identifier should be no.space.with.dots
@@ -177,7 +178,7 @@ export class Project {
         return data
     }
 
-    write(relPath: string, json: {}) {
+    write(relPath: string, json: JsonFormat) {
         const filePath = this.getFilePath(relPath)
         this.ensureDir(path.dirname(relPath))
         fs.writeFileSync(filePath, JSON.stringify(json))

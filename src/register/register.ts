@@ -1,7 +1,7 @@
 import { KeyNotRegistered } from "../connection/errors"
 import type { MessageFunction, OnMessage, ServerOnMessage } from "../connection/server"
 import type { Side } from "../connection/sides"
-import type { ToJson } from "../util/util"
+import type { JsonFormat, ToJson } from "../util/util"
 
 export const boxes: Record<string, Register> = {}
 
@@ -11,10 +11,10 @@ export class Register<T extends Registry = Registry> implements ToJson {
 
     constructor(
         readonly box: string
-    ) {}
+    ) { }
 
     register<t extends T>(registry: t): t {
-        if(this.registries[registry.id] !== undefined) {
+        if (this.registries[registry.id] !== undefined) {
             console.warn(`Overwritten registry ${registry.id} in register ${this.box}`)
         }
         this.registries[registry.id] = registry
@@ -28,7 +28,7 @@ export class Register<T extends Registry = Registry> implements ToJson {
 
     get(id: string): T {
         const registry = this.registries[id]
-        if(!registry) {
+        if (!registry) {
             throw new KeyNotRegistered(id, 'Registries', this.box)
         }
         return registry
@@ -36,6 +36,13 @@ export class Register<T extends Registry = Registry> implements ToJson {
 
     getAll(): T[] {
         return Object.values(this.registries)
+    }
+
+    messages(): RegisterMessagesStructure {
+        return {
+            'get-all': (data, side, id) => side.respond(id, this.toJson()),
+            'get': (data, side, id) => side.respond(id, this.get(data.id).toJson())
+        }
     }
 
     toJson() {
@@ -52,11 +59,11 @@ export abstract class Registry implements ToJson {
 
 export abstract class RegistryObject<T extends RegistryChild = RegistryChild> extends Registry {
 
-    abstract get objectFromJson(): (json: any, type: string) => T
+    abstract get objectFromJson(): (json: JsonFormat, type: string) => T
 
-    abstract get generate(): () => T
+    abstract get generate(): (...args: any[]) => T
 
-    fromJson(json: { type: string, data: {} }): T {
+    fromJson(json: { type: string, data: JsonFormat }): T {
         return this.objectFromJson(json.data, json.type)
     }
 }
@@ -65,7 +72,7 @@ export abstract class RegistryChild implements ToJson {
 
     abstract get type(): string
 
-    abstract toData(): {}
+    abstract toData(): JsonFormat
 
     toJson() {
         return {
@@ -78,18 +85,11 @@ export abstract class RegistryChild implements ToJson {
 /**
  * Sum up messages paths and their data types required
  */
-type MessagesStructure = {
-    'get-all': MessageFunction<Side, { box: string }>
-    'get': MessageFunction<Side, { box: string, id: string }>
+export type RegisterMessagesStructure = {
+    'get-all': MessageFunction<Side, {}>
+    'get': MessageFunction<Side, { id: string }>
 }
 
 export function registerRegisterMessages(onMessage: OnMessage) {
-    Object.entries(registerMessages()).forEach(([key, f]) => onMessage.set(`register/${key}`, f))
-}
-
-function registerMessages(): MessagesStructure {
-    return {
-        'get-all': (data, side, id) => side.respond(id, boxes[data.box].toJson()),
-        'get': (data, side, id) => side.respond(id, boxes[data.box].get(data.id).toJson())
-    }
+    Object.values(boxes).forEach((register) => Object.entries(register.messages()).forEach(([key, f]) => onMessage.set(`register/${register.box}/${key}`, f)))
 }

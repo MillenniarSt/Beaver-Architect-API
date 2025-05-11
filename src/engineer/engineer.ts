@@ -16,6 +16,7 @@ import { getProject } from '../instance.js'
 import type { StyleDependency, WithDependency } from './data-pack/style/dependency.js'
 import { InternalServerError } from '../connection/errors.js'
 import { AbstractUpdateDirective, ListUpdate, Update, type ListUpdateObject } from '../connection/directives/update.js'
+import type { JsonFormat } from '../util/util.js'
 
 export abstract class Engineer<Resource extends Engineer<Resource> = any, U = {}> implements WithDependency {
 
@@ -37,7 +38,7 @@ export abstract class Engineer<Resource extends Engineer<Resource> = any, U = {}
 
     async init(): Promise<void> { }
 
-    abstract toJson(): {}
+    abstract toJson(): JsonFormat
 
     saveDirector(director: Director) {
         director.addDirective(new SaveDirective([this.reference]))

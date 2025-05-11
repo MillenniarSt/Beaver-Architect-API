@@ -10,6 +10,7 @@
 
 import { Builder } from "../../../builder/builder"
 import { EmptyBuilder } from "../../../builder/generic/empty"
+import { Seed } from "../../../builder/random/random"
 import { ListUpdate, ObjectUpdate, VarUpdate, type ListUpdateObject, type Update } from "../../../connection/directives/update"
 import type { ClientDirector, Director } from "../../../connection/director"
 import { IdAlreadyExists, IdNotExists } from "../../../connection/errors"
@@ -152,7 +153,8 @@ export class Component extends Engineer<Component, ComponentUpdate> {
             newRule = new DefinedStyleRule(changes.type ? RANDOM_TYPES.get(changes.type) : rule.type, rule.random, changes.fixed ?? rule.fixed)
         } else {
             const randomType = changes.type ? RANDOM_TYPES.get(changes.type) : rule.type
-            newRule = new DefinedStyleRule(randomType, changes.random ? randomType.getRandom(changes.random).generate() : randomType.constant.generate(), changes.fixed ?? rule.fixed)
+            const value = rule.random?.seeded(new Seed()) ?? randomType.defaultValue
+            newRule = new DefinedStyleRule(randomType, changes.random ? randomType.getRandom(changes.random).generate(value) : randomType.constant.generate(value), changes.fixed ?? rule.fixed)
         }
         this.parameters.set(id, newRule)
         this.update(director, {

@@ -18,13 +18,14 @@ import { IdAlreadyExists, IdNotExists, InternalServerError } from "../../../conn
 import { StyleRules, GenerationStyle, StyleRule, DefinedStyleRule, AbstractStyleRule } from "./rule.js";
 import type { StyleRuleChanges } from "./messages.js";
 import { RANDOM_TYPES } from "../../../register/random.js";
+import type { JsonFormat } from "../../../util/util.js";
 
 export type StyleUpdate = {
     isAbstract?: boolean
     implementations?: ListUpdateObject<void>[]
     rules?: ListUpdateObject<{
         type?: string,
-        random?: any,
+        random?: JsonFormat,
         fixed?: boolean,
         fromImplementations?: string[]
     }>[]
@@ -237,7 +238,8 @@ export class Style extends Engineer<Style, StyleUpdate> {
             newRule = new DefinedStyleRule(changes.type ? RANDOM_TYPES.get(changes.type) : rule.type, rule.random, changes.fixed ?? rule.fixed)
         } else {
             const randomType = changes.type ? RANDOM_TYPES.get(changes.type) : rule.type
-            newRule = new DefinedStyleRule(randomType, changes.random ? randomType.getRandom(changes.random).generate() : randomType.constant.generate(), changes.fixed ?? rule.fixed)
+            const value = rule.random?.seeded(new Seed()) ?? randomType.defaultValue
+            newRule = new DefinedStyleRule(randomType, changes.random ? randomType.getRandom(changes.random).generate(value) : randomType.constant.generate(value), changes.fixed ?? rule.fixed)
         }
         this.rules.set(id, newRule)
         this.update(director, {

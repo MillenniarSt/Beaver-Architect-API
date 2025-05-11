@@ -94,8 +94,9 @@ async function start() {
     const dir = process.env.DEV_ENV === 'true' ?
         path.join(path.dirname(__dirname), 'run') :
         process.argv[4]! ?? path.join(path.dirname(process.execPath), 'project')
+    const architectExe = process.argv[5] ?? path.join(dir, 'architect', 'architect.exe')
 
-    console.info(`Starting local project Server on port ${port} ${isPublic ? '[PUBLIC]' : ''} on '${dir}'...`)
+    console.info(`Starting local project Server on port ${port}${isPublic ? ' [PUBLIC]' : ''} on '${dir}'...`)
 
     /**
     * Starts the integrated console to execute any command registered with all permissions
@@ -129,9 +130,18 @@ async function start() {
         Project.create(dir, projectData, architectData)
     }
 
-    Object.entries(getProject().readOrCreate('users.json', [])).map(([id, level]) => {
+    Object.entries(getProject().readOrCreate('users.json', {})).map(([id, level]) => {
         users.set(id, PermissionLevel.fromJson(level))
     })
+
+    /**
+     * Initialization of Registers and their Registries
+     */
+    boxes['geo_forms'] = GEO_FORMS
+    boxes['geos'] = GEOS
+    boxes['randoms'] = RANDOMS
+    boxes['random_types'] = RANDOM_TYPES
+    boxes['builders'] = BUILDERS
 
     /**
      * Registration of all server messages and opening of the WebSocket server
@@ -152,18 +162,9 @@ async function start() {
      * and wait its setup
      */
     console.log(`Launching Architect ${architectData.name}...`)
-    const architectSide = await loadArchitect(architectData, projectData.identifier)
+    const architectSide = await loadArchitect(architectData, projectData.identifier, architectExe)
     setArchitect(architectSide)
     console.info(`Loaded Architect ${architectSide.architect.name} [${architectData.identifier}]`)
-
-    /**
-     * Initialization of Registers and their Registries
-     */
-    boxes['geo_forms'] = GEO_FORMS
-    boxes['geos'] = GEOS
-    boxes['randoms'] = RANDOMS
-    boxes['random_types'] = RANDOM_TYPES
-    boxes['builders'] = BUILDERS
 
     /**
      * Initialize Project and its Dependencies

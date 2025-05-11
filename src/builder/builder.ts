@@ -11,7 +11,7 @@
 import { Seed } from "./random/random.js";
 import { Option } from "./option.js";
 import { type Geo3 } from "../world/geo.js";
-import { parseRecord, recordToJson, type ToJson } from "../util/util.js";
+import { parseRecord, recordToJson, type JsonFormat, type ToJson } from "../util/util.js";
 import { type GenerationStyle } from "../engineer/data-pack/style/rule.js";
 import { RegistryChild } from "../register/register.js";
 import { GEO_FORMS } from "../register/geo.js";
@@ -43,7 +43,8 @@ export abstract class Builder<
     toData(): {} {
         return {
             children: recordToJson(this.children),
-            options: recordToJson(this.options)
+            options: recordToJson(this.options),
+            architectOptions: recordToJson(this.architectOptions)
         }
     }
 }
@@ -114,19 +115,21 @@ export class BuilderResult<G extends Geo3 = Geo3> implements ToJson {
 
     constructor(
         readonly object: G,
-        readonly architectOpt: Record<string, any>,
-        readonly children: BuilderResult[] = []
+        readonly architectOpt: Record<string, JsonFormat>,
+        readonly children: BuilderResult[] = [],
+        readonly resolution?: number
     ) { }
 
     static fromJson(json: any): BuilderResult {
-        return new BuilderResult(GEO_FORMS.get(json.form).fromJson(json.object) as Geo3, json.architectOpt, json.children.map((child: any) => BuilderResult.fromJson(child)))
+        return new BuilderResult(GEO_FORMS.get(json.form).fromJson(json.object) as Geo3, json.architectOpt, json.children.map((child: any) => BuilderResult.fromJson(child)), json.resolution)
     }
 
     toJson(): {} {
         return {
             object: this.object.toUniversalJson(),
             architectOpt: this.architectOpt,
-            children: this.children.map((child) => child.toJson())
+            children: this.children.map((child) => child.toJson()),
+            resolution: this.resolution
         }
     }
 }

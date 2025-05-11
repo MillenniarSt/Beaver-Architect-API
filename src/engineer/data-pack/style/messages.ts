@@ -8,13 +8,15 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
+import { Seed } from "../../../builder/random/random.js"
 import { ClientDirector } from "../../../connection/director.js"
+import { InternalServerError, ServerProblem } from "../../../connection/errors.js"
 import { PERMISSIONS } from "../../../connection/permission.js"
 import { type MessageFunction, type ServerOnMessage } from "../../../connection/server.js"
 import type { ClientSide } from "../../../connection/sides.js"
 import { getAllProjects, getProject } from "../../../instance.js"
 import { RANDOM_TYPES } from "../../../register/random.js"
-import { joinBiLists } from "../../../util/util.js"
+import { ensureJson, joinBiLists } from "../../../util/util.js"
 import { AbstractStyleRule, DefinedStyleRule } from "./rule.js"
 import { Style, StyleReference, type StyleChanges } from "./style.js"
 
@@ -41,6 +43,7 @@ type MessagesStructure = {
     'rename-rule': MessageFunction<ClientSide, { ref: string, id: string, newId: string }>
     'edit-rule': MessageFunction<ClientSide, { ref: string, id: string, changes: StyleRuleChanges }>
     'edit-rule-random': MessageFunction<ClientSide, { ref: string, id: string, data: any }>
+    'evaluate-rule': MessageFunction<ClientSide, { ref: string, id: string, count?: number, seed?: number }>
 }
 
 export type StyleRuleChanges = { isAbstract?: boolean, type?: string, fixed?: boolean, random?: string }
@@ -70,14 +73,14 @@ function styleMessages(): MessagesStructure {
         'get-all': (data, client, id) => {
             client.ensurePermission(PERMISSIONS.ACCESS_DATAPACK)
             const projects = data.project ? [getProject(data.project)] : getAllProjects()
-            client.respond(id, joinBiLists(projects.map((project) => project.dataPack.styles.values().toArray())).map((style) => style.reference.toJson()))
+            client.respond(id, joinBiLists(projects.map((project) => Array.from(project.dataPack.styles.values()))).map((style) => style.reference.toJson()))
         },
         'get': read((style, data, client, id) => {
             client.respond(id, {
                 isAbstract: style.isAbstract,
                 implementations: style.implementations.map((implementation) => implementation.toJson()),
                 rules: Object.fromEntries(style.rules.getAll().map(([id, rule]) => {
-                    return [id, { type: rule.type, random: rule.random?.toJson(), fixed: rule.fixed, fromImplementations: style.implementationsOfRule(id).map((ref) => ref.toString()) }]
+                    return [id, { type: rule.type.id, random: rule.random?.toJson(), fixed: rule.fixed, fromImplementations: style.implementationsOfRule(id).map((ref) => ref.toString()) }]
                 }))
             })
         }),
@@ -114,7 +117,7 @@ function styleMessages(): MessagesStructure {
         'get-rule': read((style, data, client, id) => {
             const rule = style.getRule(data.id)
             client.respond(id, {
-                type: rule.type,
+                type: rule.type.id,
                 fixed: rule.fixed,
                 random: rule.random?.toJson(),
                 fromImplementations: style.implementationsOfRule(data.id).map((ref) => ref.toJson())
@@ -125,7 +128,7 @@ function styleMessages(): MessagesStructure {
                 const type = RANDOM_TYPES.get(data.type)
                 style.pushRule(director, data.id, data.isAbstract && style.isAbstract ?
                     new AbstractStyleRule(type) :
-                    new DefinedStyleRule(type, type.constant.generate()))
+                    new DefinedStyleRule(type, type.constant.generate(type.defaultValue)))
             },
             async (director, style, result, data) => style.deleteRule(director, data.id)
         ),
@@ -155,7 +158,20 @@ function styleMessages(): MessagesStructure {
         'edit-rule-random': simpleEdit(
             async (director, style, data) => style.editRuleRandom(director, data.id, data.data),
             async (director, style, result, data) => style.editRuleRandom(director, data.id, result)
-        )
+        ),
+        'evaluate-rule': read((style, data, side, id) => {
+            const rule = style.getRule(data.id)
+            if(rule instanceof DefinedStyleRule) {
+                const seed = new Seed(data.seed)
+                let values: any[] = []
+                for(let i = 0; i < (data.count ?? 1); i++) {
+                    values.push(ensureJson(rule.random.seeded(seed)))
+                }
+                side.respond(id, values)
+            } else {
+                throw new InternalServerError(`Can not evaluate an abstract rule [${data.id}]`).warn()
+            }
+        })
     }
 }
 

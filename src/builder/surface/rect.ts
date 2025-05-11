@@ -20,7 +20,7 @@ import { ConstantVec2 } from "../random/vec/vec2.js";
 import { ConstantVec4 } from "../random/vec/vec4.js";
 
 export type GridRectBuilderOptions = {
-    alignment: Option<[Align, Align] | undefined>
+    alignment: Option<[Align, Align]>
     cell: Option<Vec2>
     gap: Option<Vec2>
     padding: Option<Vec4>
@@ -37,7 +37,7 @@ export class GridRectBuilder extends OneChildBuilder<Plane3<Rect2>, Plane3<Rect2
         options: Partial<GridRectBuilderOptions> = {}
     ) {
         super(child, {
-            alignment: options.alignment ?? Option.random(new ConstantSquareEnum<Align[]>('square_align', ['fill', 'fill'])),
+            alignment: options.alignment ?? Option.random(new ConstantSquareEnum<Align[]>(['fill', 'fill'])),
             cell: options.cell ?? Option.random(new ConstantVec2(Vec2.UNIT)),
             gap: options.gap ?? Option.random(new ConstantVec2(Vec2.ZERO)),
             padding: options.padding ?? Option.random(new ConstantVec4(Vec4.ZERO))

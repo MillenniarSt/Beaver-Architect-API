@@ -11,27 +11,22 @@
 import type { GenerationStyle } from "../../engineer/data-pack/style/rule";
 import { recordFromJson, recordToJson } from "../../util/util";
 import type { Geo3 } from "../../world/geo";
-import { Builder, BuilderResult, BuilderType } from "../builder";
-import { builderFromJson } from "../collective";
+import { Builder, BuilderResult, OneChildBuilder, type OneChildBuilderChildren } from "../builder";
 import { Option } from "../option";
 import type { Seed } from "../random/random";
 
-export class ArchitectBuilder<G extends Geo3 = any> extends Builder<G, {}> {
-    
-    public get type(): BuilderType {
-        return this._type;
-    }
+export class ArchitectBuilder<G extends Geo3 = any> extends OneChildBuilder<G, G, {}> {
 
     constructor(
-        private readonly _type: BuilderType,
-        readonly child: Builder,
+        readonly type: string,
+        child: Builder<G>,
         architectOptions: Record<string, Option>
     ) {
-        super({}, architectOptions)
+        super(child, {}, architectOptions)
     }
 
-    static fromJson(json: any): ArchitectBuilder {
-        return new ArchitectBuilder(json.type, builderFromJson(json.child), recordFromJson(json.architectOpt, Option.fromJson))
+    static fromData(children: OneChildBuilderChildren, options: {}, architectOptions: Record<string, Option>): ArchitectBuilder {
+        return new ArchitectBuilder(children.child.builder, architectOptions)
     }
 
     protected buildChildren(context: Geo3, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[] {

@@ -66,7 +66,7 @@ function componentMessages(): MessagesStructure {
         'get-all': (data, client, id) => {
             client.ensurePermission(PERMISSIONS.ACCESS_DATAPACK)
             const projects = data.project ? [getProject(data.project)] : getAllProjects()
-            client.respond(id, joinBiLists(projects.map((project) => project.dataPack.components.values().toArray())).map((component) => component.reference.toJson()))
+            client.respond(id, joinBiLists(projects.map((project) => Array.from(project.dataPack.components.values()))).map((component) => component.reference.toJson()))
         },
         'get': read((component, data, client, id) => {
             client.respond(id, {
@@ -90,7 +90,7 @@ function componentMessages(): MessagesStructure {
             async (director, component, data) => {
                 const type = RANDOM_TYPES.get(data.type)
                 component.pushRule(director, data.id, data.isAbstract === false ?
-                    new DefinedStyleRule(type, type.constant.generate()) :
+                    new DefinedStyleRule(type, type.constant.generate(type.defaultValue)) :
                     new AbstractStyleRule(type)
                 )
             },

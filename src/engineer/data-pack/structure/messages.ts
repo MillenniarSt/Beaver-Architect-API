@@ -54,7 +54,7 @@ function structureMessages(): MessagesStructure {
         'get-all': (data, client, id) => {
             client.ensurePermission(PERMISSIONS.ACCESS_DATAPACK)
             const projects = data.project ? [getProject(data.project)] : getAllProjects()
-            client.respond(id, joinBiLists(projects.map((project) => project.dataPack.structures.values().toArray())).map((structure) => structure.reference.toJson()))
+            client.respond(id, joinBiLists(projects.map((project) => Array.from(project.dataPack.structures.values()))).map((structure) => structure.reference.toJson()))
         },
         'get': read((structure, data, client, id) => {
             client.respond(id, {

@@ -10,6 +10,7 @@
 
 import { commands } from './command/commands.js';
 import { ConsoleCommander } from './command/console.js';
+import { IdNotExists } from './connection/errors.js';
 import type { PermissionLevel } from './connection/permission.js';
 import { server } from './connection/server.js';
 import { ArchitectSide, ServerSide } from './connection/sides.js';
@@ -80,11 +81,18 @@ export function getAllProjects(): Project[] {
 }
 
 export function getProject(identifier?: string): Project {
-    return identifier ? loadedProjects[identifier] : _project!
+    if(identifier) {
+        const project = loadedProjects[identifier]
+        if(!project) {
+            throw new IdNotExists(identifier, 'Projects')
+        }
+        return project
+    }
+    return _project!
 }
 
 export function getProjectOrNull(identifier: string): Project | null {
-    return loadedProjects[identifier]
+    return loadedProjects[identifier] ?? null
 }
 
 let isShuttingDown = false

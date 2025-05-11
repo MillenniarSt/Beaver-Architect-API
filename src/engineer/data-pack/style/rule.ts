@@ -67,7 +67,7 @@ export class AbstractStyleRule<T extends {} = {}> extends StyleRule<T> {
         return new AbstractStyleRule(RANDOM_TYPES.get(json.type), json.constant)
     }
 
-    generateDefined(): DefinedStyleRule {
+    generateDefined(): DefinedStyleRule<T> {
         return new DefinedStyleRule(this.type, this.type.constant.generate(), this.fixed)
     }
 }
@@ -113,10 +113,6 @@ export class StyleRules implements ToJson, WithDependency {
 
     getStyleDependency(): StyleDependency {
         return new StyleDependency(Object.fromEntries(mapToEntries(this.rules).filter(([key, rule]) => rule.isAbstract()).map(([key, rule]) => [key, rule.type])))
-    }
-
-    filter(architect: boolean): StyleRules {
-        return new StyleRules(new Map(mapToEntries(this.rules).filter(([key, rule]) => rule.type.isArchitect === architect)))
     }
 
     toGenerationStyle(seed: Seed): GenerationStyle {

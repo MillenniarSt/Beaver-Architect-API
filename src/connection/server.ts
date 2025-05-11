@@ -65,7 +65,7 @@ export class Server {
         this._wss.on('connection', (ws, req) => {
             console.info(`[ Socket ] |  JOIN  | Client ${req.socket.remoteAddress} Connected on port ${port}`)
 
-            // TODO set a security algorith for external clients
+            // TODO set a security algorithm for external clients
             const client = new ClientSide(new User('guest', {
                 name: 'Guest',
                 bio: 'TODO: add users sync in the server'
