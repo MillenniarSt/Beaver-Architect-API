@@ -11,8 +11,3 @@ export function simpleGrid() {
     const base = new Plane3(new Rect2(Vec2.ZERO, new Vec2(40, 6)), 0, new Rotation3(Quaternion.UP))
     templateBuilderExport(templateTestBuilders.gridPrisms(new ConstantVec2(new Vec2(1, 1)), new ConstantVec2(new Vec2(1, 1))), base, templateMinecraftStyles.simple())
 }
-
-export function simpleBlockOfFlat() {
-    const base = new Plane3(new Rect2(Vec2.ZERO, new Vec2(4, 4)), 0, new Rotation3(Quaternion.UP))
-    templateBuilderExport(templateTestBuilders.flatBlock(), base, templateMinecraftStyles.simple())
-}

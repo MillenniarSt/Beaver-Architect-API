@@ -10,20 +10,20 @@
 
 import { Builder } from "../builder/builder.js"
 import { Style } from "../engineer/data-pack/style/style.js"
-import { StructureEngineer, StructureReference } from "../engineer/data-pack/structure/structure.js"
 import { Exporter } from "../project/exporter.js"
-import { Structure } from "../project/structure.js"
 import { Seed } from "../builder/random/random.js"
 import { type Geo3 } from "../world/geo.js"
+import { Component, ComponentReference } from "../engineer/data-pack/component/component.js"
+import { GEOS } from "../register/geo.js"
 
 export function templateBuilderExport<G extends Geo3>(builder: Builder<G>, base: G, style: Style) {
-    templateStructureExport(new Structure(base, new StructureEngineer(new StructureReference('@structure-template'), builder)), style)
+    templateComponentExport(new Component(new ComponentReference('@structure-template'), GEOS.get(base.type), builder), base, style)
 }
 
-export function templateStructureExport(structure: Structure, style: Style) {
+export function templateComponentExport(component: Component, base: Geo3, style: Style) {
     const seed = new Seed()
     
-    const result = structure.build(style.toGenerationStyle(seed), seed)
+    const result = component.build(style.toGenerationStyle(seed), base, seed)
     
     const exporter = new Exporter(seed, result)
     exporter.exportToArchitect((data) => console.log('Update exporting:', data))

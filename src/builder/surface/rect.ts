@@ -9,10 +9,12 @@
 //      ##    \__|__/
 
 import type { GenerationStyle } from "../../engineer/data-pack/style/rule.js";
+import { GeoRegistry } from "../../register/geo.js";
+import { RandomTypeRegistry } from "../../register/random.js";
 import { Rect2 } from "../../world/bi-geo/plane.js";
 import { Plane3 } from "../../world/geo/surface.js";
 import { Vec2, Vec4 } from "../../world/vector.js";
-import { Builder, BuilderResult, OneChildBuilder, type OneChildBuilderChildren } from "../builder.js";
+import { Builder, BuilderResult, OneChildBuilder } from "../builder.js";
 import { Option } from "../option.js";
 import { ConstantSquareEnum, type Align } from "../random/enum.js";
 import type { Seed } from "../random/random.js";
@@ -26,10 +28,23 @@ export type GridRectBuilderOptions = {
     padding: Option<Vec4>
 }
 
+export const GRID_RECT_STRUCTURE = {
+    geo: GeoRegistry.PLANE3, childGeo: GeoRegistry.PLANE3, options: {
+        alignment: RandomTypeRegistry.SQUARE_ALIGN,
+        cell: RandomTypeRegistry.VEC2,
+        gap: RandomTypeRegistry.VEC2,
+        padding: RandomTypeRegistry.VEC4
+    }
+}
+
 export class GridRectBuilder extends OneChildBuilder<Plane3<Rect2>, Plane3<Rect2>, GridRectBuilderOptions> {
 
     get type(): string {
         return 'grid_rect'
+    }
+
+    get structure() {
+        return GRID_RECT_STRUCTURE
     }
 
     constructor(
@@ -44,8 +59,8 @@ export class GridRectBuilder extends OneChildBuilder<Plane3<Rect2>, Plane3<Rect2
         })
     }
 
-    static fromData(children: OneChildBuilderChildren<Plane3<Rect2>>, options: GridRectBuilderOptions): GridRectBuilder {
-        return new GridRectBuilder(children.child.builder, options)
+    static fromData(child: Builder<Plane3<Rect2>>, options: Record<string, Option>): GridRectBuilder {
+        return new GridRectBuilder(child, options)
     }
 
     buildChildren(context: Plane3<Rect2>, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[] {

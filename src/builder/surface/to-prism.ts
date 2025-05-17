@@ -16,15 +16,27 @@ import { Builder, BuilderResult, OneChildBuilder, type OneChildBuilderChildren }
 import { ConstantNumber } from "../random/number.js";
 import { Option } from "../option.js";
 import type { GenerationStyle } from "../../engineer/data-pack/style/rule.js";
+import { GeoRegistry } from "../../register/geo.js";
+import { RandomTypeRegistry } from "../../register/random.js";
 
 export type SurfaceToPrismBuilderOptions = {
     height: Option<number>
 }
 
-export class SurfaceToPrismBuilder<P extends Plane2 = Plane2> extends OneChildBuilder<Plane3<P>, Prism<P>, SurfaceToPrismBuilderOptions> {
+export const SURFACE_TO_PRISM_STRUCTURE = {
+    geo: GeoRegistry.PLANE3, childGeo: GeoRegistry.PRISM, options: {
+        height: RandomTypeRegistry.NUMBER
+    }
+}
+
+export class PlaneToPrismBuilder<P extends Plane2 = Plane2> extends OneChildBuilder<Plane3<P>, Prism<P>, SurfaceToPrismBuilderOptions> {
 
     get type(): string {
-        return 'to_prism'
+        return 'plane_to_prism'
+    }
+
+    get structure() {
+        return SURFACE_TO_PRISM_STRUCTURE
     }
 
     constructor(
@@ -36,8 +48,8 @@ export class SurfaceToPrismBuilder<P extends Plane2 = Plane2> extends OneChildBu
         })
     }
 
-    static fromData(children: OneChildBuilderChildren<Prism>, options: SurfaceToPrismBuilderOptions): SurfaceToPrismBuilder {
-        return new SurfaceToPrismBuilder(children.child.builder, options)
+    static fromData(child: Builder<Prism>, options: Record<string, Option>): PlaneToPrismBuilder {
+        return new PlaneToPrismBuilder(child, options)
     }
 
     protected buildChildren(context: Plane3<P>, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[] {

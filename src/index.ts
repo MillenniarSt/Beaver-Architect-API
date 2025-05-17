@@ -79,11 +79,12 @@ import { GEO_FORMS, GEOS } from './register/geo.js'
 import { boxes, registerRegisterMessages } from './register/register.js'
 import { RANDOM_TYPES, RANDOMS } from './register/random.js'
 import { BUILDERS } from './register/builder.js'
+import { simpleGrid } from './template/testing.js'
 
 start()
 
 // Testing Generation
-// .then(simpleGrid)
+   .then(simpleGrid)
 
 async function start() {
     /**

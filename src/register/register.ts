@@ -50,6 +50,13 @@ export class Register<T extends Registry = Registry> implements ToJson {
     }
 }
 
+export class ObjectRegister<C extends RegistryChild, T extends RegistryObject<C> = RegistryObject<C>> extends Register<T> {
+
+    fromJson(json: { type: string, data: JsonFormat }, ...args: any[]): C {
+        return this.get(json.type).fromJson(json.data, args)
+    }
+}
+
 export abstract class Registry implements ToJson {
 
     abstract get id(): string
@@ -59,13 +66,9 @@ export abstract class Registry implements ToJson {
 
 export abstract class RegistryObject<T extends RegistryChild = RegistryChild> extends Registry {
 
-    abstract get objectFromJson(): (json: JsonFormat, type: string) => T
+    abstract generate(...args: any[]): T
 
-    abstract get generate(): (...args: any[]) => T
-
-    fromJson(json: { type: string, data: JsonFormat }): T {
-        return this.objectFromJson(json.data, json.type)
-    }
+    abstract fromJson(json: any, ...args: any[]): T
 }
 
 export abstract class RegistryChild implements ToJson {

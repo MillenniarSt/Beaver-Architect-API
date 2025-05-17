@@ -1,3 +1,4 @@
+import type { Material } from "../../../builder/material"
 import { Random, type Seed } from "../../../builder/random/random"
 import { InternalServerError } from "../../../connection/errors"
 import { RANDOM_TYPES, RandomTypeRegistry } from "../../../register/random"
@@ -68,7 +69,7 @@ export class AbstractStyleRule<T extends {} = {}> extends StyleRule<T> {
     }
 
     generateDefined(): DefinedStyleRule<T> {
-        return new DefinedStyleRule(this.type, this.type.constant.generate(), this.fixed)
+        return new DefinedStyleRule(this.type, this.type.constant.generate(this.type.defaultValue), this.fixed)
     }
 }
 
@@ -138,7 +139,8 @@ export class StyleRules implements ToJson, WithDependency {
 export class GenerationStyle {
 
     constructor(
-        readonly randoms: Record<string, Random>
+        readonly randoms: Record<string, Random>,
+        readonly materials: Record<string, Material> = {}
     ) { }
 }
 

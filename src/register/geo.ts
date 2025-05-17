@@ -8,8 +8,8 @@ import { GeneralSurface, Plane3, Surface } from "../world/geo/surface"
 import { Vec2, Vec3 } from "../world/vector"
 import { Register, Registry, RegistryObject } from "./register"
 
-export const GEO_FORMS = new Register<GeoForm<any>>('geo_forms')
-export const GEOS = new Register<GeoRegistry<any>>('geos')
+export const GEO_FORMS = new Register<GeoForm>('geo_forms')
+export const GEOS = new Register<GeoRegistry>('geos')
 
 export class GeoForm<G extends Geo = Geo> extends Registry {
 
@@ -80,32 +80,36 @@ export class GeoRegistry<G extends Geo = Geo> extends RegistryObject<G> {
     constructor(
         readonly id: string,
         readonly children: GeoRegistry[],
-        objectFromJson: ((json: any) => G) | null,
+        geoFromJson: ((json: any) => G) | null,
         readonly generate: () => G
     ) {
         super()
-        this.objectFromJson = objectFromJson ?? GeoRegistry.invalidObjectFromJson
+        this.objectFromJson = geoFromJson ?? GeoRegistry.invalidObjectFromJson
     }
 
     protected static invalidObjectFromJson<G extends Geo>(): G {
         throw new InternalServerError('Can not get a Geo from an abstract GeoRegistry')
     }
 
-    fromJson(json: { type: string, data: {} }): G {
-        const geo = this.fromJsonOrNull(json)
+    fromTypedJson(json: { data: any, type: string }): G {
+        return this.fromJson(json.data, json.type)
+    }
+
+    fromJson(json: any, type: string): G {
+        const geo = this.fromJsonOrNull(json, type)
         if (!geo) {
-            throw new KeyNotRegistered(json.type, 'GeoRegistry', this.id)
+            throw new KeyNotRegistered(type, 'GeoRegistry', this.id)
         }
         return geo
     }
 
-    fromJsonOrNull(json: any): G | null {
-        if (this.id === json.type && this.objectFromJson) {
-            return this.objectFromJson(json.data)
+    fromJsonOrNull(json: any, type: string): G | null {
+        if (this.id === type && this.objectFromJson) {
+            return this.objectFromJson(json)
         }
 
         for (let i = 0; i < this.children.length; i++) {
-            const geo = this.children[i].fromJsonOrNull(json)
+            const geo = this.children[i].fromJsonOrNull(json, type)
             if (geo) {
                 return geo as G
             }
@@ -115,21 +119,21 @@ export class GeoRegistry<G extends Geo = Geo> extends RegistryObject<G> {
     }
 
     isChild(type: GeoRegistry): boolean {
+        return type.isParent(this)
+    }
+
+    isParent(type: GeoRegistry): boolean {
         if (this === type) {
             return true
         }
 
         for (let i = 0; i < this.children.length; i++) {
-            if (this.children[i].isChild(type)) {
+            if (this.children[i].isParent(type)) {
                 return true
             }
         }
 
         return false
-    }
-
-    isParent(type: GeoRegistry): boolean {
-        return type.isChild(this)
     }
 
     toJson(): {} {

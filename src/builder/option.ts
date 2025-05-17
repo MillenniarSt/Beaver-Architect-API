@@ -11,9 +11,10 @@
 import { IdNotExists, InternalServerError } from "../connection/errors.js";
 import type { GenerationStyle } from "../engineer/data-pack/style/rule.js";
 import { RandomTypeRegistry } from "../register/random.js";
+import type { ToJson } from "../util/util.js";
 import { Random, Seed } from "./random/random.js";
 
-export class Option<T extends {} = {}> {
+export class Option<T extends {} = {}> implements ToJson {
 
     protected constructor(
         protected random: Random<T> | undefined,

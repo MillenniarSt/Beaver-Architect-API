@@ -8,10 +8,10 @@ import { ConstantVec4, RandomQuaternion, RandomVec4 } from "../builder/random/ve
 import { KeyNotRegistered } from "../connection/errors";
 import { ensureJson } from "../util/util";
 import { Vec2, Vec3, Vec4 } from "../world/vector";
-import { Register, Registry, RegistryObject } from "./register";
+import { ObjectRegister, Register, Registry, RegistryObject } from "./register";
 
-export const RANDOM_TYPES = new Register<RandomTypeRegistry<any>>('random_types')
-export const RANDOMS = new Register<RandomRegistry<any>>('randoms')
+export const RANDOM_TYPES = new Register<RandomTypeRegistry>('random_types')
+export const RANDOMS = new ObjectRegister<Random, RandomRegistry<any>>('randoms')
 
 export class RandomRegistry<T extends {} = {}> extends RegistryObject<Random<T>> {
 
@@ -45,7 +45,7 @@ export class RandomRegistry<T extends {} = {}> extends RegistryObject<Random<T>>
 
     constructor(
         readonly id: string,
-        readonly objectFromJson: (json: any) => Random<T>,
+        readonly fromJson: (json: any) => Random<T>,
         readonly generate: (value: T) => Random<T>
     ) {
         super()
@@ -62,37 +62,45 @@ export type RandomTypeRegistryFromJson = { id: string, constant: string, randoms
 
 export class RandomTypeRegistry<T extends {} = any> extends Registry {
 
-    static readonly BOOLEAN = RANDOM_TYPES.register(new RandomTypeRegistry('boolean', RandomRegistry.C_BOOLEAN, [RandomRegistry.BOOLEAN], false))
-    static readonly NUMBER = RANDOM_TYPES.register(new RandomTypeRegistry('number', RandomRegistry.C_NUMBER, [RandomRegistry.NUMBER], 1))
-    static readonly VEC2 = RANDOM_TYPES.register(new RandomTypeRegistry('vec2', RandomRegistry.C_VEC2, [RandomRegistry.VEC2], Vec2.UNIT))
-    static readonly VEC3 = RANDOM_TYPES.register(new RandomTypeRegistry('vec3', RandomRegistry.C_VEC3, [RandomRegistry.VEC3], Vec3.UNIT))
-    static readonly VEC4 = RANDOM_TYPES.register(new RandomTypeRegistry('vec4', RandomRegistry.C_VEC4, [RandomRegistry.VEC4], Vec4.UNIT))
-    static readonly ALIGN = RANDOM_TYPES.register(new RandomTypeRegistry<Align>('align', RandomRegistry.C_ENUM, [RandomRegistry.ENUM], 'center', ['start', 'center', 'end', 'fill']))
-    static readonly SQUARE_ALIGN = RANDOM_TYPES.register(new RandomTypeRegistry<[Align, Align]>('square_align', RandomRegistry.C_SQUARE_ENUM, [RandomRegistry.SQUARE_ENUM], ['center', 'center']))
-    static readonly REPETITION = RANDOM_TYPES.register(new RandomTypeRegistry<RepetitionMode>('repetition', RandomRegistry.C_ENUM, [RandomRegistry.ENUM], 'block'))
+    static readonly BOOLEAN = RANDOM_TYPES.register(RandomTypeRegistry.simple('boolean', RandomRegistry.C_BOOLEAN, [RandomRegistry.BOOLEAN], false))
+    static readonly NUMBER = RANDOM_TYPES.register(RandomTypeRegistry.simple('number', RandomRegistry.C_NUMBER, [RandomRegistry.NUMBER], 1))
+    static readonly VEC2 = RANDOM_TYPES.register(RandomTypeRegistry.simple('vec2', RandomRegistry.C_VEC2, [RandomRegistry.VEC2], Vec2.UNIT))
+    static readonly VEC3 = RANDOM_TYPES.register(RandomTypeRegistry.simple('vec3', RandomRegistry.C_VEC3, [RandomRegistry.VEC3], Vec3.UNIT))
+    static readonly VEC4 = RANDOM_TYPES.register(RandomTypeRegistry.simple('vec4', RandomRegistry.C_VEC4, [RandomRegistry.VEC4], Vec4.UNIT))
+    static readonly ALIGN = RANDOM_TYPES.register(RandomTypeRegistry.simple<Align>('align', RandomRegistry.C_ENUM, [RandomRegistry.ENUM], 'center', ['start', 'center', 'end', 'fill']))
+    static readonly SQUARE_ALIGN = RANDOM_TYPES.register(RandomTypeRegistry.simple<[Align, Align]>('square_align', RandomRegistry.C_SQUARE_ENUM, [RandomRegistry.SQUARE_ENUM], ['center', 'center']))
+    static readonly REPETITION = RANDOM_TYPES.register(RandomTypeRegistry.simple<RepetitionMode>('repetition', RandomRegistry.C_ENUM, [RandomRegistry.ENUM], 'block'))
 
-    readonly constantId: string
-    readonly randoms: Record<string, RandomRegistry<T>>
+    // Architect must fill them
+    static readonly LINE3_MATERIAL = RANDOM_TYPES.register(new RandomTypeRegistry('line3_material', 'constant', {}, {}))
+    static readonly SURFACE_MATERIAL = RANDOM_TYPES.register(new RandomTypeRegistry('surface_material', 'constant', {}, {}))
+    static readonly OBJECT_MATERIAL = RANDOM_TYPES.register(new RandomTypeRegistry('object_material', 'constant', {}, {}))
 
     constructor(
         readonly id: string,
-        constant: RandomRegistry<T>,
-        randoms: RandomRegistry<T>[],
+        readonly constantId: string,
+        readonly randoms: Record<string, RandomRegistry<T>>,
         public defaultValue: T,
         readonly allowed?: T[]
     ) {
         super()
-        this.constantId = constant.id
+    }
+
+    static simple<T extends {}>(id: string, constant: RandomRegistry<T>, randoms: RandomRegistry<T>[], defaultValue: T, allowed?: T[]): RandomTypeRegistry<T> {
         randoms.push(constant)
-        this.randoms = Object.fromEntries(randoms.map((random) => [random.id, random]))
+        return new RandomTypeRegistry(id, constant.id, Object.fromEntries(randoms.map((random) => [random.id, random])), defaultValue, allowed)
     }
 
     static fromJson(json: RandomTypeRegistryFromJson): RandomTypeRegistry {
-        return new RandomTypeRegistry(json.id, RANDOMS.get(json.constant), json.randoms.map((random) => RANDOMS.get(random)), json.defaultValue, json.allowed)
+        return RandomTypeRegistry.simple(json.id, RANDOMS.get(json.constant), json.randoms.map((random) => RANDOMS.get(random)), json.defaultValue, json.allowed)
     }
 
     get constant(): RandomRegistry<T> {
         return this.randoms[this.constantId]
+    }
+
+    generateDefault(): Random<T> {
+        return this.constant.generate(this.defaultValue)
     }
 
     getRandom(key: string): RandomRegistry<T> {

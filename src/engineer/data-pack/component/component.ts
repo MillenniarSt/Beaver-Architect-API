@@ -8,7 +8,7 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { Builder } from "../../../builder/builder"
+import { Builder, BuilderResult } from "../../../builder/builder"
 import { EmptyBuilder } from "../../../builder/generic/empty"
 import { Seed } from "../../../builder/random/random"
 import { ListUpdate, ObjectUpdate, VarUpdate, type ListUpdateObject, type Update } from "../../../connection/directives/update"
@@ -18,9 +18,10 @@ import { getProject } from "../../../instance"
 import { BUILDERS } from "../../../register/builder"
 import { GEOS, type GeoRegistry } from "../../../register/geo"
 import { RANDOM_TYPES } from "../../../register/random"
+import type { Geo3 } from "../../../world/geo"
 import { Engineer, EngineerDirective, ResourceReference } from "../../engineer"
 import { StyleDependency } from "../style/dependency"
-import { AbstractStyleRule, DefinedStyleRule, StyleRule, StyleRules } from "../style/rule"
+import { AbstractStyleRule, DefinedStyleRule, GenerationStyle, StyleRule, StyleRules } from "../style/rule"
 import type { ComponentRuleChanges } from "./messages"
 
 export type ComponentUpdate = {
@@ -81,11 +82,16 @@ export class Component extends Engineer<Component, ComponentUpdate> {
 
     static loadFromRef(ref: ResourceReference<Component>): Component {
         const data = getProject(ref.pack).read(ref.path)
+        const baseGeo = GEOS.get(data.baseGeo)
         return new Component(ref,
-            GEOS.get(data.baseGeo),
-            BUILDERS.get(data.builder.type).fromJson(data.builder),
+            baseGeo,
+            BUILDERS.fromJson(data.builder, baseGeo),
             StyleRules.fromJson(data.parameters)
         )
+    }
+
+    build(style: GenerationStyle, base: Geo3, seed: Seed): BuilderResult {
+        return this.builder.build(base, style, this.parameters.toGenerationStyle(seed), seed)
     }
 
     hasRule(id: string): boolean {
