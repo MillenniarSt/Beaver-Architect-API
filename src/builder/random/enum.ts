@@ -20,31 +20,23 @@ export type RandomEnumValue<T extends string[]> = { id: T[number], weight: numbe
 
 export class ConstantEnum<T extends string[] = any[]> extends ConstantRandom<T[number]> {
 
-    get type(): string {
-        return 'c_enum'
-    }
-
-    constructor(public value: T[number]) {
+    constructor(readonly type: string, public value: T[number]) {
         super()
     }
 
-    static fromJson(json: any): ConstantEnum {
-        return new ConstantEnum(json)
+    static fromJson(json: any, type: string): ConstantEnum {
+        return new ConstantEnum(type, json)
     }
 }
 
 export class RandomEnum<T extends string[] = any[]> extends Random<T[number]> {
 
-    get type(): string {
-        return 'enum'
-    }
-
-    constructor(public choices: RandomEnumValue<T>[]) {
+    constructor(readonly type: string, public choices: RandomEnumValue<T>[]) {
         super()
     }
 
-    static fromJson(json: any): RandomEnum {
-        return new RandomEnum(json)
+    static fromJson(json: any, type: string): RandomEnum {
+        return new RandomEnum(type, json)
     }
 
     edit(data: any): void {
@@ -71,16 +63,12 @@ export class RandomEnum<T extends string[] = any[]> extends Random<T[number]> {
 
 export class ConstantSquareEnum<T extends string[] = any[]> extends ConstantRandom<[T[number], T[number]]> {
 
-    get type(): string {
-        return 'c_square_enum'
-    }
-
-    constructor(public value: [T[number], T[number]]) {
+    constructor(readonly type: string, public value: [T[number], T[number]]) {
         super()
     }
 
-    static fromJson(json: any): ConstantSquareEnum {
-        return new ConstantSquareEnum(json)
+    static fromJson(json: any, type: string): ConstantSquareEnum {
+        return new ConstantSquareEnum(type, json)
     }
 }
 
@@ -88,16 +76,12 @@ export type RandomSquareEnumValue<T extends string[]> = { id: [T[number], T[numb
 
 export class RandomSquareEnum<T extends string[] = any[]> extends Random<[T[number], T[number]]> {
 
-    get type(): string {
-        return 'square_enum'
-    }
-
-    constructor(public choices: RandomSquareEnumValue<T>[]) {
+    constructor(readonly type: string, public choices: RandomSquareEnumValue<T>[]) {
         super()
     }
 
-    static fromJson(json: any): RandomSquareEnum {
-        return new RandomSquareEnum(json)
+    static fromJson(json: any, type: string): RandomSquareEnum {
+        return new RandomSquareEnum(type, json)
     }
 
     edit(data: any): void {

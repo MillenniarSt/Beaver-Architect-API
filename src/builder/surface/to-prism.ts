@@ -12,7 +12,7 @@ import { Seed } from "../random/random.js";
 import { Plane2 } from "../../world/bi-geo/plane.js";
 import { Prism } from "../../world/geo/object.js";
 import { Plane3 } from "../../world/geo/surface.js";
-import { Builder, BuilderResult, OneChildBuilder, type OneChildBuilderChildren } from "../builder.js";
+import { Builder, BuilderResult, OneChildBuilder } from "../builder.js";
 import { ConstantNumber } from "../random/number.js";
 import { Option } from "../option.js";
 import type { GenerationStyle } from "../../engineer/data-pack/style/rule.js";
@@ -55,5 +55,14 @@ export class PlaneToPrismBuilder<P extends Plane2 = Plane2> extends OneChildBuil
     protected buildChildren(context: Plane3<P>, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[] {
         const prism = new Prism(context, this.options.height.get(style, parameters, seed))
         return [this.child.builder.build(prism, style, parameters, seed)]
+    }
+
+    buildToCpp(): string {
+        return `BuilderResult result;
+{
+    Geo context = new Prism(context, ${this.options.height.toCppGetter()})
+    ${this.child.builder.toCpp()}
+}
+BuilderResult child = new BuilderResult()`
     }
 }

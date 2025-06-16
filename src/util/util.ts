@@ -58,7 +58,7 @@ export function mapFromJson<T>(json: Record<string, JsonFormat>, itemFromJson: (
 
 // Record
 
-export function parseRecord<T, R>(record: Record<any, T>, parse: (value: T, key: string) => R): Record<any, R> {
+export function parseRecord<T, R>(record: Record<string, T>, parse: (value: T, key: string) => R): Record<string, R> {
     return Object.fromEntries(Object.entries(record).map(([key, value]) => [key, parse(value, key)]))
 }
 

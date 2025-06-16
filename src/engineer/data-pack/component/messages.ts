@@ -70,6 +70,9 @@ function componentMessages(): MessagesStructure {
         },
         'get': read((component, data, client, id) => {
             client.respond(id, {
+                baseGeo: component.baseGeo.id,
+                structure: component.getStructure().toJson(),
+                parameters: component.parameters.toJson(),
                 builder: component.builder.toJson()
             })
         }),
@@ -90,7 +93,7 @@ function componentMessages(): MessagesStructure {
             async (director, component, data) => {
                 const type = RANDOM_TYPES.get(data.type)
                 component.pushRule(director, data.id, data.isAbstract === false ?
-                    new DefinedStyleRule(type, type.constant.generate(type.defaultValue)) :
+                    new DefinedStyleRule(type, type.constant.generate()) :
                     new AbstractStyleRule(type)
                 )
             },

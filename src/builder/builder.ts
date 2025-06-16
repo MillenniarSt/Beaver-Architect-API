@@ -10,12 +10,13 @@
 
 import { Seed } from "./random/random.js";
 import { Option } from "./option.js";
-import { type Geo3 } from "../world/geo.js";
-import { parseRecord, recordToJson, type JsonFormat, type ToJson } from "../util/util.js";
+import { Geo, type Geo3 } from "../world/geo.js";
+import { joinBiLists, parseRecord, recordToJson, type JsonFormat, type ToJson } from "../util/util.js";
 import { type GenerationStyle } from "../engineer/data-pack/style/rule.js";
 import { RegistryChild } from "../register/register.js";
-import { GEO_FORMS, GeoRegistry } from "../register/geo.js";
-import type { RandomTypeRegistry } from "../register/random.js";
+import { GEO_FORMS, GeoRegistry, GEOS } from "../register/geo.js";
+import { RANDOM_TYPES, type RandomTypeRegistry } from "../register/random.js";
+import { BufferListScheme, BufferObjectScheme, BufferStringScheme, type BufferFormat, type BufferScheme } from "../util/buffer.js";
 
 export abstract class Builder<
     Geo extends Geo3 = Geo3,
@@ -33,6 +34,15 @@ export abstract class Builder<
     abstract getStructure(parentGeo: GeoRegistry): BuilderStructure
 
     abstract build(context: Geo, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult<Geo>
+
+    toCpp(name: string = 'result'): string {
+        return `{
+    ${this.buildToCpp()}
+    ${name}.children.push_back(child)
+}`
+    }
+
+    abstract buildToCpp(): string
 }
 
 export abstract class StandardBuilder<
@@ -159,10 +169,18 @@ export class BuilderStructure implements ToJson {
         readonly options: Record<string, RandomTypeRegistry>
     ) { }
 
+    static fromJson(json: any): BuilderStructure {
+        return new BuilderStructure(
+            GEOS.get(json.geo), 
+            parseRecord(json.children, (child: any) => { return { options: parseRecord(child.options, (option: any) => RANDOM_TYPES.get(option)), builders: child.builders.map((builder: any) => BuilderStructure.fromJson(builder)), multiple: child.multiple } }),
+            parseRecord(json.options, (option: any) => RANDOM_TYPES.get(option))
+        )
+    }
+
     toJson(): JsonFormat {
         return {
             geo: this.geo.id,
-            children: parseRecord(this.children, (child) => { return { options: parseRecord(child.options, (option) => option.id), builder: child.builders.map((builder) => builder.toJson()) } }),
+            children: parseRecord(this.children, (child) => { return { options: parseRecord(child.options, (option) => option.id), builders: child.builders.map((builder) => builder.toJson()), multiple: child.multiple } }),
             options: parseRecord(this.options, (option) => option.id)
         }
     }
@@ -173,20 +191,93 @@ export class BuilderResult<G extends Geo3 = Geo3> implements ToJson {
     constructor(
         readonly object: G,
         readonly children: BuilderResult[] = [],
-        readonly material?: JsonFormat,
+        readonly material?: { random: string, data: JsonFormat },
+        readonly output?: { key: string, data: JsonFormat },
         readonly resolution?: number
     ) { }
 
     static fromJson(json: any): BuilderResult {
-        return new BuilderResult(GEO_FORMS.get(json.form).fromJson(json.object) as Geo3, json.children.map((child: any) => BuilderResult.fromJson(child)), json.material, json.resolution)
+        return new BuilderResult(GEO_FORMS.fromJson(json.object) as Geo3, json.children.map((child: any) => BuilderResult.fromJson(child)), json.material, json.resolution)
+    }
+
+    toFlat(): BuilderFlatResult {
+        let result = BuilderFlatResult.combine(this.children.map((child) => child.toFlat()))
+        if(this.material) {
+            result.materials.push({ geo: this.object, random: this.material.random, data: this.material.data })
+        }
+        if(this.output) {
+            result.outputs[this.output.key] = this.output.data
+        }
+        return result
     }
 
     toJson(): JsonFormat {
         return {
             object: this.object.toUniversalJson(),
-            materials: this.material,
+            material: this.material,
             children: this.children.map((child) => child.toJson()),
             resolution: this.resolution
         }
+    }
+}
+
+export class BuilderFlatResult implements ToJson {
+
+    static readonly materialsBufferScheme = new BufferListScheme(new BufferObjectScheme([
+        ['geo', GEO_FORMS.bufferScheme],
+        ['random', new BufferStringScheme()],
+        ['data', new BufferStringScheme()]
+    ]))
+
+    constructor(
+        public materials: { geo: Geo, random: string, data: JsonFormat }[] = [],
+        public outputs: Record<string, JsonFormat> = {}
+    ) { }
+
+    static combine(results: BuilderFlatResult[]): BuilderFlatResult {
+        return new BuilderFlatResult(joinBiLists(results.map((result) => result.materials)), Object.fromEntries(joinBiLists(results.map((result) => Object.entries(result.outputs)))))
+    }
+
+    static fromJson(json: any): BuilderFlatResult {
+        return new BuilderFlatResult(json.map((material: any) => { return { geo: GEO_FORMS.fromJson(material.geo), random: material.random, data: material.data } }), json.outputs)
+    }
+
+    join(result: BuilderFlatResult) {
+        this.materials.concat(result.materials)
+        this.outputs = { ...this.outputs, ...result.outputs }
+    }
+
+    materialsToJson(): JsonFormat {
+        return this.materials.map((material) => { return { geo: material.geo.toUniversalJson(), random: material.random, data: material.data } })
+    }
+
+    materialsToBufferFormat() {
+        return this.materials.map((material) => { return { 
+            geo: {
+                key: material.geo.form,
+                value: material.geo.toUniversalData()
+            },
+            random: material.random,
+            data: JSON.stringify(material.data)
+        } })
+    }
+
+    outputsToJson(): JsonFormat {
+        return this.outputs
+    }
+
+    toJson(): JsonFormat {
+        return {
+            materials: this.materialsToJson(),
+            outputs: this.outputsToJson()
+        }
+    }
+
+    writeMaterialsBufferScheme(buffer: Buffer, offset: number): number {
+        return BuilderFlatResult.materialsBufferScheme.write(buffer, offset, this.materials.map((material) => { return { 
+            geo: material.geo.toUniversalJson(),
+            random: material.random,
+            data: JSON.stringify(material.data)
+        } }))
     }
 }

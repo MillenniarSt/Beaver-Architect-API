@@ -16,7 +16,7 @@ import { ArchitectSide } from '../connection/sides.js';
 import { getFreePort, type OnMessage, toSocketError } from '../connection/server.js';
 import { PermissionLevel, PERMISSIONS } from '../connection/permission.js';
 import { close, getProject } from '../instance.js';
-import { RANDOM_TYPES, RandomTypeRegistry, type RandomTypeRegistryFromJson } from '../register/random.js';
+import { RANDOM_TYPES, RandomRegistry, RANDOMS, RandomTypeRegistry, type RandomRegistryFromJson, type RandomTypeRegistryFromJson } from '../register/random.js';
 import fs from 'fs'
 
 export class Architect {
@@ -155,9 +155,25 @@ export async function loadArchitect(data: ArchitectData, projectIdentifier: stri
      * Registration of custom Architect Registries
      */
 
+    // Randoms
+    const architectRandoms: RandomRegistryFromJson[] = await side.request('random/get')
+    architectRandoms.forEach((random) => {
+        try {
+            RANDOMS.register(RandomRegistry.fromJson(random))
+        } catch(error) {
+            console.error(`Can not register Architect Random Type ${random.id}: ${error}`)
+        }
+    })
+
     // Random Types
     const architectRandomTypes: RandomTypeRegistryFromJson[] = await side.request('random/get-types')
-    architectRandomTypes.forEach((randomType) => RANDOM_TYPES.register(RandomTypeRegistry.fromJson(randomType)))
+    architectRandomTypes.forEach((randomType) => {
+        try {
+            RANDOM_TYPES.register(RandomTypeRegistry.fromJson(randomType))
+        } catch(error) {
+            console.error(`Can not register Architect Random Type ${randomType.id}: ${error}`)
+        }
+    })
 
     return side
 }

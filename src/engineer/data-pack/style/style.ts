@@ -238,7 +238,7 @@ export class Style extends Engineer<Style, StyleUpdate> {
             newRule = new DefinedStyleRule(changes.type ? RANDOM_TYPES.get(changes.type) : rule.type, rule.random, changes.fixed ?? rule.fixed)
         } else {
             const randomType = changes.type ? RANDOM_TYPES.get(changes.type) : rule.type
-            const value = rule.random?.seeded(new Seed()) ?? randomType.defaultValue
+            const value = rule.random?.seeded(new Seed())
             newRule = new DefinedStyleRule(randomType, changes.random ? randomType.getRandom(changes.random).generate(value) : randomType.constant.generate(value), changes.fixed ?? rule.fixed)
         }
         this.rules.set(id, newRule)

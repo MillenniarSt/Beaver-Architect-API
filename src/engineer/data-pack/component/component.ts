@@ -8,7 +8,7 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-import { Builder, BuilderResult } from "../../../builder/builder"
+import { Builder, BuilderResult, BuilderStructure } from "../../../builder/builder"
 import { EmptyBuilder } from "../../../builder/generic/empty"
 import { Seed } from "../../../builder/random/random"
 import { ListUpdate, ObjectUpdate, VarUpdate, type ListUpdateObject, type Update } from "../../../connection/directives/update"
@@ -70,11 +70,7 @@ export class Component extends Engineer<Component, ComponentUpdate> {
         return componentUpdate
     }
 
-    getStyleDependency(): StyleDependency {
-        return this.parameters.getStyleDependency()
-    }
-
-    static create(director: ClientDirector, component: Component): void {
+    static create(director: Director, component: Component): void {
         getProject(component.reference.pack).dataPack.components.set(component.reference.location, component)
         component.save()
         director.addDirective(EngineerDirective.push(component.updatePath, component.reference, component.updateInstance))
@@ -88,6 +84,14 @@ export class Component extends Engineer<Component, ComponentUpdate> {
             BUILDERS.fromJson(data.builder, baseGeo),
             StyleRules.fromJson(data.parameters)
         )
+    }
+
+    getStyleDependency(): StyleDependency {
+        return this.parameters.getStyleDependency()
+    }
+
+    getStructure(): BuilderStructure {
+        return this.builder.getStructure(this.baseGeo)
     }
 
     build(style: GenerationStyle, base: Geo3, seed: Seed): BuilderResult {
@@ -159,7 +163,7 @@ export class Component extends Engineer<Component, ComponentUpdate> {
             newRule = new DefinedStyleRule(changes.type ? RANDOM_TYPES.get(changes.type) : rule.type, rule.random, changes.fixed ?? rule.fixed)
         } else {
             const randomType = changes.type ? RANDOM_TYPES.get(changes.type) : rule.type
-            const value = rule.random?.seeded(new Seed()) ?? randomType.defaultValue
+            const value = rule.random?.seeded(new Seed())
             newRule = new DefinedStyleRule(randomType, changes.random ? randomType.getRandom(changes.random).generate(value) : randomType.constant.generate(value), changes.fixed ?? rule.fixed)
         }
         this.parameters.set(id, newRule)

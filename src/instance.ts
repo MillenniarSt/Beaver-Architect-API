@@ -101,7 +101,7 @@ export async function close() {
     if (isShuttingDown) return
     isShuttingDown = true
 
-    console.info('Closing Beaver Architect Server...')
+    console.warn('Closing Beaver Architect Server...')
 
     commander.close()
     if(_architectSide) {

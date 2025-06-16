@@ -163,7 +163,7 @@ export class Rotation3 {
     ) { }
 
     static fromJson(json: any): Rotation3 {
-        return new Rotation3(Quaternion.fromJson(json.quaternion), Vec3.fromJson(json.pivot))
+        return new Rotation3(Quaternion.fromJson(json.angle), Vec3.fromJson(json.pivot))
     }
 
     add(rotation: Rotation3): Rotation3 {

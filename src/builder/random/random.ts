@@ -32,6 +32,8 @@ export abstract class Random<T extends {} = any> extends RegistryChild {
 	abstract edit(data: any): void
 
 	abstract seeded(seed: Seed): T
+
+	abstract toCppGetter(): string
 }
 
 export abstract class ConstantRandom<T extends {} = any> extends Random<T> {

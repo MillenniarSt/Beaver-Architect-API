@@ -1,4 +1,17 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { InternalServerError, KeyNotRegistered } from "../connection/errors"
+import { CppClass, CppFunction, CppVar } from "../exporter/cpp"
+import { BufferKeyScheme, BufferListScheme, BufferObjectScheme, BufferStringScheme, type BufferScheme } from "../util/buffer"
+import type { JsonFormat } from "../util/util"
 import { CloseLine2, CurvedLine2, GeneralLine2, Line2 } from "../world/bi-geo/line"
 import { GeneralPlane2, Plane2, Rect2 } from "../world/bi-geo/plane"
 import type { Geo, Geo2, Geo3 } from "../world/geo"
@@ -6,21 +19,41 @@ import { CloseLine3, GeneralLine3, Line3 } from "../world/geo/line"
 import { GeneralObject3, Object3, Prism, Rect3 } from "../world/geo/object"
 import { GeneralSurface, Plane3, Surface } from "../world/geo/surface"
 import { Vec2, Vec3 } from "../world/vector"
-import { Register, Registry, RegistryObject } from "./register"
+import { ObjectRegister, Register, Registry, RegistryObject } from "./register"
 
-export const GEO_FORMS = new Register<GeoForm>('geo_forms')
-export const GEOS = new Register<GeoRegistry>('geos')
+export class GeoFormRegister extends Register<GeoForm> {
+
+    readonly bufferScheme = new BufferKeyScheme({})
+
+    register<t extends GeoForm<Geo>>(registry: t): t {
+        this.bufferScheme.schemes[registry.id] = registry.bufferScheme
+        return super.register(registry)
+    }
+
+    fromJson(json: { form: string, data: JsonFormat }): Geo {
+        return this.get(json.form).fromJson(json.data)
+    }
+
+    fromBuffer(buffer: Buffer, offset: number): Geo {
+        let form = this.bufferScheme.read(buffer, offset).value
+        return this.get(form.key).fromJson(form)
+    }
+}
+
+export const GEO_FORMS = new GeoFormRegister('geo_forms')
+export const GEOS = new ObjectRegister<Geo, GeoRegistry>('geos')
 
 export class GeoForm<G extends Geo = Geo> extends Registry {
 
-    static readonly LINE2 = GEO_FORMS.register(new GeoForm('line2', Line2.fromUniversalJson))
-    static readonly PLANE = GEO_FORMS.register(new GeoForm('plane', Plane2.fromUniversalJson))
-    static readonly LINE3 = GEO_FORMS.register(new GeoForm('line3', Line3.fromUniversalJson))
-    static readonly SURFACE = GEO_FORMS.register(new GeoForm('surface', Surface.fromUniversalJson))
-    static readonly OBJECT = GEO_FORMS.register(new GeoForm('object', Object3.fromUniversalJson))
+    static readonly LINE2 = GEO_FORMS.register(new GeoForm('line2', Line2.UNIVERSAL_BUFFER_SCHEME, Line2.fromUniversalJson))
+    static readonly PLANE = GEO_FORMS.register(new GeoForm('plane', Plane2.UNIVERSAL_BUFFER_SCHEME, Plane2.fromUniversalJson))
+    static readonly LINE3 = GEO_FORMS.register(new GeoForm('line3', Line3.UNIVERSAL_BUFFER_SCHEME, Line3.fromUniversalJson))
+    static readonly SURFACE = GEO_FORMS.register(new GeoForm('surface', Surface.UNIVERSAL_BUFFER_SCHEME, Surface.fromUniversalJson))
+    static readonly OBJECT = GEO_FORMS.register(new GeoForm('object', Object3.UNIVERSAL_BUFFER_SCHEME, Object3.fromUniversalJson))
 
     constructor(
         readonly id: string,
+        readonly bufferScheme: BufferScheme,
         readonly fromJson: (json: any) => G
     ) {
         super()
@@ -55,7 +88,10 @@ export class GeoRegistry<G extends Geo = Geo> extends RegistryObject<G> {
     // Form
     static readonly LINE2: GeoRegistry<Line2> = GEOS.register(new GeoRegistry('line2', [
         GeoRegistry.CLOSED_LINE2, GeoRegistry.CURVED_LINE2
-    ], GeneralLine2.fromJson, () => new GeneralLine2([Vec2.ZERO, Vec2.UNIT])))
+    ], GeneralLine2.fromJson, () => new GeneralLine2([Vec2.ZERO, Vec2.UNIT]), new CppClass('GeneralLine2', ['Line2'], [
+        new CppVar('float**', 'vertices'),
+        new CppFunction('float**', 'getVertices', [], ['return vertices'])
+    ])))
     static readonly PLANE2: GeoRegistry<Plane2> = GEOS.register(new GeoRegistry('plane2', [
         GeoRegistry.RECT2
     ], GeneralPlane2.fromJson, () => new GeneralPlane2(GeoRegistry.CLOSED_LINE2.generate())))
@@ -77,69 +113,70 @@ export class GeoRegistry<G extends Geo = Geo> extends RegistryObject<G> {
 
     readonly objectFromJson: (json: any) => G
 
-    constructor(
-        readonly id: string,
-        readonly children: GeoRegistry[],
-        geoFromJson: ((json: any) => G) | null,
-        readonly generate: () => G
-    ) {
-        super()
-        this.objectFromJson = geoFromJson ?? GeoRegistry.invalidObjectFromJson
-    }
+constructor(
+    readonly id: string,
+    readonly children: GeoRegistry[],
+    geoFromJson: ((json: any) => G) | null,
+    readonly generate: () => G,
+    readonly cppClass ?: CppClass
+) {
+    super()
+    this.objectFromJson = geoFromJson ?? GeoRegistry.invalidObjectFromJson
+}
 
     protected static invalidObjectFromJson<G extends Geo>(): G {
-        throw new InternalServerError('Can not get a Geo from an abstract GeoRegistry')
+    throw new InternalServerError('Can not get a Geo from an abstract GeoRegistry')
+}
+
+fromTypedJson(json: { data: any, type: string }): G {
+    return this.fromJson(json.data, json.type)
+}
+
+fromJson(json: any, type: string): G {
+    const geo = this.fromJsonOrNull(json, type)
+    if (!geo) {
+        throw new KeyNotRegistered(type, 'GeoRegistry', this.id)
+    }
+    return geo
+}
+
+fromJsonOrNull(json: any, type: string): G | null {
+    if (this.id === type && this.objectFromJson) {
+        return this.objectFromJson(json)
     }
 
-    fromTypedJson(json: { data: any, type: string }): G {
-        return this.fromJson(json.data, json.type)
-    }
-
-    fromJson(json: any, type: string): G {
-        const geo = this.fromJsonOrNull(json, type)
-        if (!geo) {
-            throw new KeyNotRegistered(type, 'GeoRegistry', this.id)
+    for (let i = 0; i < this.children.length; i++) {
+        const geo = this.children[i].fromJsonOrNull(json, type)
+        if (geo) {
+            return geo as G
         }
-        return geo
     }
 
-    fromJsonOrNull(json: any, type: string): G | null {
-        if (this.id === type && this.objectFromJson) {
-            return this.objectFromJson(json)
-        }
+    return null
+}
 
-        for (let i = 0; i < this.children.length; i++) {
-            const geo = this.children[i].fromJsonOrNull(json, type)
-            if (geo) {
-                return geo as G
-            }
-        }
+isChild(type: GeoRegistry): boolean {
+    return type.isParent(this)
+}
 
-        return null
+isParent(type: GeoRegistry): boolean {
+    if (this === type) {
+        return true
     }
 
-    isChild(type: GeoRegistry): boolean {
-        return type.isParent(this)
-    }
-
-    isParent(type: GeoRegistry): boolean {
-        if (this === type) {
+    for (let i = 0; i < this.children.length; i++) {
+        if (this.children[i].isParent(type)) {
             return true
         }
-
-        for (let i = 0; i < this.children.length; i++) {
-            if (this.children[i].isParent(type)) {
-                return true
-            }
-        }
-
-        return false
     }
 
-    toJson(): {} {
-        return {
-            id: this.id,
-            children: this.children.map((child) => child.id)
-        }
+    return false
+}
+
+toJson(): { } {
+    return {
+        id: this.id,
+        children: this.children.map((child) => child.id)
     }
+}
 }

@@ -8,11 +8,14 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
+import { BufferFixedListScheme, BufferIntScheme, BufferListScheme } from "../../util/buffer.js";
 import { Geo2 } from "../geo.js";
 import { Rotation2 } from "../quaternion.js";
 import { Vec2 } from "../vector.js";
 
 export abstract class Line2 extends Geo2 {
+
+    static readonly UNIVERSAL_BUFFER_SCHEME = new BufferListScheme(new BufferFixedListScheme(new BufferIntScheme(), 2))
 
     get form(): string {
         return 'line2'

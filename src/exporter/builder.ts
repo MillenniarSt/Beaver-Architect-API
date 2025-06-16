@@ -9,7 +9,7 @@
 //      ##    \__|__/
 
 import { v4 } from "uuid";
-import { BuilderResult } from "../builder/builder.js";
+import { BuilderFlatResult } from "../builder/builder.js";
 import { getArchitectSide } from "../instance.js";
 import { Seed } from "../builder/random/random.js";
 
@@ -18,11 +18,11 @@ export type ExportToArchitectUpdate = {
     fail?: string
 }
 
-export class Exporter {
+export class BuilderExporter {
 
     constructor(
         readonly seed: Seed,
-        readonly result: BuilderResult
+        readonly result: BuilderFlatResult
     ) { }
 
     exportToArchitect(onUpdate: (data: ExportToArchitectUpdate) => void): Promise<string | null> {
@@ -30,7 +30,7 @@ export class Exporter {
             const channel = `export:${v4()}`
             await getArchitectSide().openChannel<ExportToArchitectUpdate>(`export:${channel}`, {
                 seed: this.seed.seed,
-                result: this.result.toJson()
+                result: this.result.materialsToJson()
             }, (data) => {
                 if (data.isDone) {
                     resolve(null)

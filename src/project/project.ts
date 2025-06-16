@@ -17,6 +17,7 @@ import { Structure } from "./structure.js"
 import type { ArchitectData } from "./architect.js"
 import { PERMISSIONS } from "../connection/permission.js"
 import type { JsonFormat } from "../util/util.js"
+import { Terrain } from "./terrain.js"
 
 /**
 * @param identifier should be no.space.with.dots
@@ -51,7 +52,8 @@ export class Version {
 export class Project {
 
     protected _dataPack?: DataPack
-    public structures!: Structure[]
+    public terrains: Record<string, Terrain> = {}
+    public structures: Structure[] = []
 
     private constructor(
         readonly dir: string,
@@ -134,11 +136,22 @@ export class Project {
      * Initializes the Project and load all his files
      */
     async init() {
-        this._dataPack = await DataPack.load(this.identifier)
-
         for(let i = 0; i < this.dependencies.length; i++) {
             await this.dependencies[i].init()
         }
+
+        this._dataPack = await DataPack.load(this.identifier)
+
+        this.ensureDir('terrains')
+        let project = this
+        function recursiveInitTerrain(file: FileNode) {
+            if(file.children === undefined) {
+                project.terrains[file.path.substring('terrains/'.length, file.path.lastIndexOf('.'))] = Terrain.fromJson(project.read(file.path))
+            } else {
+                file.children.forEach((child) => recursiveInitTerrain(child))
+            }
+        }
+        this.mapDir('terrains').forEach((node) => recursiveInitTerrain(node))
     }
 
     get dataPack(): DataPack {

@@ -14,9 +14,11 @@
     "@types/ws": "^8.18.0",
     "pkg": "^5.8.1",
     "ts-node": "^10.9.2",
+    "ts-proto": "^2.7.4",
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@protobuf-ts/runtime": "^2.11.0",
     "appdata-path": "^1.0.0",
     "localtunnel": "^2.0.2",
     "uuid": "^11.1.0",

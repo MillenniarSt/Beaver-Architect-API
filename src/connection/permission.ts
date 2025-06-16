@@ -70,7 +70,7 @@ export class PermissionLevel implements ToJson {
     }
 
     toJson() {
-        return this.permissions.values().map((permission) => permission.id)
+        return [...this.permissions.values().map((permission) => permission.id)]
     }
 }
 

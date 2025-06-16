@@ -9,12 +9,18 @@
 //      ##    \__|__/
 
 import { GeoRegistry } from "../../register/geo.js";
+import { BufferFixedListScheme, BufferIntScheme, BufferListScheme, BufferObjectScheme } from "../../util/buffer.js";
 import { Plane2 } from "../bi-geo/plane.js";
 import { Geo3 } from "../geo.js";
 import { Quaternion, Rotation3 } from "../quaternion.js";
 import { Vec3 } from "../vector.js";
 
 export abstract class Surface extends Geo3 {
+
+    static readonly UNIVERSAL_BUFFER_SCHEME = new BufferObjectScheme([
+        ['vertices', new BufferListScheme(new BufferFixedListScheme(new BufferIntScheme(), 3))],
+        ['triangles', new BufferListScheme(new BufferFixedListScheme(new BufferIntScheme(), 3))]
+    ])
 
     get form(): string {
         return 'surface'
@@ -84,7 +90,7 @@ export class Plane3<P extends Plane2 = Plane2> extends Surface {
     }
 
     static fromJson(json: any): Plane3 {
-        return new Plane3(GeoRegistry.PLANE2.fromJson(json.plane), json.y, Rotation3.fromJson(json.rotation))
+        return new Plane3(GeoRegistry.PLANE2.fromTypedJson(json.plane), json.y, Rotation3.fromJson(json.rotation))
     }
 
     withPlane<P extends Plane2 = Plane2>(plane: P): Plane3<P> {

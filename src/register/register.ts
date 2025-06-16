@@ -1,9 +1,19 @@
+//             _____
+//         ___/     \___        |  |
+//      ##/  _.- _.-    \##  -  |  |                       -
+//      ##\#=_  '    _=#/##  |  |  |  /---\  |      |      |   ===\  |  __
+//      ##   \\#####//   ##  |  |  |  |___/  |===\  |===\  |   ___|  |==/
+//      ##       |       ##  |  |  |  |      |   |  |   |  |  /   |  |
+//      ##       |       ##  |  \= \= \====  |   |  |   |  |  \___/  |
+//      ##\___   |   ___/
+//      ##    \__|__/
+
 import { KeyNotRegistered } from "../connection/errors"
-import type { MessageFunction, OnMessage, ServerOnMessage } from "../connection/server"
+import type { MessageFunction, OnMessage } from "../connection/server"
 import type { Side } from "../connection/sides"
 import type { JsonFormat, ToJson } from "../util/util"
 
-export const boxes: Record<string, Register> = {}
+export const boxes: Record<string, Register<any>> = {}
 
 export class Register<T extends Registry = Registry> implements ToJson {
 

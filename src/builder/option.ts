@@ -35,7 +35,7 @@ export class Option<T extends {} = {}> implements ToJson {
     }
 
     static fromJson<T extends {} = {}>(json: any, type: RandomTypeRegistry<T>): Option<T> {
-        return new Option(json.random ? type.randomFromJson(json.random) : undefined, json.paramRef, json.styleRef)
+        return new Option(json.random ? type.randomFromJson(json.random) : undefined, json.styleRef, json.paramRef)
     }
 
     isDefined(): boolean {
@@ -109,5 +109,16 @@ export class Option<T extends {} = {}> implements ToJson {
             paramRef: this.paramRef,
             styleRef: this.styleRef
         }
+    }
+
+    toCppGetter(): string {
+        if(this.random) {
+            return `${this.random.toCppGetter()}`
+        } else if(this.styleRef) {
+            return `style[${this.styleRef}](seed)`
+        } else if(this.paramRef) {
+            return `style[${this.paramRef}](seed)`
+        }
+        throw new InternalServerError('Option broken: all of the references are undefined')
     }
 }

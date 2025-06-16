@@ -128,7 +128,7 @@ function styleMessages(): MessagesStructure {
                 const type = RANDOM_TYPES.get(data.type)
                 style.pushRule(director, data.id, data.isAbstract && style.isAbstract ?
                     new AbstractStyleRule(type) :
-                    new DefinedStyleRule(type, type.constant.generate(type.defaultValue)))
+                    new DefinedStyleRule(type, type.constant.generate()))
             },
             async (director, style, result, data) => style.deleteRule(director, data.id)
         ),

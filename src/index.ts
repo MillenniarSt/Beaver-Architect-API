@@ -79,12 +79,18 @@ import { GEO_FORMS, GEOS } from './register/geo.js'
 import { boxes, registerRegisterMessages } from './register/register.js'
 import { RANDOM_TYPES, RANDOMS } from './register/random.js'
 import { BUILDERS } from './register/builder.js'
-import { simpleGrid } from './template/testing.js'
+import { simpleFlatTerrain, simpleGrid, simpleTpcFlatTerrain } from './template/testing.js'
+import { templateTerrainCppExport } from './template/exporter.js'
+import { registerSocketExporterMessages } from './exporter/socket.js'
+import { templateTestTerrains } from './template/terrains/testing.js'
 
 start()
 
 // Testing Generation
-   .then(simpleGrid)
+   //.then(simpleGrid)
+   //.then(() => templateTerrainCppExport(null as any))
+   //.then(simpleFlatTerrain)
+   .then(simpleTpcFlatTerrain)
 
 async function start() {
     /**
@@ -154,6 +160,7 @@ async function start() {
     registerStyleMessages(onServerMessage)
     registerComponentMessages(onServerMessage)
     registerEnStructureMessages(onServerMessage)
+    registerSocketExporterMessages(onServerMessage)
 
     const url = await server.open(port, isPublic, onServerMessage)
     console.info(`Opened Project Server '${getProject().identifier}' on ${url ?? `port ${port}`}`)
@@ -171,6 +178,8 @@ async function start() {
      * Initialize Project and its Dependencies
      */
     await getProject().init()
+
+    //getProject().write('terrains/test.json', templateTestTerrains.flat(16).toJson())
 
     console.log(`Started Project ${getProject().name} [${getProject().identifier}]`)
 }

@@ -9,6 +9,7 @@
 //      ##    \__|__/
 
 import { GeoRegistry } from "../../register/geo.js";
+import { BufferFixedListScheme, BufferIntScheme, BufferListScheme, BufferObjectScheme } from "../../util/buffer.js";
 import { Plane2, Rect2 } from "../bi-geo/plane.js";
 import { Geo3 } from "../geo.js";
 import { Quaternion, Rotation3 } from "../quaternion.js";
@@ -16,6 +17,11 @@ import { Vec2, Vec3 } from "../vector.js";
 import { Plane3 } from "./surface.js";
 
 export abstract class Object3 extends Geo3 {
+
+    static readonly UNIVERSAL_BUFFER_SCHEME = new BufferObjectScheme([
+        ['vertices', new BufferListScheme(new BufferFixedListScheme(new BufferIntScheme(), 3))],
+        ['triangles', new BufferListScheme(new BufferFixedListScheme(new BufferIntScheme(), 3))]
+    ])
 
     get form(): string {
         return 'object'
@@ -84,7 +90,7 @@ export class Prism<P extends Plane2 = Plane2> extends Object3 {
     }
 
     static fromJson(json: any): Prism {
-        return new Prism(GeoRegistry.PLANE3.fromJson(json.base), json.height)
+        return new Prism(GeoRegistry.PLANE3.fromTypedJson(json.base), json.height)
     }
 
     move(vec: Vec3): Prism<P> {
@@ -144,6 +150,10 @@ export class Rect3 extends Prism<Rect2> {
 
     static fromJson(json: any): Rect3 {
         return new Rect3(Vec3.fromJson(json.pos), Vec3.fromJson(json.size), Rotation3.fromJson(json.rotation))
+    }
+
+    contains(pos: Vec3): boolean {
+        return pos.x >= this.pos.x && pos.x <= this.pos.x + this.size.x && pos.y >= this.pos.y && pos.y <= this.pos.y + this.size.y && pos.z >= this.pos.z && pos.z <= this.pos.z + this.size.z
     }
 
     move(vec: Vec3): Rect3 {

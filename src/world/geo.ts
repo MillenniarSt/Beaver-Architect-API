@@ -8,6 +8,7 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
+import { GEO_FORMS } from "../register/geo.js"
 import { RegistryChild } from "../register/register.js"
 import { Rotation2, Rotation3 } from "./quaternion.js"
 import { Vec2, Vec3 } from "./vector.js"
@@ -21,6 +22,10 @@ export abstract class Geo extends RegistryChild {
             form: this.form,
             data: this.toUniversalData()
         }
+    }
+
+    writeUniversalBuffer(buffer: Buffer, offset: number): number {
+        return GEO_FORMS.bufferScheme.write(buffer, offset, { key: this.form, value: this.toUniversalData() })
     }
 
     abstract toUniversalData(): {}

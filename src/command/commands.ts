@@ -12,9 +12,11 @@ import { EmptyBuilder } from "../builder/generic/empty"
 import { Director } from "../connection/director"
 import { PERMISSIONS } from "../connection/permission"
 import { server } from "../connection/server"
+import { Component, ComponentReference } from "../engineer/data-pack/component/component"
 import { StructureEngineer, StructureReference } from "../engineer/data-pack/structure/structure"
 import { Style, StyleReference } from "../engineer/data-pack/style/style"
 import { close } from "../instance"
+import { GeoRegistry } from "../register/geo"
 import { AbstractCommand, Command, CommandArgs, CommandParent } from "./commander"
 
 export const commands: AbstractCommand[] = [
@@ -30,12 +32,12 @@ export const commands: AbstractCommand[] = [
             Style.create(new Director(commander.side), style)
             commander.info(`Created new style '${ref.toString()}'`)
         }),
-        new Command('structure', new CommandArgs(['ref']), (commander, args) => {
-            commander.side.ensurePermission(PERMISSIONS.MANAGE_STRUCTURE_ENGINEER)
-            const ref = new StructureReference(args[0])
-            const structure = new StructureEngineer(ref, EmptyBuilder.VOID)
-            StructureEngineer.create(new Director(commander.side), structure)
-            commander.info(`Created new structure engineer '${ref.toString()}'`)
+        new Command('component', new CommandArgs(['ref']), (commander, args) => {
+            commander.side.ensurePermission(PERMISSIONS.MANAGE_COMPONENT)
+            const ref = new ComponentReference(args[0])
+            const component = new Component(ref, GeoRegistry.RECT2, EmptyBuilder.VOID)
+            Component.create(new Director(commander.side), component)
+            commander.info(`Created new component '${ref.toString()}'`)
         })
     ]),
 

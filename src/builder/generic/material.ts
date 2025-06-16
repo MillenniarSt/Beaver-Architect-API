@@ -42,10 +42,11 @@ export class MaterialBuilder<G extends Geo3 = any> extends Builder<G, {}, Materi
     }
 
     build(context: G, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult<G> {
+        const material = this.options.material.getRandom(style, parameters)
         return new BuilderResult(
             context,
             [],
-            this.options.material.get(style, parameters, seed)
+            { random: material.type, data: material.toData() }
         )
     }
 

@@ -15,6 +15,8 @@ import { CloseLine2 } from "./line.js"
 
 export abstract class Plane2<Edge extends CloseLine2 = CloseLine2> extends Geo2 {
 
+    static readonly UNIVERSAL_BUFFER_SCHEME = CloseLine2.UNIVERSAL_BUFFER_SCHEME
+
     get form(): string {
         return 'plane'
     }
@@ -39,7 +41,7 @@ export abstract class Plane2<Edge extends CloseLine2 = CloseLine2> extends Geo2 
     }
 
     toUniversalData(): {} {
-        return this.edge.toData()
+        return this.edge.toUniversalData()
     }
 }
 

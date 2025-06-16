@@ -61,6 +61,13 @@ export class IdNotExists extends InternalServerError {
     }
 }
 
+export class IndexOutOfBounds extends InternalServerError {
+
+    constructor(readonly index: number, readonly size: number, ...context: string[]) {
+        super(`Index [${index}] out of bound ${size} in ${context.join('/')}`)
+    }
+}
+
 export class IdAlreadyExists extends InternalServerError {
 
     constructor(readonly id: string, ...context: string[]) {
@@ -72,6 +79,13 @@ export class KeyNotRegistered extends InternalServerError {
 
     constructor(readonly key: string, ...context: string[]) {
         super(`Key '${key}' is not registered in ${context.join('/')}`)
+    }
+}
+
+export class InvalidInstance extends InternalServerError {
+
+    constructor(readonly instance: any, readonly requiredInstance: any, ...context: string[]) {
+        super(`Instance [${instance} type of ${typeof instance}] is not of ${requiredInstance} in ${context.join('/')}`)
     }
 }
 

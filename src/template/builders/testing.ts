@@ -16,6 +16,7 @@ import type { Random } from "../../builder/random/random.js";
 import { ConstantVec2 } from "../../builder/random/vec/vec2.js";
 import { GridRectBuilder } from "../../builder/surface/rect.js";
 import { PlaneToPrismBuilder } from "../../builder/surface/to-prism.js";
+import { RandomRegistry } from "../../register/random.js";
 import { Vec2 } from "../../world/vector.js";
 
 /**
@@ -34,7 +35,7 @@ export const templateTestBuilders = {
         {
             cell: Option.random(cell ?? new ConstantVec2(Vec2.UNIT)),
             gap: Option.random(gap ?? new ConstantVec2(Vec2.UNIT)),
-            alignment: Option.random(new ConstantSquareEnum(['start', 'start']))
+            alignment: Option.random(new ConstantSquareEnum(RandomRegistry.SQUARE_ALIGN.id, ['start', 'start']))
         }
     )
 }

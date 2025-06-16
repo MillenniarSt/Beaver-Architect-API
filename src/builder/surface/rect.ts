@@ -10,7 +10,7 @@
 
 import type { GenerationStyle } from "../../engineer/data-pack/style/rule.js";
 import { GeoRegistry } from "../../register/geo.js";
-import { RandomTypeRegistry } from "../../register/random.js";
+import { RandomRegistry, RandomTypeRegistry } from "../../register/random.js";
 import { Rect2 } from "../../world/bi-geo/plane.js";
 import { Plane3 } from "../../world/geo/surface.js";
 import { Vec2, Vec4 } from "../../world/vector.js";
@@ -52,7 +52,7 @@ export class GridRectBuilder extends OneChildBuilder<Plane3<Rect2>, Plane3<Rect2
         options: Partial<GridRectBuilderOptions> = {}
     ) {
         super(child, {
-            alignment: options.alignment ?? Option.random(new ConstantSquareEnum<Align[]>(['fill', 'fill'])),
+            alignment: options.alignment ?? Option.random(new ConstantSquareEnum<Align[]>(RandomRegistry.SQUARE_ALIGN.id, ['fill', 'fill'])),
             cell: options.cell ?? Option.random(new ConstantVec2(Vec2.UNIT)),
             gap: options.gap ?? Option.random(new ConstantVec2(Vec2.ZERO)),
             padding: options.padding ?? Option.random(new ConstantVec4(Vec4.ZERO))
@@ -66,7 +66,7 @@ export class GridRectBuilder extends OneChildBuilder<Plane3<Rect2>, Plane3<Rect2
     buildChildren(context: Plane3<Rect2>, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[] {
         const gap = this.options.gap.get(style, parameters, seed)
         const padding = this.options.padding.get(style, parameters, seed)
-        const alignment = this.options.alignment.get(style, parameters, seed)!
+        const alignment = this.options.alignment.get(style, parameters, seed)
         let cell = this.options.cell.get(style, parameters, seed)
 
         const size = context.plane.size.subtract(new Vec2(padding.b + padding.d, padding.a + padding.c))
