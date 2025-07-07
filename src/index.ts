@@ -79,7 +79,7 @@ import { GEO_FORMS, GEOS } from './register/geo.js'
 import { boxes, registerRegisterMessages } from './register/register.js'
 import { RANDOM_TYPES, RANDOMS } from './register/random.js'
 import { BUILDERS } from './register/builder.js'
-import { simpleFlatTerrain, simpleGrid, simpleTpcFlatTerrain } from './template/testing.js'
+import { simpleFlatTerrain, simpleTpcGridTerrain, simpleGrid, simpleTpcFlatTerrain } from './template/testing.js'
 import { templateTerrainCppExport } from './template/exporter.js'
 import { registerSocketExporterMessages } from './exporter/socket.js'
 import { templateTestTerrains } from './template/terrains/testing.js'
@@ -90,7 +90,7 @@ start()
    //.then(simpleGrid)
    //.then(() => templateTerrainCppExport(null as any))
    //.then(simpleFlatTerrain)
-   .then(simpleTpcFlatTerrain)
+   .then(simpleTpcGridTerrain)
 
 async function start() {
     /**

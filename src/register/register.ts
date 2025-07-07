@@ -76,7 +76,7 @@ export abstract class Registry implements ToJson {
 
 export abstract class RegistryObject<T extends RegistryChild = RegistryChild> extends Registry {
 
-    abstract generate(...args: any[]): T
+    //abstract generate(...args: any[]): T
 
     abstract fromJson(json: any, ...args: any[]): T
 }

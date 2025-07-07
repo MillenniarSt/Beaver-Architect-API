@@ -59,12 +59,20 @@ export class GeneralPlane2 extends Plane2 {
         return new GeneralPlane2(CloseLine2.fromJson(json))
     }
 
+    get pivot(): Vec2 {
+        return Vec2.centerOf(this.vertices)
+    }
+
     move(vec: Vec2): GeneralPlane2 {
         return new GeneralPlane2(this.edge.move(vec))
     }
 
     rotate(rotation: Rotation2): GeneralPlane2 {
         return new GeneralPlane2(this.edge.rotate(rotation))
+    }
+
+    rotateAround(angle: number): GeneralPlane2 {
+        return this.rotate(new Rotation2(angle, this.pivot))
     }
 
     toData(): {} {
@@ -81,13 +89,17 @@ export class Rect2 extends Plane2 {
     constructor(
         readonly pos: Vec2,
         readonly size: Vec2,
-        readonly rotation: Rotation2 = new Rotation2(0, Vec2.ZERO)
+        readonly rotation: number = 0
     ) {
         super()
     }
 
     static fromJson(json: any): Rect2 {
-        return new Rect2(Vec2.fromJson(json.pos), Vec2.fromJson(json.size), Rotation2.fromJson(json.rotation))
+        return new Rect2(Vec2.fromJson(json.pos), Vec2.fromJson(json.size), json.rotation)
+    }
+
+    get pivot(): Vec2 {
+        return this.pos.add(this.size.scale(0.5))
     }
 
     move(vec: Vec2): Rect2 {
@@ -95,7 +107,11 @@ export class Rect2 extends Plane2 {
     }
 
     rotate(rotation: Rotation2): Rect2 {
-        return new Rect2(this.pos, this.size, this.rotation.add(rotation))
+        return new Rect2(rotation.getVec(this.pos), this.size, this.rotation).rotateAround(rotation.angle)
+    }
+
+    rotateAround(rotation: number): Rect2 {
+        return new Rect2(this.pos, this.size, (this.rotation + rotation) % Math.PI)
     }
 
     get edge(): CloseLine2 {
@@ -104,14 +120,14 @@ export class Rect2 extends Plane2 {
             new Vec2(this.pos.x, this.pos.y + this.size.y),
             this.pos.add(this.size),
             new Vec2(this.pos.x + this.size.y, this.pos.y)
-        ]).rotate(this.rotation)
+        ]).rotate(new Rotation2(this.rotation, this.pivot))
     }
 
     toData() {
         return {
             pos: this.pos.toJson(),
             size: this.size.toJson(),
-            rotation: this.rotation.toJson()
+            rotation: this.rotation
         }
     }
 }

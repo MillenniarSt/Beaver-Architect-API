@@ -8,11 +8,12 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
+import { CauseError, NotTested, TODO } from "../../dev/decorators.js";
 import { GeoRegistry } from "../../register/geo.js";
 import { BufferFixedListScheme, BufferIntScheme, BufferListScheme, BufferObjectScheme } from "../../util/buffer.js";
 import { Plane2 } from "../bi-geo/plane.js";
 import { Geo3 } from "../geo.js";
-import { Quaternion, Rotation3 } from "../quaternion.js";
+import { Direction, Rotation3 } from "../quaternion.js";
 import { Vec3 } from "../vector.js";
 
 export abstract class Surface extends Geo3 {
@@ -59,12 +60,20 @@ export class GeneralSurface extends Surface {
         return new GeneralSurface(json.vertices.map((v: any) => Vec3.fromJson(v)), json.triangles)
     }
 
+    get pivot(): Vec3 {
+        return Vec3.centerOf(this.vertices)
+    }
+
     move(vec: Vec3): GeneralSurface {
         return new GeneralSurface(this.vertices.map((v) => v.add(vec)), this.triangles)
     }
 
     rotate(rotation: Rotation3): GeneralSurface {
         return new GeneralSurface(this.vertices.map((v) => rotation.getVec(v)), this.triangles)
+    }
+
+    rotateAround(direction: Direction): GeneralSurface {
+        return this.rotate(new Rotation3(direction, this.pivot))
     }
 
     toData(): {} {
@@ -84,37 +93,51 @@ export class Plane3<P extends Plane2 = Plane2> extends Surface {
     constructor(
         readonly plane: P,
         readonly z: number,
-        readonly rotation: Rotation3 = new Rotation3(Quaternion.NORTH, plane.edge.vertices[0].toVec3(z))
+        readonly direction: Direction = Direction.SOUTH
     ) {
         super()
     }
 
     static fromJson(json: any): Plane3 {
-        return new Plane3(GeoRegistry.PLANE2.fromTypedJson(json.plane), json.y, Rotation3.fromJson(json.rotation))
+        return new Plane3(GeoRegistry.PLANE2.fromTypedJson(json.plane), json.z, Direction.fromJson(json.direction))
+    }
+
+    get pivot(): Vec3 {
+        return this.plane.pivot.toVec3(this.z)
     }
 
     withPlane<P extends Plane2 = Plane2>(plane: P): Plane3<P> {
-        return new Plane3(plane, this.z, this.rotation)
+        return new Plane3(plane.move(this.plane.pivot.subtract(plane.pivot)) as P, this.z, this.direction)
     }
 
     move(vec: Vec3): Plane3<P> {
-        return new Plane3(this.plane.move(vec.toVec2()) as P, this.z + vec.z, this.rotation)
+        return new Plane3(this.plane.move(vec.toVec2()) as P, this.z + vec.z, this.direction)
     }
 
+    translate(length: number): Plane3<P> {
+        return this.move(this.direction.toVec(length))
+    }
+
+    @NotTested()
     rotate(rotation: Rotation3): Plane3<P> {
-        return new Plane3(this.plane, this.z, this.rotation.add(rotation))
+        return this.move(this.pivot.subtract(rotation.getVec(this.pivot))).rotateAround(rotation.direction)
+    }
+
+    rotateAround(direction: Direction): Plane3<P> {
+        return new Plane3(this.plane, this.z, this.direction.add(direction))
     }
 
     toData() {
         return {
             plane: this.plane.toJson(),
             z: this.z,
-            rotation: this.rotation.toJson()
+            direction: this.direction.toJson()
         }
     }
 
     get vertices(): Vec3[] {
-        return this.plane.vertices.map((v) => this.rotation.getVec(v.toVec3(this.z)))
+        const rotation = new Rotation3(this.direction, this.pivot)
+        return this.plane.vertices.map((v) => rotation.getVec(v.toVec3(this.z)))
     }
 
     get triangles(): [number, number, number][] {

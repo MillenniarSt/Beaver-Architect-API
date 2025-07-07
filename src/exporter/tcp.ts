@@ -234,7 +234,7 @@ export class TcpTerrainExporter extends TcpExporter {
     }
 
     buildChunk(pos: Vec3): Promise<Buffer> {
-        let result = this.terrain.buildChunk(pos, this.generationStyle, this.seed).materialsToBufferFormat()
-        return this.request(this.architect!, 1, BuilderFlatResult.materialsBufferScheme.writeAll(result))
+        let result = this.terrain.buildChunk(pos, this.generationStyle, this.seed)
+        return this.request(this.architect!, 1, BuilderFlatResult.materialsBufferScheme.writeAll(result.materialsToBufferFormat()))
     }
 }

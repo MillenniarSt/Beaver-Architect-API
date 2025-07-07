@@ -10,7 +10,7 @@
 
 import { BufferFixedListScheme, BufferIntScheme, BufferListScheme } from "../../util/buffer.js"
 import { Geo3 } from "../geo.js"
-import { Rotation3 } from "../quaternion.js"
+import { Direction, Rotation3 } from "../quaternion.js"
 import { Vec3 } from "../vector.js"
 
 export abstract class Line3 extends Geo3 {
@@ -29,6 +29,14 @@ export abstract class Line3 extends Geo3 {
             segments.push([this.vertices[i - 1], this.vertices[i]])
         }
         return segments
+    }
+
+    get pivot(): Vec3 {
+        return this.vertices[0]
+    }
+
+    rotateAround(direction: Direction): Geo3 {
+        return this.rotate(new Rotation3(direction, this.pivot))
     }
 
     static fromUniversalJson(json: any): GeneralLine3 {

@@ -9,37 +9,46 @@
 //      ##    \__|__/
 
 import type { GenerationStyle } from "../../../engineer/data-pack/style/rule.js";
+import { GeoRegistry } from "../../../register/geo.js";
+import { RandomTypeRegistry } from "../../../register/random.js";
 import { Plane2 } from "../../../world/bi-geo/plane.js";
 import { Prism } from "../../../world/geo/object.js";
 import { Vec3 } from "../../../world/vector.js";
-import { Builder, type BuilderChild, BuilderResult, BuilderType } from "../../builder.js";
-import { childrenFromJson } from "../../collective.js";
+import { Builder, type BuilderChild, BuilderMultipleChild, BuilderResult, StandardBuilder } from "../../builder.js";
 import type { Option } from "../../option.js";
 import type { Seed } from "../../random/random.js";
-import { RandomType } from "../../random/type.js";
 
-export class FlexPrismBuilder<P extends Plane2 = Plane2> extends Builder<Prism<P>, {}> {
+export type FlexPrismBuilderChildOptions = {
+    isStatic: Option<boolean>,
+    weight: Option<number>
+}
 
-    static readonly type = new BuilderType('flexPrism', Prism.type, [
-        { id: 'children', geo: Prism.type, options: [
-            { id: 'isStatic', type: RandomType.BOOLEAN },
-            { id: 'weight', type: RandomType.NUMBER }
-        ], multiple: true }
-    ], [])
+export const FLEX_PRISM_STRUCTURE = {
+    geo: GeoRegistry.PRISM,
+    children: {
+        children: { options: { isStatic: RandomTypeRegistry.BOOLEAN, weight: RandomTypeRegistry.NUMBER }, geo: GeoRegistry.PRISM, multiple: true }
+    },
+    options: {}
+}
 
-    constructor(
-        public children: BuilderChild<Builder<Prism<P>>, {
-            isStatic: Option<boolean>,
-            weight: Option<number>
-        }>[]
-    ) {
-        super({})
+export class FlexPrismBuilder<P extends Plane2 = Plane2> extends StandardBuilder<Prism<P>, { children: BuilderMultipleChild<Prism<P>, FlexPrismBuilderChildOptions> }, {}> {
+
+    get type(): string {
+        return 'flex_prism'
     }
 
-    static fromJson(json: any): FlexPrismBuilder {
-        return new FlexPrismBuilder(
-            childrenFromJson(json.children)
-        )
+    constructor(
+        children: BuilderMultipleChild<Prism<P>, FlexPrismBuilderChildOptions>
+    ) {
+        super({ children }, {})
+    }
+
+    get structure(): { geo: GeoRegistry; children: { children: { options: Record<string, RandomTypeRegistry>; geo: GeoRegistry; multiple: boolean; }; }; options: {}; } {
+        return FLEX_PRISM_STRUCTURE
+    }
+
+    static fromData(children: Record<string, BuilderChild>, options: Record<string, Option>): FlexPrismBuilder {
+        return new FlexPrismBuilder(children['children'] as BuilderMultipleChild<Prism, FlexPrismBuilderChildOptions>)
     }
 
     protected buildChildren(context: Prism<P>, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[] {
@@ -47,7 +56,7 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends Builder<Prism<P
 
         let staticsHeight = 0
         let totalWeight = 0
-        const children = this.children.map((child) => {
+        const children = this.children.children.entries.map((child) => {
             const isStatic = child.options.isStatic.get(style, parameters, seed)
             const weight = child.options.weight.get(style, parameters, seed)
             if (isStatic) {
@@ -86,11 +95,5 @@ export class FlexPrismBuilder<P extends Plane2 = Plane2> extends Builder<Prism<P
             }
         })
         return results
-    }
-
-    protected additionalJson(): Record<string, any> {
-        return {
-            children: this.childrenToJson(this.children)
-        }
     }
 }

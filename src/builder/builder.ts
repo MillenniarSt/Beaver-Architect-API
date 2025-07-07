@@ -42,7 +42,9 @@ export abstract class Builder<
 }`
     }
 
-    abstract buildToCpp(): string
+    buildToCpp(): string {
+        return 'SUS'
+    }
 }
 
 export abstract class StandardBuilder<
@@ -134,6 +136,10 @@ export class BuilderMultipleChild<Geo extends Geo3 = Geo3, Options extends Recor
         readonly entries: BuilderChildEntry<Geo, Options>[]
     ) {
         super()
+    }
+
+    get length(): number {
+        return this.entries.length
     }
 
     toJson(): {} {

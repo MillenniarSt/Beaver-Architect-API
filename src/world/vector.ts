@@ -15,6 +15,10 @@ export class Vec2 {
 
     constructor(readonly x: number, readonly y: number) { }
 
+    static centerOf(vectors: Vec2[]): Vec2 {
+        return vectors.reduce((p, c) => p.add(c)).scale(1 / vectors.length)
+    }
+
     length(): number {
         return Math.sqrt(this.x ** 2 + this.y ** 2)
     }
@@ -35,7 +39,7 @@ export class Vec2 {
         return new Vec2(this.x - vec.x, this.y - vec.y)
     }
 
-    multiplyScalar(scalar: number): Vec2 {
+    scale(scalar: number): Vec2 {
         return new Vec2(this.x * scalar, this.y * scalar)
     }
 
@@ -114,6 +118,10 @@ export class Vec3 {
 
     constructor(readonly x: number, readonly y: number, readonly z: number) { }
 
+    static centerOf(vectors: Vec3[]): Vec3 {
+        return vectors.reduce((p, c) => p.add(c)).scale(1 / vectors.length)
+    }
+
     length(): number {
         return Math.sqrt(this.x ** 2 + this.y ** 2 + this.z ** 2)
     }
@@ -138,7 +146,7 @@ export class Vec3 {
         return new Vec3(this.x - vec.x, this.y - vec.y, this.z - vec.z)
     }
 
-    multiplyScalar(scalar: number): Vec3 {
+    scale(scalar: number): Vec3 {
         return new Vec3(this.x * scalar, this.y * scalar, this.z * scalar)
     }
 
@@ -215,7 +223,7 @@ export class Vec4 {
         return new Vec4(this.a - vec.a, this.b - vec.b, this.c - vec.c, this.c - vec.d)
     }
 
-    multiplyScalar(scalar: number): Vec4 {
+    scale(scalar: number): Vec4 {
         return new Vec4(this.a * scalar, this.b * scalar, this.c * scalar, this.d * scalar)
     }
 

@@ -31,6 +31,14 @@ export abstract class Line2 extends Geo2 {
         return segments
     }
 
+    get pivot(): Vec2 {
+        return this.vertices[0]
+    }
+
+    rotateAround(angle: number): Geo2 {
+        return this.rotate(new Rotation2(angle, this.pivot))
+    }
+
     static fromUniversalJson(json: any): GeneralLine2 {
         return new GeneralLine2(json.map((vertex: any) => Vec2.fromJson(vertex)))
     }

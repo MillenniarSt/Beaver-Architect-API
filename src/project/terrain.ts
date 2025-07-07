@@ -22,35 +22,25 @@ export class Terrain implements ToJson {
 
     constructor(
         public chunk: ChunkGenerator,
-        public chunkDimension: Vec3,
-        public bounds: Rect3
+        public chunkDimension: Vec3
     ) { }
 
     static fromJson(json: any): Terrain {
-        return new Terrain(ChunkGenerator.fromJson(json.chunk), Vec3.fromJson(json.chunkDimension), Rect3.fromJson(json.bounds))
+        return new Terrain(ChunkGenerator.fromJson(json.chunk), Vec3.fromJson(json.chunkDimension))
     }
 
     buildChunk(pos: Vec3, style: GenerationStyle, seed: Seed): BuilderFlatResult {
-        this.ensureChunk(pos)
         return BuilderFlatResult.combine(this.chunk.tasks.map((task) => task.build(new Rect3(pos, this.chunkDimension), style, seed)))
     }
 
     buildChunkTask(pos: Vec3, style: GenerationStyle, seed: Seed, task: number): BuilderFlatResult {
-        this.ensureChunk(pos)
         return this.chunk.getTask(task).build(new Rect3(pos, this.chunkDimension), style, seed)
-    }
-
-    ensureChunk(pos: Vec3) {
-        if(!this.bounds.contains(pos)) {
-            throw new ChunkOutOfBounds(pos, this.bounds)
-        }
     }
 
     toJson(): JsonFormat {
         return {
             chunk: this.chunk.toJson(),
-            chunkDimension: this.chunkDimension.toJson(),
-            bounds: this.bounds.toData()
+            chunkDimension: this.chunkDimension.toJson()
         }
     }
 }

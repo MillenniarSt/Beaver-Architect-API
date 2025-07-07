@@ -200,6 +200,42 @@ export class BufferFixedListScheme<T extends BufferFormat  = BufferFormat> exten
     }
 }
 
+export class BufferModalListScheme<T extends BufferFormat[]> extends BufferScheme<T> {
+
+    constructor(
+        readonly schemes: BufferScheme<T[number]>[]
+    ) {
+        super()
+    }
+
+    sizeOf(value: T): number {
+        let size = 0
+        for (let i = 0; i < this.schemes.length; i++) {
+            size += this.schemes[i].sizeOf(value[i])
+        }
+        return size
+    }
+
+    read(buffer: Buffer<ArrayBufferLike>, offset: number): { size: number, value: T } {
+        let list: BufferFormat[] = []
+        let size = 0
+        for (let i = 0; i < this.schemes.length; i++) {
+            let item = this.schemes[i].read(buffer, offset + size)
+            list[i] = item.value
+            size += item.size
+        }
+        return { size: size, value: list as T }
+    }
+
+    write(buffer: Buffer<ArrayBufferLike>, offset: number, value: T): number {
+        let size = 0
+        for (let i = 0; i < this.schemes.length; i++) {
+            size += this.schemes[i].write(buffer, offset + size, value[i])
+        }
+        return size
+    }
+}
+
 export class BufferObjectScheme<T extends Record<string, BufferFormat> = Record<string, BufferFormat>> extends BufferScheme<T> {
 
     constructor(

@@ -12,24 +12,31 @@ import { Seed } from "../../random/random.js";
 import { Plane2, Rect2 } from "../../../world/bi-geo/plane.js";
 import { Prism } from "../../../world/geo/object.js";
 import { Plane3 } from "../../../world/geo/surface.js";
-import { Quaternion, Rotation2, Rotation3 } from "../../../world/quaternion.js";
+import { Direction, Rotation3 } from "../../../world/quaternion.js";
 import { Vec2, Vec3 } from "../../../world/vector.js";
-import { Builder, BuilderResult, BuilderType } from "../../builder.js";
+import { Builder, BuilderChild, BuilderResult, BuilderSingleChild, StandardBuilder } from "../../builder.js";
 import { EmptyBuilder } from "../../generic/empty.js";
-import { builderFromJson } from "../../collective.js";
 import type { GenerationStyle } from "../../../engineer/data-pack/style/rule.js";
+import { GeoRegistry } from "../../../register/geo.js";
+import type { RandomTypeRegistry } from "../../../register/random.js";
+import type { Option } from "../../option.js";
+import { CauseError, TODO } from "../../../dev/decorators.js";
 
-export class ToFacesPrismBuilder<P extends Plane2> extends Builder<Prism<P>, {}> {
+export const TO_FACES_PRISM_STRUCTURE = {
+    geo: GeoRegistry.PRISM,
+    children: {
+        base: { options: {}, geo: GeoRegistry.PLANE3, multiple: false },
+        ceil: { options: {}, geo: GeoRegistry.PLANE3, multiple: false },
+        side: { options: {}, geo: GeoRegistry.PLANE3, multiple: false }
+    },
+    options: {}
+}
 
-    static readonly type = new BuilderType('prismToFaces', Prism.type, [
-        { id: 'base', geo: Plane3.type, options: [], multiple: false },
-        { id: 'ceil', geo: Plane3.type, options: [], multiple: false },
-        { id: 'side', geo: Rect2.type, options: [], multiple: false }
-    ], [])
+export class ToFacesPrismBuilder<P extends Plane2 = Plane2> extends StandardBuilder<Prism<P>, { base: BuilderSingleChild<Plane3<P>, {}>, ceil: BuilderSingleChild<Plane3<P>, {}>, side: BuilderSingleChild<Plane3<Rect2>, {}> }, {}> {
 
-    protected base: Builder<Plane3<P>>
-    protected ceil: Builder<Plane3<P>>
-    protected side: Builder<Plane3<Rect2>>
+    get type(): string {
+        return 'to_faces_prism'
+    }
 
     constructor(
         children: {
@@ -38,41 +45,32 @@ export class ToFacesPrismBuilder<P extends Plane2> extends Builder<Prism<P>, {}>
             side?: Builder<Plane3<Rect2>>
         }
     ) {
-        super({})
-        this.base = children.base ?? EmptyBuilder.VOID
-        this.ceil = children.ceil ?? EmptyBuilder.VOID
-        this.side = children.side ?? EmptyBuilder.VOID
+        super({
+            base: new BuilderSingleChild(children.base ?? EmptyBuilder.VOID, {}),
+            ceil: new BuilderSingleChild(children.ceil ?? EmptyBuilder.VOID, {}),
+            side: new BuilderSingleChild(children.side ?? EmptyBuilder.VOID, {})
+        }, {})
     }
 
-    static fromJson<P extends Plane2 = Plane2>(json: any): ToFacesPrismBuilder<P> {
-        return new ToFacesPrismBuilder(
-            {
-                base: builderFromJson(json.base),
-                ceil: builderFromJson(json.ceil),
-                side: builderFromJson(json.side)
-            }
-        )
+    get structure(): { geo: GeoRegistry; children: { base: { options: Record<string, RandomTypeRegistry>; geo: GeoRegistry; multiple: boolean; }; ceil: { options: Record<string, RandomTypeRegistry>; geo: GeoRegistry; multiple: boolean; }; side: { options: Record<string, RandomTypeRegistry>; geo: GeoRegistry; multiple: boolean; }; }; options: {}; } {
+        return TO_FACES_PRISM_STRUCTURE
     }
 
+    static fromData(children: Record<string, BuilderChild>, options: Record<string, Option>): ToFacesPrismBuilder {
+        return new ToFacesPrismBuilder(children)
+    }
+
+    @TODO()
+    @CauseError()
     protected buildChildren(context: Prism<P>, style: GenerationStyle, parameters: GenerationStyle, seed: Seed): BuilderResult[] {
-        const rotation = context.base.rotation
         return [
-            this.base.build(context.base, style, parameters, seed),
-            this.ceil.build(context.base.rotate(new Rotation3(rotation.quaternion.withW(-rotation.quaternion.w), rotation.pivot)).move(new Vec3(0, 0, context.height)).rotate(rotation), style, parameters, seed),
+            this.children.base.builder.build(context.base, style, parameters, seed),
+            this.children.ceil.builder.build(context.ceil, style, parameters, seed),
             ...context.base.plane.edge.segments.map((segment) =>
-                this.side.build(new Plane3(new Rect2(
-                    segment[0], new Vec2(segment[0].distance(segment[1]), context.height),
-                    Rotation2.fromPoints(segment[0], segment[1], segment[0].add(new Vec2(segment[0].distance(segment[1]), 0)))
-                ), context.base.z, new Rotation3(rotation.quaternion.add(Quaternion.DOWN), rotation.getVec(segment[0].toVec3(context.base.z)))), style, parameters, seed)
+                this.children.side.builder.build(new Plane3(new Rect2(
+                    segment[0], new Vec2(segment[0].distance(segment[1]), context.height)
+                ), context.base.z, context.direction.add(Direction.DOWN)), style, parameters, seed)
             )
         ]
-    }
-
-    protected additionalJson(): Record<string, any> {
-        return {
-            base: this.base.toJson(),
-            ceil: this.ceil.toJson(),
-            side: this.side.toJson()
-        }
     }
 }

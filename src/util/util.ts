@@ -8,7 +8,7 @@
 //      ##\___   |   ___/
 //      ##    \__|__/
 
-export type JsonFormat = undefined | null |  boolean | number | string | JsonFormat[] | { [key: string]: JsonFormat }
+export type JsonFormat = undefined | null | boolean | number | string | JsonFormat[] | { [key: string]: JsonFormat }
 
 export interface ToJson {
 
@@ -56,6 +56,10 @@ export function mapFromJson<T>(json: Record<string, JsonFormat>, itemFromJson: (
     return new Map(Object.entries(json).map(([key, item]) => [key, itemFromJson(item)]))
 }
 
+export function recordToMap<T>(record: Record<string, T>): Map<string, T> {
+    return new Map(Object.entries(record))
+}
+
 // Record
 
 export function parseRecord<T, R>(record: Record<string, T>, parse: (value: T, key: string) => R): Record<string, R> {
@@ -76,4 +80,16 @@ export function joinBiLists<T>(biList: T[][]): T[] {
     let list: T[] = []
     biList.forEach((singleList) => list.push(...singleList))
     return list
+}
+
+export function listEquals(list1: any[], list2: any[]): boolean {
+    if (list1.length !== list2.length) {
+        return false
+    }
+    for (let i = 0; i < list1.length; i++) {
+        if (list1[i] !== list2[i]) {
+            return false
+        }
+    }
+    return true
 }
